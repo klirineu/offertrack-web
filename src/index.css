@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply dark:bg-gray-900 dark:text-gray-100;
+  }
+}
+
+.dnd-sortable-handle {
+  pointer-events: auto !important;
+}
+
+.dnd-sortable-item {
+  pointer-events: auto !important;
+}
+
+/* Camadas de z-index */
+.dnd-overlay {
+  z-index: 1000;
+}
+
+.dnd-item {
+  z-index: 1;
+  position: relative;
+}
+
+/* Garante que a área de drag não bloqueie outros elementos */
+.group:hover .drag-handle {
+  opacity: 1;
+}
+
+.drag-handle {
+  transition: opacity 0.2s ease;
+  opacity: 0;
+}
+
+.drag-handle:hover {
+  opacity: 1;
+}
