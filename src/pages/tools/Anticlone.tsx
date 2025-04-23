@@ -6,17 +6,242 @@ import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, ArrowLeft, P
 import { SidebarBody, SidebarLink, Sidebar } from '../../components/ui/sidebar';
 import { useAnticloneStore } from '../../store/anticloneStore';
 import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
 
 type ActionType = 'redirect' | 'replace_links' | 'replace_images';
 
 interface ClonedDomain {
+  url: string;
   domain: string;
   firstSeen: string;
+  lastAccess: string;
+  accessCount: number;
+  status: string;
+  similarityScore: number;
   actions: {
     type: ActionType;
     data: string;
   }[];
 }
+
+interface Site {
+  id: string;
+  original_url: string;
+  created_at: string;
+  action_type: ActionType;
+  action_data: string;
+}
+
+const SiteTableRow = ({ site, onDelete, onSelect, getScriptUrl, theme }: {
+  site: Site;
+  onDelete: (id: string) => void;
+  onSelect: (id: string) => void;
+  getScriptUrl: (id: string) => string;
+  theme: string;
+}) => {
+  const [cloneCount, setCloneCount] = useState<number>(0);
+
+  useEffect(() => {
+    const fetchCloneCount = async () => {
+      try {
+        const { count, error } = await supabase
+          .from('detected_clones')
+          .select('*', { count: 'exact', head: true })
+          .eq('anticlone_site_id', site.id);
+
+        if (error) {
+          console.error('Error fetching clone count:', error);
+          setCloneCount(0);
+        } else {
+          setCloneCount(count || 0);
+        }
+      } catch (err) {
+        console.error('Error in fetchCloneCount:', err);
+        setCloneCount(0);
+      }
+    };
+    fetchCloneCount();
+  }, [site.id]);
+
+  return (
+    <tr className={`border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+      <td className="px-6 py-4">{site.original_url}</td>
+      <td className="px-6 py-4">{new Date(site.created_at).toLocaleDateString()}</td>
+      <td className="px-6 py-4">{cloneCount}</td>
+      <td className="px-6 py-4">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(getScriptUrl(site.id));
+              alert('Script copiado para a área de transferência!');
+            }}
+            className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+            title="Copiar Script"
+          >
+            <Copy className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => onSelect(site.id)}
+            className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+            title="Ver Detalhes"
+          >
+            <ExternalLink className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => onDelete(site.id)}
+            className="p-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+            title="Excluir"
+          >
+            <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+};
+
+const ClonedDomainsList = ({ siteId }: { siteId: string }) => {
+  const [clones, setClones] = useState<ClonedDomain[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { theme } = useThemeStore();
+  const { sites, updateSite } = useAnticloneStore();
+  const site = sites.find(s => s.id === siteId);
+  const [editingAction, setEditingAction] = useState<{
+    type: ActionType;
+    data: string;
+  }>({
+    type: 'redirect',
+    data: ''
+  });
+
+  useEffect(() => {
+    const fetchClones = async () => {
+      if (site) {
+        const { data: clones, error } = await supabase
+          .from('detected_clones')
+          .select('*')
+          .eq('anticlone_site_id', siteId);
+
+        if (error) {
+          console.error('Error fetching clones:', error);
+          setClones([]);
+        } else {
+          setClones(clones.map(clone => ({
+            url: clone.clone_url,
+            domain: new URL(clone.clone_url).hostname,
+            firstSeen: clone.created_at,
+            lastAccess: clone.last_access,
+            accessCount: clone.access_count,
+            status: clone.status,
+            similarityScore: clone.similarity_score,
+            actions: site.action_type ? [{
+              type: site.action_type,
+              data: site.action_data
+            }] : []
+          })));
+        }
+      }
+      setLoading(false);
+    };
+    fetchClones();
+  }, [siteId, site]);
+
+  const handleUpdateAction = async () => {
+    if (site && editingAction.type && (editingAction.type === 'redirect' || editingAction.data)) {
+      await updateSite(site.id, {
+        action_type: editingAction.type,
+        action_data: editingAction.data
+      });
+    }
+  };
+
+  if (loading) {
+    return <div>Carregando...</div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}>
+        <h3 className="text-lg font-medium mb-4">Configurar Ação</h3>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Tipo de Ação</label>
+            <select
+              value={editingAction.type}
+              onChange={(e) => setEditingAction(prev => ({ ...prev, type: e.target.value as ActionType }))}
+              className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark'
+                ? 'bg-gray-700 border-gray-600 text-white'
+                : 'bg-white border-gray-300 text-gray-900'
+                }`}
+            >
+              <option value="redirect">Redirecionar para URL Original</option>
+              <option value="replace_links">Alterar URLs dos Links</option>
+              <option value="replace_images">Substituir Imagens</option>
+            </select>
+          </div>
+
+          {editingAction.type !== 'redirect' && (
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                {editingAction.type === 'replace_links' ? 'URL para substituir nos links' : 'URL da imagem para substituir'}
+              </label>
+              <input
+                type="url"
+                value={editingAction.data}
+                onChange={(e) => setEditingAction(prev => ({ ...prev, data: e.target.value }))}
+                placeholder={
+                  editingAction.type === 'replace_links'
+                    ? 'https://seusite.com'
+                    : 'https://seusite.com/imagem.jpg'
+                }
+                className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark'
+                  ? 'bg-gray-700 border-gray-600 text-white'
+                  : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+              />
+            </div>
+          )}
+
+          <button
+            onClick={handleUpdateAction}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Salvar Ação
+          </button>
+        </div>
+      </div>
+
+      {clones.length === 0 ? (
+        <div className="text-center text-gray-500">Nenhum clone detectado ainda.</div>
+      ) : (
+        clones.map((clone) => (
+          <div
+            key={clone.url}
+            className={`p-4 rounded-lg border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}
+          >
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <div className="font-medium break-all">{clone.url}</div>
+                  <div className="text-sm text-gray-500">Domínio: {clone.domain}</div>
+                </div>
+              </div>
+              <div className="text-sm text-gray-500 grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div>Detectado em: {new Date(clone.firstSeen).toLocaleDateString()}</div>
+                <div>Último acesso: {new Date(clone.lastAccess).toLocaleDateString()}</div>
+                <div>Acessos: {clone.accessCount}</div>
+                <div>Status: {clone.status}</div>
+                <div>Similaridade: {clone.similarityScore}%</div>
+              </div>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
+};
 
 const Logo = () => {
   return (
@@ -85,10 +310,7 @@ export function Anticlone() {
   const handleUpdateSite = async (id: string, domain: string, action: { type: ActionType; data: string }) => {
     await updateSite(id, {
       action_type: action.type,
-      action_data: JSON.stringify({
-        domain,
-        ...action
-      })
+      action_data: action.data
     });
   };
 
@@ -100,15 +322,6 @@ export function Anticlone() {
 
   const getScriptUrl = (id: string) => {
     return `<script src="${window.location.origin}/script.js?id=${id}"></script>`;
-  };
-
-  const getClonedDomains = (site: any): ClonedDomain[] => {
-    try {
-      const actions = site.action_data ? JSON.parse(site.action_data) : [];
-      return Array.isArray(actions) ? actions : [];
-    } catch {
-      return [];
-    }
   };
 
   if (!user) {
@@ -275,42 +488,15 @@ export function Anticlone() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sites.map((site) => (
-                    <tr key={site.id} className={`border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-                      <td className="px-6 py-4">{site.original_url}</td>
-                      <td className="px-6 py-4">{new Date(site.created_at).toLocaleDateString()}</td>
-                      <td className="px-6 py-4">{getClonedDomains(site).length}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(getScriptUrl(site.id));
-                              alert('Script copiado para a área de transferência!');
-                            }}
-                            className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-                            title="Copiar Script"
-                          >
-                            <Copy className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => setSelectedSite(site.id)}
-                            className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-                            title="Ver Detalhes"
-                          >
-                            <ExternalLink className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteSite(site.id)}
-                            className="p-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                            title="Excluir"
-                          >
-                            <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                  {sites.map((site: Site) => (
+                    <SiteTableRow
+                      key={site.id}
+                      site={site}
+                      onDelete={handleDeleteSite}
+                      onSelect={setSelectedSite}
+                      getScriptUrl={getScriptUrl}
+                      theme={theme}
+                    />
                   ))}
                 </tbody>
               </table>
@@ -328,105 +514,7 @@ export function Anticlone() {
                   <ArrowLeft className="w-5 h-5" />
                 </button>
               </div>
-              <div className="space-y-4">
-                {getClonedDomains(sites.find(s => s.id === selectedSite)).map((clone) => (
-                  <div
-                    key={clone.domain}
-                    className={`p-4 rounded-lg border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium">{clone.domain}</span>
-                      <span className="text-sm text-gray-500">
-                        Detectado em: {new Date(clone.firstSeen).toLocaleDateString()}
-                      </span>
-                    </div>
-                    {selectedDomain === clone.domain ? (
-                      <div className="mt-4 space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Tipo de Ação</label>
-                          <select
-                            value={newAction.type}
-                            onChange={(e) => setNewAction({ ...newAction, type: e.target.value as ActionType })}
-                            className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
-                          >
-                            <option value="redirect">Redirecionar Site</option>
-                            <option value="replace_links">Trocar Links</option>
-                            <option value="replace_images">Trocar Imagens</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-2">
-                            {newAction.type === 'redirect' ? 'URL de Redirecionamento' :
-                              newAction.type === 'replace_links' ? 'Nova URL para Links' :
-                                'Nova URL para Imagens'}
-                          </label>
-                          <input
-                            type="url"
-                            value={newAction.data}
-                            onChange={(e) => setNewAction({ ...newAction, data: e.target.value })}
-                            placeholder={
-                              newAction.type === 'redirect' ? 'https://redirect.com' :
-                                newAction.type === 'replace_links' ? 'https://newlinks.com' :
-                                  'https://newimages.com'
-                            }
-                            className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
-                          />
-                        </div>
-                        <div className="flex justify-end gap-2">
-                          <button
-                            onClick={() => setSelectedDomain(null)}
-                            className="px-3 py-1 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-                          >
-                            Cancelar
-                          </button>
-                          <button
-                            onClick={() => {
-                              handleUpdateSite(selectedSite, clone.domain, newAction);
-                              setSelectedDomain(null);
-                            }}
-                            className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                          >
-                            Salvar
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between mt-2">
-                        <div className="text-sm">
-                          {clone.actions?.length > 0 ? (
-                            <div className="space-y-1">
-                              {clone.actions.map((action, idx) => (
-                                <span key={idx} className="text-green-600 dark:text-green-400 block">
-                                  {action.type === 'redirect' ? 'Redirecionando para: ' :
-                                    action.type === 'replace_links' ? 'Trocando links para: ' :
-                                      'Trocando imagens para: '}
-                                  {action.data}
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-yellow-600 dark:text-yellow-400">
-                              Nenhuma ação configurada
-                            </span>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => {
-                            setSelectedDomain(clone.domain);
-                            setNewAction({
-                              type: clone.actions?.[0]?.type || 'redirect',
-                              data: clone.actions?.[0]?.data || ''
-                            });
-                          }}
-                          className="px-3 py-1 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-                        >
-                          Configurar
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+              <ClonedDomainsList siteId={selectedSite} />
             </div>
           )}
         </main>
