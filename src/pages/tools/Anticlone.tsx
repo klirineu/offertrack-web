@@ -99,7 +99,7 @@ export function Anticlone() {
   };
 
   const getScriptUrl = (id: string) => {
-    return `<script src="${window.location.origin}/anticlone.js?id=${id}"></script>`;
+    return `<script src="${window.location.origin}/script.js?id=${id}"></script>`;
   };
 
   const getClonedDomains = (site: any): ClonedDomain[] => {
