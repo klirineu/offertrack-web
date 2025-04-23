@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   DndContext,
   DragEndEvent,
@@ -12,7 +12,6 @@ import type { Offer, OfferStatus } from '../types';
 import { useThemeStore } from '../store/themeStore';
 import { EditOfferDialog } from './EditOfferDialog';
 import { useOfferStore } from '../store/offerStore';
-import { v4 as uuidv4 } from 'uuid';
 import { OfferCard } from './OfferCard';
 
 const columns = [
@@ -24,10 +23,14 @@ const columns = [
 
 export function Board() {
   const { theme } = useThemeStore();
-  const { offers } = useOfferStore();
+  const { offers, fetchOffers } = useOfferStore();
 
   const [isNewOfferDialogOpen, setIsNewOfferDialogOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchOffers();
+  }, []);
 
   const activeOffer = offers.find((o) => o.id === activeId) || null;
 
@@ -52,11 +55,8 @@ export function Board() {
 
   const handleNewOffer = (offerData: Omit<Offer, 'id' | 'status' | 'createdAt' | 'updatedAt'>) => {
     useOfferStore.getState().addOffer({
-      id: uuidv4(),
-      status: 'waiting',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      ...offerData
+      ...offerData,
+      status: 'waiting'
     });
   };
 

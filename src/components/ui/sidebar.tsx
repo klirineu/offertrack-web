@@ -4,10 +4,16 @@ import React, { useState, createContext, useContext } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { useThemeStore } from '../../store/themeStore';
+import { useAuth } from "../../contexts/AuthContext";
 interface Links {
   label: string;
   href: string;
-  icon: React.JSX.Element | React.ReactNode;
+  icon?: React.JSX.Element | React.ReactNode;
+  subLinks?: {
+    label: string;
+    href: string;
+    icon?: React.JSX.Element | React.ReactNode;
+  }[];
 }
 
 interface SidebarContextProps {
@@ -44,7 +50,7 @@ export const SidebarProvider = ({
   const setOpen = setOpenProp !== undefined ? setOpenProp : setOpenState;
 
   return (
-    <SidebarContext.Provider className={`${theme === 'dark' ? 'dark bg-gray-900' : 'bg-gray-50'}`} value={{ open, setOpen, animate }}>
+    <SidebarContext.Provider value={{ open, setOpen, animate }}>
       {children}
     </SidebarContext.Provider>
   );
@@ -163,34 +169,40 @@ export const SidebarLink = ({
   props?: any;
 }) => {
   const { open, animate } = useSidebar();
+  const { signOut } = useAuth();
   return (
     <>
-    <Link
-      to={link.href}
-      className={cn(
-        "flex items-center justify-start gap-2 group/sidebar py-2",
-        className
-      )}
-      {...props}
-    >
-      {link.icon}
-      <motion.span
-        animate={{
-          display: animate ? (open ? "inline-block" : "none") : "inline-block",
-          opacity: animate ? (open ? 1 : 0) : 1,
+      <Link
+        to={link.href}
+        onClick={() => {
+          if (link.label === 'Logout') {
+            signOut();
+          }
         }}
-        className="text-neutral-700 dark:text-neutral-200 text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0"
+        className={cn(
+          "flex items-center justify-start gap-2 group/sidebar py-2",
+          className
+        )}
+        {...props}
       >
-        {link.label}
-      </motion.span>
-    </Link>
-    {link.subLinks && open && (
+        {link.icon}
+        <motion.span
+          animate={{
+            display: animate ? (open ? "inline-block" : "none") : "inline-block",
+            opacity: animate ? (open ? 1 : 0) : 1,
+          }}
+          className="text-neutral-700 dark:text-neutral-200 text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0"
+        >
+          {link.label}
+        </motion.span>
+      </Link>
+      {link.subLinks && open && (
         <div className="ml-4">
           {link.subLinks.map((subLink, idx) => (
             <SidebarLink key={idx} link={subLink} className={className} />
           ))}
         </div>
       )}
-      </>
+    </>
   );
 };

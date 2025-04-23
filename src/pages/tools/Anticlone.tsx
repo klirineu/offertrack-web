@@ -1,35 +1,22 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useThemeStore } from '../../store/themeStore';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, ArrowLeft, Plus, Copy, ExternalLink, Shield, Wrench } from 'lucide-react';
 import { SidebarBody, SidebarLink, Sidebar } from '../../components/ui/sidebar';
+import { useAnticloneStore } from '../../store/anticloneStore';
+import { useAuth } from '../../contexts/AuthContext';
 
-const mockUser = {
-  name: 'John Doe',
-  email: 'john@example.com',
-  avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-};
+type ActionType = 'redirect' | 'replace_links' | 'replace_images';
 
-const mockOffers = [
-  {
-    id: '1',
-    originalUrl: 'https://meusite.com/oferta1',
-    createdAt: '2024-04-01',
-    clonedDomains: [
-      {
-        domain: 'sitepirata1.com',
-        firstSeen: '2024-04-02',
-        redirectUrl: 'https://checkoutseguro.com/oferta1'
-      },
-      {
-        domain: 'clone2.net',
-        firstSeen: '2024-04-03',
-        redirectUrl: null
-      }
-    ]
-  }
-];
+interface ClonedDomain {
+  domain: string;
+  firstSeen: string;
+  actions: {
+    type: ActionType;
+    data: string;
+  }[];
+}
 
 const Logo = () => {
   return (
@@ -62,12 +49,75 @@ const LogoIcon = () => {
 
 export function Anticlone() {
   const { theme } = useThemeStore();
+  const { user } = useAuth();
+  const { sites, isLoading, error, fetchSites, addSite, updateSite, deleteSite } = useAnticloneStore();
+
   const [open, setOpen] = useState(false);
   const [showNewOfferForm, setShowNewOfferForm] = useState(false);
-  const [selectedOffer, setSelectedOffer] = useState<string | null>(null);
-  const [newOfferUrl, setNewOfferUrl] = useState('');
-  const [newRedirectUrl, setNewRedirectUrl] = useState('');
+  const [selectedSite, setSelectedSite] = useState<string | null>(null);
+  const [newSiteUrl, setNewSiteUrl] = useState('');
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
+  const [newAction, setNewAction] = useState<{ type: ActionType; data: string }>({
+    type: 'redirect',
+    data: ''
+  });
+
+  useEffect(() => {
+    fetchSites();
+  }, [fetchSites]);
+
+  const handleAddSite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSiteUrl) return;
+
+    const url = new URL(newSiteUrl);
+    await addSite({
+      original_url: newSiteUrl,
+      original_host: url.hostname,
+      action_type: 'redirect',
+      action_data: ''
+    });
+
+    setNewSiteUrl('');
+    setShowNewOfferForm(false);
+  };
+
+  const handleUpdateSite = async (id: string, domain: string, action: { type: ActionType; data: string }) => {
+    await updateSite(id, {
+      action_type: action.type,
+      action_data: JSON.stringify({
+        domain,
+        ...action
+      })
+    });
+  };
+
+  const handleDeleteSite = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this site?')) {
+      await deleteSite(id);
+    }
+  };
+
+  const getScriptUrl = (id: string) => {
+    return `<script src="${window.location.origin}/anticlone.js?id=${id}"></script>`;
+  };
+
+  const getClonedDomains = (site: any): ClonedDomain[] => {
+    try {
+      const actions = site.action_data ? JSON.parse(site.action_data) : [];
+      return Array.isArray(actions) ? actions : [];
+    } catch {
+      return [];
+    }
+  };
+
+  if (!user) {
+    return (
+      <div className="p-6">
+        <h1 className="text-2xl font-bold mb-4">Please login to use this feature</h1>
+      </div>
+    );
+  }
 
   const links = [
     {
@@ -95,7 +145,7 @@ export function Anticlone() {
       label: "Filtro de Tráfego",
       href: "#",
       icon: (
-        <svg className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z" /></svg>
+        <svg className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" ><path d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z" /></svg>
       ),
       subLinks: [
         { label: "Requisições", href: "/traffic-filter/requests", icon: <Circle className="h-4 w-4" /> },
@@ -122,17 +172,6 @@ export function Anticlone() {
     },
   ];
 
-  const handleCopyScript = (offerId: string) => {
-    const script = `<script src="https://meusistema.com/anticlone/${offerId}.js"></script>`;
-    navigator.clipboard.writeText(script);
-  };
-
-  const handleSaveRedirect = (domain: string) => {
-    // Implement save redirect logic here
-    setSelectedDomain(null);
-    setNewRedirectUrl('');
-  };
-
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
       <Sidebar open={open} setOpen={setOpen}>
@@ -148,14 +187,12 @@ export function Anticlone() {
           <div>
             <SidebarLink
               link={{
-                label: mockUser.name,
+                label: user?.email || 'User',
                 href: "/profile",
                 icon: (
-                  <img
-                    src={mockUser.avatar}
-                    className="h-7 w-7 flex-shrink-0 rounded-full"
-                    alt="Avatar"
-                  />
+                  <div className="h-7 w-7 flex-shrink-0 rounded-full bg-gray-300 flex items-center justify-center">
+                    {user?.email?.[0]?.toUpperCase() || 'U'}
+                  </div>
                 ),
               }}
             />
@@ -185,40 +222,46 @@ export function Anticlone() {
         </header>
 
         <main className="max-w-7xl mx-auto px-4 py-8">
-          {showNewOfferForm ? (
+          {error && (
+            <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">
+              {error}
+            </div>
+          )}
+
+          {showNewOfferForm && (
             <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
               <h2 className="text-lg font-semibold mb-4">Nova Oferta</h2>
-              <div className="space-y-4">
+              <form onSubmit={handleAddSite} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-2">URL da Oferta*</label>
                   <input
                     type="url"
-                    value={newOfferUrl}
-                    onChange={(e) => setNewOfferUrl(e.target.value)}
+                    value={newSiteUrl}
+                    onChange={(e) => setNewSiteUrl(e.target.value)}
                     placeholder="https://meusite.com/oferta"
+                    required
                     className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
                   />
                 </div>
                 <div className="flex justify-end gap-4">
                   <button
+                    type="button"
                     onClick={() => setShowNewOfferForm(false)}
                     className="px-4 py-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
                   >
                     Cancelar
                   </button>
                   <button
-                    onClick={() => {
-                      // Implement save logic
-                      setShowNewOfferForm(false);
-                    }}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    type="submit"
+                    disabled={isLoading}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                   >
-                    Salvar
+                    {isLoading ? 'Salvando...' : 'Salvar'}
                   </button>
                 </div>
-              </div>
+              </form>
             </div>
-          ) : null}
+          )}
 
           <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             <div className="overflow-x-auto">
@@ -232,26 +275,38 @@ export function Anticlone() {
                   </tr>
                 </thead>
                 <tbody>
-                  {mockOffers.map((offer) => (
-                    <tr key={offer.id} className={`border-t border-gray-200 dark:border-gray-700`}>
-                      <td className="px-6 py-4">{offer.originalUrl}</td>
-                      <td className="px-6 py-4">{new Date(offer.createdAt).toLocaleDateString()}</td>
-                      <td className="px-6 py-4">{offer.clonedDomains.length}</td>
+                  {sites.map((site) => (
+                    <tr key={site.id} className={`border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+                      <td className="px-6 py-4">{site.original_url}</td>
+                      <td className="px-6 py-4">{new Date(site.created_at).toLocaleDateString()}</td>
+                      <td className="px-6 py-4">{getClonedDomains(site).length}</td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => handleCopyScript(offer.id)}
+                            onClick={() => {
+                              navigator.clipboard.writeText(getScriptUrl(site.id));
+                              alert('Script copiado para a área de transferência!');
+                            }}
                             className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
                             title="Copiar Script"
                           >
                             <Copy className="w-5 h-5" />
                           </button>
                           <button
-                            onClick={() => setSelectedOffer(offer.id)}
+                            onClick={() => setSelectedSite(site.id)}
                             className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
                             title="Ver Detalhes"
                           >
                             <ExternalLink className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteSite(site.id)}
+                            className="p-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                            title="Excluir"
+                          >
+                            <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
                           </button>
                         </div>
                       </td>
@@ -262,19 +317,19 @@ export function Anticlone() {
             </div>
           </div>
 
-          {selectedOffer && (
+          {selectedSite && (
             <div className={`mt-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold">Domínios Clonados</h2>
                 <button
-                  onClick={() => setSelectedOffer(null)}
+                  onClick={() => setSelectedSite(null)}
                   className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
               </div>
               <div className="space-y-4">
-                {mockOffers[0].clonedDomains.map((clone) => (
+                {getClonedDomains(sites.find(s => s.id === selectedSite)).map((clone) => (
                   <div
                     key={clone.domain}
                     className={`p-4 rounded-lg border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}
@@ -288,12 +343,32 @@ export function Anticlone() {
                     {selectedDomain === clone.domain ? (
                       <div className="mt-4 space-y-4">
                         <div>
-                          <label className="block text-sm font-medium mb-2">URL de Redirecionamento</label>
+                          <label className="block text-sm font-medium mb-2">Tipo de Ação</label>
+                          <select
+                            value={newAction.type}
+                            onChange={(e) => setNewAction({ ...newAction, type: e.target.value as ActionType })}
+                            className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
+                          >
+                            <option value="redirect">Redirecionar Site</option>
+                            <option value="replace_links">Trocar Links</option>
+                            <option value="replace_images">Trocar Imagens</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-2">
+                            {newAction.type === 'redirect' ? 'URL de Redirecionamento' :
+                              newAction.type === 'replace_links' ? 'Nova URL para Links' :
+                                'Nova URL para Imagens'}
+                          </label>
                           <input
                             type="url"
-                            value={newRedirectUrl}
-                            onChange={(e) => setNewRedirectUrl(e.target.value)}
-                            placeholder="https://checkoutseguro.com/oferta"
+                            value={newAction.data}
+                            onChange={(e) => setNewAction({ ...newAction, data: e.target.value })}
+                            placeholder={
+                              newAction.type === 'redirect' ? 'https://redirect.com' :
+                                newAction.type === 'replace_links' ? 'https://newlinks.com' :
+                                  'https://newimages.com'
+                            }
                             className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
                           />
                         </div>
@@ -305,7 +380,10 @@ export function Anticlone() {
                             Cancelar
                           </button>
                           <button
-                            onClick={() => handleSaveRedirect(clone.domain)}
+                            onClick={() => {
+                              handleUpdateSite(selectedSite, clone.domain, newAction);
+                              setSelectedDomain(null);
+                            }}
                             className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                           >
                             Salvar
@@ -315,10 +393,17 @@ export function Anticlone() {
                     ) : (
                       <div className="flex items-center justify-between mt-2">
                         <div className="text-sm">
-                          {clone.redirectUrl ? (
-                            <span className="text-green-600 dark:text-green-400">
-                              Redirecionando para: {clone.redirectUrl}
-                            </span>
+                          {clone.actions?.length > 0 ? (
+                            <div className="space-y-1">
+                              {clone.actions.map((action, idx) => (
+                                <span key={idx} className="text-green-600 dark:text-green-400 block">
+                                  {action.type === 'redirect' ? 'Redirecionando para: ' :
+                                    action.type === 'replace_links' ? 'Trocando links para: ' :
+                                      'Trocando imagens para: '}
+                                  {action.data}
+                                </span>
+                              ))}
+                            </div>
                           ) : (
                             <span className="text-yellow-600 dark:text-yellow-400">
                               Nenhuma ação configurada
@@ -326,7 +411,13 @@ export function Anticlone() {
                           )}
                         </div>
                         <button
-                          onClick={() => setSelectedDomain(clone.domain)}
+                          onClick={() => {
+                            setSelectedDomain(clone.domain);
+                            setNewAction({
+                              type: clone.actions?.[0]?.type || 'redirect',
+                              data: clone.actions?.[0]?.data || ''
+                            });
+                          }}
                           className="px-3 py-1 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
                         >
                           Configurar

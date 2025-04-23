@@ -110,7 +110,8 @@ export function Requests() {
       href: "#",
       icon: <Wrench className="text-neutral-700 dark:text-neutral-200 h-5 w-5" />,
       subLinks: [
-        { label: "Criptografar Texto", href: "/tools/encrypt", icon: <Circle className="h-4 w-4" /> }
+        { label: "Criptografar Texto", href: "/tools/encrypt", icon: <Circle className="h-4 w-4" /> },
+        { label: "Anticlone", href: "/tools/anticlone", icon: <Circle className="h-4 w-4" /> },
       ],
     },
     {

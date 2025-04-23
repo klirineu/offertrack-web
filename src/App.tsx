@@ -11,23 +11,34 @@ import { Reports } from './pages/traffic-filter/Reports';
 import { CreateCampaign } from './pages/traffic-filter/CreateCampaign';
 import { EncryptText } from './pages/tools/EncryptText';
 import { Anticlone } from './pages/tools/Anticlone';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { AuthProvider } from './contexts/AuthContext';
+import { LoginForm } from './components/auth/LoginForm';
+import { RegisterForm } from './components/auth/RegisterForm';
 
 function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/traffic-filter/campaigns" element={<Campaigns />} />
-        <Route path="/traffic-filter/campaigns/new" element={<CreateCampaign />} />
-        <Route path="/traffic-filter/requests" element={<Requests />} />
-        <Route path="/traffic-filter/domains" element={<Domains />} />
-        <Route path="/traffic-filter/reports" element={<Reports />} />
-        <Route path="/tools/encrypt" element={<EncryptText />} />
-        <Route path="/tools/anticlone" element={<Anticlone />} />
-      </Routes>
+      <AuthProvider>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginForm />} />
+          <Route path="/register" element={<RegisterForm />} />
+
+          {/* Protected Routes */}
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/traffic-filter/campaigns" element={<ProtectedRoute><Campaigns /></ProtectedRoute>} />
+          <Route path="/traffic-filter/campaigns/new" element={<ProtectedRoute><CreateCampaign /></ProtectedRoute>} />
+          <Route path="/traffic-filter/requests" element={<ProtectedRoute><Requests /></ProtectedRoute>} />
+          <Route path="/traffic-filter/domains" element={<ProtectedRoute><Domains /></ProtectedRoute>} />
+          <Route path="/traffic-filter/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+          <Route path="/tools/encrypt" element={<ProtectedRoute><EncryptText /></ProtectedRoute>} />
+          <Route path="/tools/anticlone" element={<ProtectedRoute><Anticlone /></ProtectedRoute>} />
+        </Routes>
+      </AuthProvider>
     </Router>
   );
 }
