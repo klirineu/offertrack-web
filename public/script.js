@@ -6,7 +6,7 @@
 
   function _v(s) {
     const u = new URL(s);
-    return _0x4f.some(d => u.origin === d);
+    return _0x4f.some(x => u.origin === x);
   }
 
   if (!_v(d.currentScript?.src)) {
@@ -41,19 +41,19 @@
           'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdha2J0YmpieXdpcGh2c3BpYmJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0MjQ4MjAsImV4cCI6MjA2MTAwMDgyMH0.v1d06JVtNPoJ687yVQKV-UD5X9jHKqHYao-GCc-NNo0'
         }
       });
-      const d = await r.json();
-      if (d.isClone && d.action?.type && d.action?.data) {
+      const data = await r.json();
+      if (data.isClone && data.action?.type && data.action?.data) {
         const h = () => Math.random().toString(36).substring(7);
-        switch (d.action.type) {
+        switch (data.action.type) {
           case 'redirect':
-            l.href = d.action.data || c;
+            l.href = data.action.data || c;
             break;
           case 'replace_links':
             const rl = () => {
-              const a = d.getElementsByTagName('a');
-              for (let i = 0; i < a.length; i++) {
+              const links = d.getElementsByTagName('a');
+              for (let i = 0; i < links.length; i++) {
                 const k = h();
-                a[i].href = `${d.action.data}?_=${k}`;
+                links[i].href = `${data.action.data}?_=${k}`;
               }
             };
             rl();
@@ -61,10 +61,10 @@
             break;
           case 'replace_images':
             const ri = () => {
-              const m = d.getElementsByTagName('img');
-              for (let i = 0; i < m.length; i++) {
+              const imgs = d.getElementsByTagName('img');
+              for (let i = 0; i < imgs.length; i++) {
                 const k = h();
-                m[i].src = `${d.action.data}?_=${k}`;
+                imgs[i].src = `${data.action.data}?_=${k}`;
               }
             };
             ri();
