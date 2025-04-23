@@ -1,100 +1,101 @@
 // AntiClone Protection Script
-(async function () {
-  try {
-    // Get script URL and extract site ID
-    const scriptElement = document.currentScript;
-    if (!scriptElement) {
-      console.error('AntiClone: Could not find script element');
-      return;
-    }
+(function (w, d, l) {
+  const _0x4f = ['https://offertrack.vercel.app', 'https://gakbtbjbywiphvspibbv.supabase.co'];
+  const v = _0x4f[0];
+  const a = _0x4f[1];
 
-    console.log('Script src:', scriptElement.src); // Debug log
-    const scriptUrl = new URL(scriptElement.src);
-    const id = scriptUrl.searchParams.get('id');
-
-    console.log('Extracted ID:', id); // Debug log
-
-    if (!id) {
-      console.error('AntiClone: Missing site ID');
-      return;
-    }
-
-    // Get current URL
-    const currentUrl = window.location.href;
-    console.log('Current URL:', currentUrl); // Debug log
-
-    // Call verification endpoint using Supabase Edge Function
-    const response = await fetch(`https://gakbtbjbywiphvspibbv.supabase.co/functions/v1/anticlone-verify?id=${id}&url=${encodeURIComponent(currentUrl)}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdha2J0YmpieXdpcGh2c3BpYmJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0MjQ4MjAsImV4cCI6MjA2MTAwMDgyMH0.v1d06JVtNPoJ687yVQKV-UD5X9jHKqHYao-GCc-NNo0'
-      }
-    });
-
-    const data = await response.json();
-    console.log('Response data:', data); // Debug log
-
-    // Só executa ações se houver uma ação configurada e válida
-    if (data.action && data.action.type && data.action.data) {
-      switch (data.action.type) {
-        case 'redirect':
-          // Redirect to original site
-          window.location.href = data.action.data;
-          break;
-
-        case 'replace_links':
-          // Replace all links with the configured URL
-          document.querySelectorAll('a').forEach(link => {
-            link.href = data.action.data;
-          });
-
-          // Watch for new links being added
-          const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-              mutation.addedNodes.forEach((node) => {
-                if (node.nodeType === 1) { // ELEMENT_NODE
-                  node.querySelectorAll('a').forEach(link => {
-                    link.href = data.action.data;
-                  });
-                }
-              });
-            });
-          });
-
-          observer.observe(document.body, {
-            childList: true,
-            subtree: true
-          });
-          break;
-
-        case 'replace_images':
-          // Replace all images with the configured URL
-          document.querySelectorAll('img').forEach(img => {
-            img.src = data.action.data;
-          });
-
-          // Watch for new images being added
-          const imgObserver = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-              mutation.addedNodes.forEach((node) => {
-                if (node.nodeType === 1) { // ELEMENT_NODE
-                  node.querySelectorAll('img').forEach(img => {
-                    img.src = data.action.data;
-                  });
-                }
-              });
-            });
-          });
-
-          imgObserver.observe(document.body, {
-            childList: true,
-            subtree: true
-          });
-          break;
-      }
-    }
-  } catch (error) {
-    console.error('AntiClone:', error);
+  function _v(s) {
+    const u = new URL(s);
+    return _0x4f.some(d => u.origin === d);
   }
-})(); 
+
+  if (!_v(d.currentScript?.src)) {
+    return;
+  }
+
+  async function _i() {
+    try {
+      const s = d.getElementsByTagName('script');
+      let e = null;
+      for (let i = 0; i < s.length; i++) {
+        if (s[i].src.includes('script.js?id=')) {
+          e = s[i];
+          break;
+        }
+      }
+      if (!e) {
+        console.warn('AC: Script not found');
+        return;
+      }
+      const u = new URL(e.src);
+      const i = u.searchParams.get('id');
+      if (!i) {
+        console.warn('AC: Missing ID');
+        return;
+      }
+      const c = l.href;
+      const r = await fetch(`${a}/functions/v1/anticlone-verify?id=${i}&url=${encodeURIComponent(c)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdha2J0YmpieXdpcGh2c3BpYmJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0MjQ4MjAsImV4cCI6MjA2MTAwMDgyMH0.v1d06JVtNPoJ687yVQKV-UD5X9jHKqHYao-GCc-NNo0'
+        }
+      });
+      const d = await r.json();
+      if (d.isClone && d.action?.type && d.action?.data) {
+        const h = () => Math.random().toString(36).substring(7);
+        switch (d.action.type) {
+          case 'redirect':
+            l.href = d.action.data || c;
+            break;
+          case 'replace_links':
+            const rl = () => {
+              const a = d.getElementsByTagName('a');
+              for (let i = 0; i < a.length; i++) {
+                const k = h();
+                a[i].href = `${d.action.data}?_=${k}`;
+              }
+            };
+            rl();
+            new MutationObserver(() => rl()).observe(d.body, { childList: true, subtree: true });
+            break;
+          case 'replace_images':
+            const ri = () => {
+              const m = d.getElementsByTagName('img');
+              for (let i = 0; i < m.length; i++) {
+                const k = h();
+                m[i].src = `${d.action.data}?_=${k}`;
+              }
+            };
+            ri();
+            new MutationObserver(() => ri()).observe(d.body, { childList: true, subtree: true });
+            break;
+        }
+      }
+    } catch (e) {
+      console.error('AntiClone error:', e);
+    }
+  }
+
+  const o = new MutationObserver(() => {
+    const s = d.currentScript?.src;
+    if (s && _v(s)) {
+      const e = d.querySelector(`script[src*="${s}"]`);
+      if (!e) {
+        const n = d.createElement('script');
+        n.src = s;
+        n.setAttribute('data-ac', '1');
+        const f = d.getElementsByTagName('script')[0];
+        f.parentNode.insertBefore(n, f);
+      }
+    }
+  });
+
+  o.observe(d.documentElement, { childList: true, subtree: true });
+
+  if (d.readyState === 'loading') {
+    d.addEventListener('DOMContentLoaded', _i);
+  } else {
+    _i();
+  }
+})(window, document, location); 

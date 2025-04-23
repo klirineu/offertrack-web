@@ -15,13 +15,13 @@ Deno.serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const id = url.searchParams.get('id');
+    const shortId = url.searchParams.get('id');
     const currentUrl = url.searchParams.get('url');
 
-    console.log('Received request:', { id, currentUrl });
+    console.log('Received request:', { shortId, currentUrl });
 
-    if (!id || !currentUrl) {
-      console.error('Missing parameters:', { id, currentUrl });
+    if (!shortId || !currentUrl) {
+      console.error('Missing parameters:', { shortId, currentUrl });
       return new Response(
         JSON.stringify({ error: 'Missing required parameters' }),
         {
@@ -31,17 +31,32 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get the anticlone site data
-    const { data: site, error: siteError } = await supabase
+    // Get all sites and find the one matching the short ID
+    const { data: sites, error: sitesError } = await supabase
       .from('anticlone_sites')
-      .select('*')
-      .eq('id', id)
-      .single();
+      .select('*');
 
-    console.log('Site query result:', { site, error: siteError });
+    if (sitesError) {
+      console.error('Error fetching sites:', sitesError);
+      return new Response(
+        JSON.stringify({ error: 'Error fetching sites' }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
 
-    if (siteError || !site) {
-      console.error('Site not found:', { id, error: siteError });
+    // Find the site with matching short ID
+    const site = sites.find(s => {
+      const siteShortId = parseInt(s.id.replace(/-/g, '').slice(0, 8), 16).toString(36);
+      return siteShortId === shortId;
+    });
+
+    console.log('Site lookup result:', { site });
+
+    if (!site) {
+      console.error('Site not found:', { shortId });
       return new Response(
         JSON.stringify({ error: 'Site not found' }),
         {
@@ -83,7 +98,7 @@ Deno.serve(async (req) => {
       // Registrar/atualizar na detected_clones
       supabase.from('detected_clones').upsert(
         {
-          anticlone_site_id: id,
+          anticlone_site_id: site.id,
           clone_url: currentUrl,
           status: 'active',
           similarity_score: 100,
@@ -101,7 +116,7 @@ Deno.serve(async (req) => {
 
       // Registrar na clone_access_logs
       supabase.from('clone_access_logs').insert({
-        anticlone_site_id: id,
+        anticlone_site_id: site.id,
         clone_url: currentUrl,
         ip_address: ip,
         user_agent: userAgent,

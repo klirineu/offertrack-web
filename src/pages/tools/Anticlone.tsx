@@ -321,7 +321,8 @@ export function Anticlone() {
   };
 
   const getScriptUrl = (id: string) => {
-    return `<script src="${window.location.origin}/script.js?id=${id}"></script>`;
+    const shortId = parseInt(id.replace(/-/g, '').slice(0, 8), 16).toString(36);
+    return `<script src="${window.location.origin}/script.js?id=${shortId}"></script>`;
   };
 
   if (!user) {
