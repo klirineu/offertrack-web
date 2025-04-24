@@ -1,72 +1,113 @@
-// AntiClone Protection Script v5
-!function (w, d, l, o, t) {
-  if (w._ac) return;
-  o = w._ac = function () {
-    (o.queue = o.queue || []).push([].slice.call(arguments))
-  };
-  o.push = o; o.loaded = !0; o.v = '1.0'; o.queue = [];
+// AntiClone Protection Script
+(function (w, d, l) {
+  const _0x4f = ['https://offertrack.vercel.app', 'https://gakbtbjbywiphvspibbv.supabase.co'];
+  const v = _0x4f[0];
+  const a = _0x4f[1];
 
-  // Configuração inicial
-  const _b = 'offertrack.vercel.app';
-  const _k = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdha2J0YmpieXdpcGh2c3BpYmJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0MjQ4MjAsImV4cCI6MjA2MTAwMDgyMH0.v1d06JVtNPoJ687yVQKV-UD5X9jHKqHYao-GCc-NNo0';
-
-  // Função para obter ID do script
-  function _gid() {
-    const s = d.currentScript || d.querySelector('script[src*="script.js"]');
-    return s && s.dataset.id;
-  }
-
-  // Função para aplicar ações
-  function _aa(a) {
-    if (!a || !a.t || !a.d) return;
-    const r = () => Math.random().toString(36).slice(7);
-    switch (a.t) {
-      case 'r': l.href = a.d; break;
-      case 'l':
-        const u = () => {
-          const x = d.getElementsByTagName('a');
-          for (let i = 0; i < x.length; i++)x[i].href = `${a.d}?_=${r()}`;
-        };
-        u(); new MutationObserver(u).observe(d.body, { childList: !0, subtree: !0 });
-        break;
-      case 'i':
-        const m = () => {
-          const x = d.getElementsByTagName('img');
-          for (let i = 0; i < x.length; i++)x[i].src = `${a.d}?_=${r()}`;
-        };
-        m(); new MutationObserver(m).observe(d.body, { childList: !0, subtree: !0 });
-        break;
+  function _v(s) {
+    try {
+      const u = new URL(s);
+      return _0x4f.some(x => u.origin === x);
+    } catch {
+      return false;
     }
   }
 
-  // Função para carregar script JSONP
-  function _ls(u, c) {
-    const s = d.createElement('script');
-    const n = '_ac_cb_' + Math.random().toString(36).slice(2);
-    w[n] = function (r) {
-      c(r);
-      d.head.removeChild(s);
-      delete w[n];
-    };
-    s.src = u + '&callback=' + n;
-    d.head.appendChild(s);
+  // Verifica se o script está sendo executado do domínio correto
+  if (!_v(d.currentScript?.src)) {
+    return;
   }
 
-  // Função para verificar clone
-  function _vc(i) {
-    _ls(`${l.protocol}//${_b}/api/verify?id=${i}&url=${encodeURIComponent(l.href)}`, function (r) {
-      if (!r || !r.isClone) return;
-      _aa({
-        t: r.action.type[0],
-        d: r.action.data
+  async function _i() {
+    try {
+      const s = d.getElementsByTagName('script');
+      let e = null;
+      for (let i = 0; i < s.length; i++) {
+        if (s[i].src.includes('script.js')) {
+          e = s[i];
+          break;
+        }
+      }
+      if (!e) {
+        console.warn('AC: Script not found');
+        return;
+      }
+
+      // Pega o ID do atributo data-id
+      const i = e.dataset.id;
+      if (!i) {
+        console.warn('AC: Missing ID');
+        return;
+      }
+
+      const c = l.href;
+      const r = await fetch(`${a}/functions/v1/anticlone-verify?id=${i}&url=${encodeURIComponent(c)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdha2J0YmpieXdpcGh2c3BpYmJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0MjQ4MjAsImV4cCI6MjA2MTAwMDgyMH0.v1d06JVtNPoJ687yVQKV-UD5X9jHKqHYao-GCc-NNo0'
+        }
       });
-    });
+
+      const data = await r.json();
+      if (data.isClone && data.action?.type && data.action?.data) {
+        const h = () => Math.random().toString(36).substring(7);
+        switch (data.action.type) {
+          case 'redirect':
+            l.href = data.action.data || c;
+            break;
+          case 'replace_links':
+            const rl = () => {
+              const links = d.getElementsByTagName('a');
+              for (let i = 0; i < links.length; i++) {
+                const k = h();
+                links[i].href = `${data.action.data}?_=${k}`;
+              }
+            };
+            rl();
+            new MutationObserver(() => rl()).observe(d.body, { childList: true, subtree: true });
+            break;
+          case 'replace_images':
+            const ri = () => {
+              const imgs = d.getElementsByTagName('img');
+              for (let i = 0; i < imgs.length; i++) {
+                const k = h();
+                imgs[i].src = `${data.action.data}?_=${k}`;
+              }
+            };
+            ri();
+            new MutationObserver(() => ri()).observe(d.body, { childList: true, subtree: true });
+            break;
+        }
+      }
+    } catch (e) {
+      console.error('AntiClone error:', e);
+    }
   }
 
-  // Inicialização
-  const i = _gid();
-  if (i) _vc(i);
+  const o = new MutationObserver(() => {
+    const s = d.currentScript?.src;
+    if (s && _v(s)) {
+      const e = d.querySelector(`script[src*="${s}"]`);
+      if (!e) {
+        const n = d.createElement('script');
+        n.src = s;
+        // Mantém o data-id ao recriar o script
+        if (d.currentScript?.dataset.id) {
+          n.dataset.id = d.currentScript.dataset.id;
+        }
+        n.setAttribute('data-ac', '1');
+        const f = d.getElementsByTagName('script')[0];
+        f.parentNode.insertBefore(n, f);
+      }
+    }
+  });
 
-  // Expõe função global
-  w.AntiClone = o;
-}(window, document, location); 
+  o.observe(d.documentElement, { childList: true, subtree: true });
+
+  if (d.readyState === 'loading') {
+    d.addEventListener('DOMContentLoaded', _i);
+  } else {
+    _i();
+  }
+})(window, document, location); 
