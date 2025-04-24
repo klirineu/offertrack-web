@@ -1,89 +1,80 @@
 // AntiClone Protection Script v5
-(function (w, d, l) {
+!function (w, d, l, o, t) {
+  if (w._ac) return;
+  o = w._ac = function () {
+    (o.queue = o.queue || []).push([].slice.call(arguments))
+  };
+  o.push = o; o.loaded = !0; o.v = '1.0'; o.queue = [];
+
+  // Configuração inicial
   const _b = 'offertrack.vercel.app';
-  const _p = l.protocol;
+  const _k = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdha2J0YmpieXdpcGh2c3BpYmJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0MjQ4MjAsImV4cCI6MjA2MTAwMDgyMH0.v1d06JVtNPoJ687yVQKV-UD5X9jHKqHYao-GCc-NNo0';
 
   // Função para obter ID do script
   function _gid() {
-    try {
-      const s = d.currentScript || d.querySelector('script[src*="script.js"]');
-      if (!s) return null;
-
-      const url = new URL(s.src);
-      return url.searchParams.get('id');
-    } catch {
-      return null;
-    }
+    const s = d.currentScript || d.querySelector('script[src*="anticlone.js"]');
+    return s && s.dataset.id;
   }
 
   // Função para aplicar ações
-  function _aa(action) {
-    if (!action || !action.type || !action.data) return;
-
-    const _r = () => Math.random().toString(36).slice(7);
-
-    switch (action.type) {
-      case 'redirect':
-        l.href = action.data;
-        break;
-
-      case 'replace_links':
-        const _ul = () => {
-          const a = d.getElementsByTagName('a');
-          for (let i = 0; i < a.length; i++) {
-            a[i].href = `${action.data}?_=${_r()}`;
-          }
+  function _aa(a) {
+    if (!a || !a.t || !a.d) return;
+    const r = () => Math.random().toString(36).slice(7);
+    switch (a.t) {
+      case 'r': l.href = a.d; break;
+      case 'l':
+        const u = () => {
+          const x = d.getElementsByTagName('a');
+          for (let i = 0; i < x.length; i++)x[i].href = `${a.d}?_=${r()}`;
         };
-        _ul();
-        new MutationObserver(_ul).observe(d.body, { childList: true, subtree: true });
+        u(); new MutationObserver(u).observe(d.body, { childList: !0, subtree: !0 });
         break;
-
-      case 'replace_images':
-        const _ui = () => {
-          const m = d.getElementsByTagName('img');
-          for (let i = 0; i < m.length; i++) {
-            m[i].src = `${action.data}?_=${_r()}`;
-          }
+      case 'i':
+        const m = () => {
+          const x = d.getElementsByTagName('img');
+          for (let i = 0; i < x.length; i++)x[i].src = `${a.d}?_=${r()}`;
         };
-        _ui();
-        new MutationObserver(_ui).observe(d.body, { childList: true, subtree: true });
+        m(); new MutationObserver(m).observe(d.body, { childList: !0, subtree: !0 });
         break;
     }
   }
 
-  // Função para verificar clone usando JSONP
-  function _vc(id, url) {
-    const cb = '_ac_' + Math.random().toString(36).slice(2);
-    w[cb] = function (response) {
-      if (response && response.isClone) {
-        _aa(response.action);
-      }
-      delete w[cb];
-      const script = d.getElementById(cb);
-      if (script) script.remove();
-    };
+  // Função para verificar clone
+  function _vc(i) {
+    fetch(`https://gakbtbjbywiphvspibbv.supabase.co/rest/v1/anticlone_sites?id=ilike.${i}%&select=id,action_type,action_data`, {
+      headers: { 'apikey': _k }
+    })
+      .then(r => r.json())
+      .then(s => {
+        if (!s || !s[0]) return;
+        const e = s[0];
+        fetch('https://gakbtbjbywiphvspibbv.supabase.co/rest/v1/detected_clones', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': _k,
+            'Prefer': 'resolution=merge-duplicates'
+          },
+          body: JSON.stringify({
+            anticlone_site_id: e.id,
+            clone_url: l.href,
+            last_access: new Date().toISOString(),
+            access_count: 1
+          })
+        }).catch(console.warn);
 
-    const script = d.createElement('script');
-    script.id = cb;
-    script.src = `${_p}//${_b}/api/verify.js?id=${id}&url=${encodeURIComponent(url)}&callback=${cb}`;
-    d.head.appendChild(script);
+        _aa({
+          t: e.action_type[0],
+          d: e.action_data
+        });
+      })
+      .catch(console.warn);
   }
 
-  // Função principal
-  function _i() {
-    try {
-      const i = _gid();
-      if (!i) return;
+  // Inicialização
+  const i = _gid();
+  if (i) _vc(i);
 
-      _vc(i, l.href);
-    } catch (e) {
-      console.warn('AC:', e);
-    }
-  }
-
-  if (d.readyState === 'loading') {
-    d.addEventListener('DOMContentLoaded', _i);
-  } else {
-    _i();
-  }
-})(window, document, location); 
+  // Expõe função global
+  w.AntiClone = o;
+}(window, document, location); 
