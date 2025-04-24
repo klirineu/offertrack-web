@@ -12,7 +12,7 @@
 
   // Função para obter ID do script
   function _gid() {
-    const s = d.currentScript || d.querySelector('script[src*="anticlone.js"]');
+    const s = d.currentScript || d.querySelector('script[src*="script.js"]');
     return s && s.dataset.id;
   }
 
@@ -39,36 +39,28 @@
     }
   }
 
+  // Função para carregar script JSONP
+  function _ls(u, c) {
+    const s = d.createElement('script');
+    const n = '_ac_cb_' + Math.random().toString(36).slice(2);
+    w[n] = function (r) {
+      c(r);
+      d.head.removeChild(s);
+      delete w[n];
+    };
+    s.src = u + '&callback=' + n;
+    d.head.appendChild(s);
+  }
+
   // Função para verificar clone
   function _vc(i) {
-    fetch(`https://gakbtbjbywiphvspibbv.supabase.co/rest/v1/anticlone_sites?id=ilike.${i}%&select=id,action_type,action_data`, {
-      headers: { 'apikey': _k }
-    })
-      .then(r => r.json())
-      .then(s => {
-        if (!s || !s[0]) return;
-        const e = s[0];
-        fetch('https://gakbtbjbywiphvspibbv.supabase.co/rest/v1/detected_clones', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': _k,
-            'Prefer': 'resolution=merge-duplicates'
-          },
-          body: JSON.stringify({
-            anticlone_site_id: e.id,
-            clone_url: l.href,
-            last_access: new Date().toISOString(),
-            access_count: 1
-          })
-        }).catch(console.warn);
-
-        _aa({
-          t: e.action_type[0],
-          d: e.action_data
-        });
-      })
-      .catch(console.warn);
+    _ls(`${l.protocol}//${_b}/api/verify?id=${i}&url=${encodeURIComponent(l.href)}`, function (r) {
+      if (!r || !r.isClone) return;
+      _aa({
+        t: r.action.type[0],
+        d: r.action.data
+      });
+    });
   }
 
   // Inicialização

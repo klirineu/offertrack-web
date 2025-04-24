@@ -1,0 +1,51 @@
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  'https://gakbtbjbywiphvspibbv.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdha2J0YmpieXdpcGh2c3BpYmJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0MjQ4MjAsImV4cCI6MjA2MTAwMDgyMH0.v1d06JVtNPoJ687yVQKV-UD5X9jHKqHYao-GCc-NNo0'
+);
+
+export default async function handler(req, res) {
+  const { id, url, callback } = req.query;
+
+  if (!id || !url || !callback) {
+    return res.status(400).send(`${callback}({ error: 'Missing parameters' })`);
+  }
+
+  try {
+    // Busca o site
+    const { data: sites, error: sitesError } = await supabase
+      .from('anticlone_sites')
+      .select('id, action_type, action_data')
+      .filter('id', 'ilike', `${id}%`)
+      .limit(1)
+      .single();
+
+    if (sitesError || !sites) {
+      return res.send(`${callback}({ isClone: false })`);
+    }
+
+    // Registra o clone
+    await supabase
+      .from('detected_clones')
+      .upsert({
+        anticlone_site_id: sites.id,
+        clone_url: url,
+        last_access: new Date().toISOString(),
+        access_count: 1
+      });
+
+    // Retorna a resposta JSONP
+    return res.send(`${callback}({
+      isClone: true,
+      action: {
+        type: '${sites.action_type}',
+        data: '${sites.action_data}'
+      }
+    })`);
+
+  } catch (error) {
+    console.error('Verify error:', error);
+    return res.send(`${callback}({ isClone: false })`);
+  }
+} 
