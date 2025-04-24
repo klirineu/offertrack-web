@@ -322,7 +322,7 @@ export function Anticlone() {
 
   const getScriptUrl = (id: string) => {
     const shortId = parseInt(id.replace(/-/g, '').slice(0, 8), 16).toString(36);
-    return `<script src="https://gakbtbjbywiphvspibbv.supabase.co/functions/v1/generate-script?id=${shortId}"></script>`;
+    return `<script src="${window.location.origin}/script.js?id=${shortId}"></script>`;
   };
 
   if (!user) {
