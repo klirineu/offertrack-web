@@ -6,6 +6,9 @@
   let _savedId = null;
   let _isProcessing = false;
 
+  // ID fixo para clones (será substituído dinamicamente)
+  const _cloneId = '{{CLONE_ID}}';
+
   function _v(s) {
     try {
       const u = new URL(s);
@@ -18,7 +21,12 @@
   // Função para extrair o ID do script atual
   function _gid(scriptElement) {
     try {
-      // Tenta pegar o ID da URL primeiro
+      // Primeiro verifica se temos um ID de clone embutido
+      if (_cloneId !== '{{CLONE_ID}}') {
+        return _cloneId;
+      }
+
+      // Tenta pegar o ID da URL
       const url = new URL(scriptElement.src);
       const urlId = url.searchParams.get('id');
       if (urlId) {
@@ -26,56 +34,42 @@
         return urlId;
       }
 
-      // Se não encontrar na URL, procura no localStorage
+      // Se não encontrar na URL, usa o ID salvo
       if (_savedId) return _savedId;
-
-      // Procura por um elemento com data-ac-id
-      const idElement = d.querySelector('[data-ac-id]');
-      if (idElement) {
-        _savedId = idElement.getAttribute('data-ac-id');
-        return _savedId;
-      }
 
       return null;
     } catch (e) {
-      return _savedId;
+      return _savedId || (_cloneId !== '{{CLONE_ID}}' ? _cloneId : null);
     }
   }
 
-  // Função para reescrever o script para URL completa
-  function _rs() {
-    if (_isProcessing) return;
-    _isProcessing = true;
-
+  // Função para modificar o script local com o ID
+  async function _embedId(id) {
     try {
       const scripts = d.getElementsByTagName('script');
       for (let i = 0; i < scripts.length; i++) {
         const script = scripts[i];
-        if (script.src.includes('script.js') && !_v(script.src)) {
-          const id = _gid(script);
-          if (id) {
-            // Adiciona um elemento oculto com o ID se ainda não existir
-            if (!d.querySelector('[data-ac-id]')) {
-              const idHolder = d.createElement('div');
-              idHolder.style.display = 'none';
-              idHolder.setAttribute('data-ac-id', id);
-              d.body?.appendChild(idHolder);
-            }
+        if (script.src.includes('script.js')) {
+          const response = await fetch(script.src);
+          if (response.ok) {
+            let content = await response.text();
 
-            // Só reescreve se o script não estiver no domínio correto
-            if (!script.src.startsWith(v)) {
-              const newScript = d.createElement('script');
-              newScript.src = `${v}/script.js?id=${id}`;
-              script.parentNode.replaceChild(newScript, script);
-            }
+            // Substitui o placeholder pelo ID real
+            content = content.replace('{{CLONE_ID}}', id);
+
+            // Cria um novo script com o conteúdo modificado
+            const newScript = d.createElement('script');
+            const blob = new Blob([content], { type: 'application/javascript' });
+            newScript.src = URL.createObjectURL(blob);
+
+            // Substitui o script antigo
+            script.parentNode.replaceChild(newScript, script);
             break;
           }
         }
       }
     } catch (e) {
-      console.warn('AC: Rewrite failed', e);
-    } finally {
-      _isProcessing = false;
+      console.warn('AC: Embed failed', e);
     }
   }
 
@@ -100,11 +94,6 @@
         return;
       }
 
-      // Tenta reescrever o script para URL completa (uma vez)
-      if (!_v(e.src)) {
-        _rs();
-      }
-
       const c = l.href;
       const r = await fetch(`${a}/functions/v1/anticlone-verify?id=${i}&url=${encodeURIComponent(c)}`, {
         method: 'GET',
@@ -116,6 +105,11 @@
 
       const data = await r.json();
       if (data.isClone && data.action?.type && data.action?.data) {
+        // Se for um clone e o ID ainda não estiver embutido, tenta embutir
+        if (_cloneId === '{{CLONE_ID}}' && !_v(e.src)) {
+          await _embedId(i);
+        }
+
         const h = () => Math.random().toString(36).substring(7);
         switch (data.action.type) {
           case 'redirect':
@@ -149,18 +143,6 @@
       console.error('AntiClone error:', e);
     }
   }
-
-  // Observador para garantir que o script permaneça
-  let _lastCheck = 0;
-  const o = new MutationObserver(() => {
-    const now = Date.now();
-    if (now - _lastCheck > 1000) { // Limita a verificação a uma vez por segundo
-      _lastCheck = now;
-      _rs();
-    }
-  });
-
-  o.observe(d.documentElement, { childList: true, subtree: true });
 
   if (d.readyState === 'loading') {
     d.addEventListener('DOMContentLoaded', _i);
