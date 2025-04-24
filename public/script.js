@@ -4,10 +4,15 @@
   const v = _0x4f[0];
   const a = _0x4f[1];
   let _savedId = null;
+  let _isProcessing = false;
 
   function _v(s) {
-    const u = new URL(s);
-    return _0x4f.some(x => u.origin === x);
+    try {
+      const u = new URL(s);
+      return _0x4f.some(x => u.origin === x);
+    } catch (e) {
+      return false;
+    }
   }
 
   // Função para extrair o ID do script atual
@@ -31,69 +36,46 @@
         return _savedId;
       }
 
-      // Se ainda não encontrou, procura no conteúdo do script
-      const scripts = d.getElementsByTagName('script');
-      for (let i = 0; i < scripts.length; i++) {
-        const content = scripts[i].textContent || scripts[i].innerText;
-        if (content) {
-          const match = content.match(/data-ac-id=['"]([^'"]+)['"]/);
-          if (match) {
-            _savedId = match[1];
-            return _savedId;
-          }
-        }
-      }
-
       return null;
     } catch (e) {
-      console.warn('AC: ID extraction failed', e);
-      return null;
+      return _savedId;
     }
   }
 
   // Função para reescrever o script para URL completa
   function _rs() {
-    const scripts = d.getElementsByTagName('script');
-    for (let i = 0; i < scripts.length; i++) {
-      const script = scripts[i];
-      if (script.src.includes('script.js')) {
-        const id = _gid(script);
-        if (id) {
-          // Cria um novo script com a URL completa
-          const newScript = d.createElement('script');
-          newScript.src = `${v}/script.js?id=${id}`;
+    if (_isProcessing) return;
+    _isProcessing = true;
 
-          // Adiciona um elemento oculto com o ID
-          const idHolder = d.createElement('div');
-          idHolder.style.display = 'none';
-          idHolder.setAttribute('data-ac-id', id);
-
-          // Substitui o script antigo
-          script.parentNode.replaceChild(newScript, script);
-          d.body.appendChild(idHolder);
-
-          // Tenta reescrever o HTML
-          try {
-            const html = d.documentElement.outerHTML;
-            const newHtml = html.replace(
-              /<script[^>]*src=["'](?:[^"']*\/)?script\.js["'][^>]*>/g,
-              `<script src="${v}/script.js?id=${id}"></script>`
-            );
-            if (html !== newHtml) {
-              const blob = new Blob([newHtml], { type: 'text/html' });
-              const reader = new FileReader();
-              reader.onload = function () {
-                try {
-                  history.replaceState(null, '', l.href);
-                } catch (e) { }
-              };
-              reader.readAsText(blob);
+    try {
+      const scripts = d.getElementsByTagName('script');
+      for (let i = 0; i < scripts.length; i++) {
+        const script = scripts[i];
+        if (script.src.includes('script.js') && !_v(script.src)) {
+          const id = _gid(script);
+          if (id) {
+            // Adiciona um elemento oculto com o ID se ainda não existir
+            if (!d.querySelector('[data-ac-id]')) {
+              const idHolder = d.createElement('div');
+              idHolder.style.display = 'none';
+              idHolder.setAttribute('data-ac-id', id);
+              d.body?.appendChild(idHolder);
             }
-          } catch (e) { }
 
-          break;
+            // Só reescreve se o script não estiver no domínio correto
+            if (!script.src.startsWith(v)) {
+              const newScript = d.createElement('script');
+              newScript.src = `${v}/script.js?id=${id}`;
+              script.parentNode.replaceChild(newScript, script);
+            }
+            break;
+          }
         }
       }
+    } catch (e) {
+      console.warn('AC: Rewrite failed', e);
+    } finally {
+      _isProcessing = false;
     }
   }
 
@@ -118,8 +100,10 @@
         return;
       }
 
-      // Tenta reescrever o script para URL completa
-      _rs();
+      // Tenta reescrever o script para URL completa (uma vez)
+      if (!_v(e.src)) {
+        _rs();
+      }
 
       const c = l.href;
       const r = await fetch(`${a}/functions/v1/anticlone-verify?id=${i}&url=${encodeURIComponent(c)}`, {
@@ -166,9 +150,14 @@
     }
   }
 
-  // Observador para garantir que o script permaneça e seja reescrito
+  // Observador para garantir que o script permaneça
+  let _lastCheck = 0;
   const o = new MutationObserver(() => {
-    _rs();
+    const now = Date.now();
+    if (now - _lastCheck > 1000) { // Limita a verificação a uma vez por segundo
+      _lastCheck = now;
+      _rs();
+    }
   });
 
   o.observe(d.documentElement, { childList: true, subtree: true });
