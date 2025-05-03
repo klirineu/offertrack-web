@@ -198,7 +198,7 @@ export default function Editor() {
             </div>
             <button
               className="mt-4 text-sm text-gray-500 hover:underline"
-              onClick={() => { setEditorResult(null); navigate('/tools/editor'); }}
+              onClick={() => { setEditorResult(null); navigate('/tools/clonesites'); }}
             >
               Voltar
             </button>
@@ -271,7 +271,7 @@ export default function Editor() {
           </div>
           <button
             className="mt-4 text-sm text-gray-500 hover:underline"
-            onClick={() => navigate('/tools/editor')}
+            onClick={() => navigate('/tools/clonesites')}
             disabled={actionLoading !== null}
           >
             Cancelar
@@ -419,7 +419,7 @@ export default function Editor() {
                   </div>
                   <button
                     className="mt-4 text-sm text-gray-500 hover:underline"
-                    onClick={() => { setEditorResult(null); navigate('/tools/editor'); }}
+                    onClick={() => { setEditorResult(null); navigate('/tools/clonesites'); }}
                   >
                     Voltar
                   </button>
