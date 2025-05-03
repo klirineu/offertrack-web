@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { LandingPage } from './pages/LandingPage';
 import { Dashboard } from './pages/Dashboard';
@@ -15,8 +15,16 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
 import { LoginForm } from './components/auth/LoginForm';
 import { RegisterForm } from './components/auth/RegisterForm';
+import Editor from './pages/tools/Editor';
+import EditorStudio from './pages/tools/EditorStudio';
+import { useAuthStore } from './store/authStore';
 
 function App() {
+  const initialize = useAuthStore((s) => s.initialize);
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
   return (
     <Router>
       <AuthProvider>
@@ -37,6 +45,8 @@ function App() {
           <Route path="/traffic-filter/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
           <Route path="/tools/encrypt" element={<ProtectedRoute><EncryptText /></ProtectedRoute>} />
           <Route path="/tools/anticlone" element={<ProtectedRoute><Anticlone /></ProtectedRoute>} />
+          <Route path="/tools/clonesites" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
+          <Route path="/tools/editor-studio" element={<ProtectedRoute><EditorStudio /></ProtectedRoute>} />
         </Routes>
       </AuthProvider>
     </Router>

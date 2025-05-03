@@ -63,7 +63,7 @@ export function Board() {
   return (
     <>
       <div className="flex justify-between items-center mb-6">
-        <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>My Offers</h2>
+        <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Minhas Ofertas</h2>
         <button
           onClick={() => setIsNewOfferDialogOpen(true)}
           className={`px-4 py-2 rounded-lg shadow-lg transition-colors ${theme === 'dark'
@@ -71,7 +71,7 @@ export function Board() {
             : 'bg-blue-600 hover:bg-blue-700 text-white'
             }`}
         >
-          Add New Offer
+          Adicionar Nova Oferta
         </button>
       </div>
 

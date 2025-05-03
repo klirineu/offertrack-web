@@ -5,14 +5,9 @@ import { Sidebar, SidebarBody, SidebarLink } from '../components/ui/sidebar';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Layout, UserCog, Settings as SettingsIcon, LogOut } from 'lucide-react';
-
-const mockUser = {
-  name: 'John Doe',
-  email: 'john@example.com',
-  company: 'Acme Inc',
-  plan: 'Pro',
-  avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-};
+import { useAuthStore } from '../store/authStore';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 const Logo = () => {
   return (
@@ -46,6 +41,19 @@ const LogoIcon = () => {
 export function Profile() {
   const { theme } = useThemeStore();
   const [open, setOpen] = React.useState(false);
+  const { user, profile, updateProfile, isLoading } = useAuthStore();
+  const [fullName, setFullName] = React.useState(profile?.full_name || '');
+  const [success, setSuccess] = React.useState('');
+  const [error, setError] = React.useState('');
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    const { error } = await updateProfile({ full_name: fullName });
+    if (error) setError('Erro ao atualizar nome.');
+    else setSuccess('Nome atualizado com sucesso!');
+  };
 
   const links = [
     {
@@ -89,6 +97,7 @@ export function Profile() {
       subLinks: [
         { label: "Criptografar Texto", href: "/tools/encrypt", icon: <Circle className="h-4 w-4" /> },
         { label: "Anticlone", href: "/tools/anticlone", icon: <Circle className="h-4 w-4" /> },
+        { label: "Clonar Sites", href: "/tools/clonesites", icon: <Circle className="h-4 w-4" /> },
       ],
     },
     {
@@ -115,11 +124,11 @@ export function Profile() {
           <div>
             <SidebarLink
               link={{
-                label: mockUser.name,
+                label: profile?.full_name || user?.email || 'Usuário',
                 href: "/profile",
                 icon: (
                   <img
-                    src={mockUser.avatar}
+                    src={profile?.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(profile?.full_name || user?.email || 'U')}
                     className="h-7 w-7 flex-shrink-0 rounded-full"
                     alt="Avatar"
                   />
@@ -145,42 +154,46 @@ export function Profile() {
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
               <div className="flex items-center gap-4 mb-6">
                 <img
-                  src={mockUser.avatar}
-                  alt={mockUser.name}
+                  src={profile?.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(profile?.full_name || user?.email || 'U')}
+                  alt={profile?.full_name || user?.email || 'Usuário'}
                   className="w-20 h-20 rounded-full"
                 />
                 <div>
-                  <h2 className="text-xl font-semibold dark:text-white">{mockUser.name}</h2>
-                  <p className="text-gray-600 dark:text-gray-400">{mockUser.plan} Plan</p>
+                  <h2 className="text-xl font-semibold dark:text-white">{profile?.full_name || user?.email || 'Usuário'}</h2>
+                  <p className="text-gray-600 dark:text-gray-400">{user?.email}</p>
+                  {user?.created_at && (
+                    <p className="text-gray-500 text-sm mt-1">Cadastrado em: {format(new Date(user.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
+                  )}
                 </div>
               </div>
 
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <Mail className="w-5 h-5 text-gray-400" />
-                  <span className="text-gray-600 dark:text-gray-400">{mockUser.email}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Building className="w-5 h-5 text-gray-400" />
-                  <span className="text-gray-600 dark:text-gray-400">{mockUser.company}</span>
+                  <span className="text-gray-600 dark:text-gray-400">{user?.email}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <CreditCard className="w-5 h-5 text-gray-400" />
-                  <span className="text-gray-600 dark:text-gray-400">Subscription active until Dec 31, 2024</span>
+                  <span className="text-gray-600 dark:text-gray-400">Assinatura ativa até:
+                    {/* {user?.created_at} */}
+                  </span>
                 </div>
               </div>
             </div>
 
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-semibold mb-4 dark:text-white">Update Profile</h3>
-              <form className="space-y-4">
+              <h3 className="text-lg font-semibold mb-4 dark:text-white">Atualizar Perfil</h3>
+              {success && <div className="mb-2 p-2 bg-green-100 text-green-700 rounded">{success}</div>}
+              {error && <div className="mb-2 p-2 bg-red-100 text-red-700 rounded">{error}</div>}
+              <form className="space-y-4" onSubmit={handleSave}>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Name
+                    Nome
                   </label>
                   <input
                     type="text"
-                    defaultValue={mockUser.name}
+                    value={fullName}
+                    onChange={e => setFullName(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   />
                 </div>
@@ -190,28 +203,18 @@ export function Profile() {
                   </label>
                   <input
                     type="email"
-                    defaultValue={mockUser.email}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    value={user?.email || ''}
+                    disabled
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white bg-gray-100 cursor-not-allowed"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Company
-                  </label>
-                  <input
-                    type="text"
-                    defaultValue={mockUser.company}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                  >
-                    Save Changes
-                  </button>
-                </div>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-60"
+                >
+                  Salvar
+                </button>
               </form>
             </div>
           </div>

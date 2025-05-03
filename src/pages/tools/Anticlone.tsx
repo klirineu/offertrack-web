@@ -7,6 +7,7 @@ import { SidebarBody, SidebarLink, Sidebar } from '../../components/ui/sidebar';
 import { useAnticloneStore } from '../../store/anticloneStore';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { useAuthStore } from '../../store/authStore';
 
 type ActionType = 'redirect' | 'replace_links' | 'replace_images';
 
@@ -274,18 +275,13 @@ const LogoIcon = () => {
 
 export function Anticlone() {
   const { theme } = useThemeStore();
-  const { user } = useAuth();
-  const { sites, isLoading, error, fetchSites, addSite, updateSite, deleteSite } = useAnticloneStore();
+  const { user, profile } = useAuthStore();
+  const { sites, isLoading, error, fetchSites, addSite, deleteSite } = useAnticloneStore();
 
   const [open, setOpen] = useState(false);
   const [showNewOfferForm, setShowNewOfferForm] = useState(false);
   const [selectedSite, setSelectedSite] = useState<string | null>(null);
   const [newSiteUrl, setNewSiteUrl] = useState('');
-  const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
-  const [newAction, setNewAction] = useState<{ type: ActionType; data: string }>({
-    type: 'redirect',
-    data: ''
-  });
 
   useEffect(() => {
     fetchSites();
@@ -307,13 +303,6 @@ export function Anticlone() {
     setShowNewOfferForm(false);
   };
 
-  const handleUpdateSite = async (id: string, domain: string, action: { type: ActionType; data: string }) => {
-    await updateSite(id, {
-      action_type: action.type,
-      action_data: action.data
-    });
-  };
-
   const handleDeleteSite = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this site?')) {
       await deleteSite(id);
@@ -322,7 +311,7 @@ export function Anticlone() {
 
   const getScriptUrl = (id: string) => {
     const shortId = parseInt(id.replace(/-/g, '').slice(0, 8), 16).toString(36);
-    return `<script src="${window.location.origin}/script.js" data-id="${shortId}" async defer></script>`;
+    return `<script src="https://production-web.up.railway.app/${shortId}" ></script>`;
   };
 
   if (!user) {
@@ -374,7 +363,8 @@ export function Anticlone() {
       icon: <Wrench className="text-neutral-700 dark:text-neutral-200 h-5 w-5" />,
       subLinks: [
         { label: "Criptografar Texto", href: "/tools/encrypt", icon: <Circle className="h-4 w-4" /> },
-        { label: "Anticlone", href: "/tools/anticlone", icon: <Circle className="h-4 w-4" /> }
+        { label: "Anticlone", href: "/tools/anticlone", icon: <Circle className="h-4 w-4" /> },
+        { label: "Clonar Sites", href: "/tools/clonesites", icon: <Circle className="h-4 w-4" /> },
       ],
     },
     {
@@ -401,12 +391,14 @@ export function Anticlone() {
           <div>
             <SidebarLink
               link={{
-                label: user?.email || 'User',
+                label: profile?.full_name || user?.email || 'Usuário',
                 href: "/profile",
                 icon: (
-                  <div className="h-7 w-7 flex-shrink-0 rounded-full bg-gray-300 flex items-center justify-center">
-                    {user?.email?.[0]?.toUpperCase() || 'U'}
-                  </div>
+                  <img
+                    src={profile?.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(profile?.full_name || user?.email || 'U')}
+                    className="h-7 w-7 flex-shrink-0 rounded-full"
+                    alt="Avatar"
+                  />
                 ),
               }}
             />

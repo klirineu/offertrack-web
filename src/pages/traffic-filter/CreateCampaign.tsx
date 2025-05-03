@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, ArrowLeft, Facebook, Globe, Smartphone, Tablet, Monitor, Wrench } from 'lucide-react';
 import { SidebarBody, SidebarLink, Sidebar } from '../../components/ui/sidebar';
+import { useAuthStore } from '../../store/authStore';
 
 const Logo = () => {
   return (
@@ -36,6 +37,7 @@ const LogoIcon = () => {
 
 export function CreateCampaign() {
   const { theme } = useThemeStore();
+  const { user, profile } = useAuthStore();
   const [open, setOpen] = useState(false);
   const [selectedDevices, setSelectedDevices] = useState<string[]>([]);
   const [selectedNetworks, setSelectedNetworks] = useState<string[]>([]);
@@ -98,6 +100,7 @@ export function CreateCampaign() {
       subLinks: [
         { label: "Criptografar Texto", href: "/tools/encrypt", icon: <Circle className="h-4 w-4" /> },
         { label: "Anticlone", href: "/tools/anticlone", icon: <Circle className="h-4 w-4" /> },
+        { label: "Clonar Sites", href: "/tools/clonesites", icon: <Circle className="h-4 w-4" /> },
       ],
     },
     {
@@ -124,11 +127,11 @@ export function CreateCampaign() {
           <div>
             <SidebarLink
               link={{
-                label: mockUser.name,
+                label: profile?.full_name || user?.email || 'Usuário',
                 href: "/profile",
                 icon: (
                   <img
-                    src={mockUser.avatar}
+                    src={profile?.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(profile?.full_name || user?.email || 'U')}
                     className="h-7 w-7 flex-shrink-0 rounded-full"
                     alt="Avatar"
                   />

@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Wrench } from 'lucide-react';
 import { SidebarBody, SidebarLink, Sidebar } from '../components/ui/sidebar';
+import { useAuthStore } from '../store/authStore';
 
 const mockUser = {
   name: 'John Doe',
@@ -54,7 +55,7 @@ const LogoIcon = () => {
 export function Dashboard() {
   const { theme } = useThemeStore(); // Obtenha o tema do store
   const [open, setOpen] = useState(false);
-
+  const { user, profile } = useAuthStore();
   const links = [
     {
       label: "Dashboard",
@@ -97,6 +98,7 @@ export function Dashboard() {
       subLinks: [
         { label: "Criptografar Texto", href: "/tools/encrypt", icon: <Circle className="h-4 w-4" /> },
         { label: "Anticlone", href: "/tools/anticlone", icon: <Circle className="h-4 w-4" /> },
+        { label: "Clonar Sites", href: "/tools/clonesites", icon: <Circle className="h-4 w-4" /> },
       ],
     },
     {
@@ -123,11 +125,11 @@ export function Dashboard() {
           <div>
             <SidebarLink
               link={{
-                label: mockUser.name,
+                label: profile?.full_name || user?.email || 'Usuário',
                 href: "/profile",
                 icon: (
                   <img
-                    src={mockUser.avatar}
+                    src={profile?.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(profile?.full_name || user?.email || 'U')}
                     className="h-7 w-7 flex-shrink-0 rounded-full"
                     alt="Avatar"
                   />
@@ -143,7 +145,7 @@ export function Dashboard() {
           <div className="px-4 py-4 flex items-center gap-2">
             <Layout className="w-6 h-6 text-blue-600" />
             <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Offer Management
+              Gestão de Ofertas
             </h1>
           </div>
         </header>

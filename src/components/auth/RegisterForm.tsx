@@ -10,6 +10,7 @@ export function RegisterForm() {
   const [loading, setLoading] = useState(false);
   const { signUp } = useAuth();
   const navigate = useNavigate();
+  const [fullName, setFullName] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,7 +22,7 @@ export function RegisterForm() {
     try {
       setError('');
       setLoading(true);
-      const { error: signUpError } = await signUp(email, password);
+      const { error: signUpError } = await signUp(email, password, { full_name: fullName });
       if (signUpError) {
         setError('Falha ao criar conta. O email já está em uso ou é inválido.');
         return;
@@ -47,6 +48,20 @@ export function RegisterForm() {
             </div>
           )}
           <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label htmlFor="full-name" className="block text-sm font-medium text-gray-300">
+                Nome
+              </label>
+              <input
+                id="full-name"
+                type="text"
+                required
+                className="mt-1 block w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Seu nome completo"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+              />
+            </div>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-300">
                 Email

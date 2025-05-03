@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Moon, Sun, Bell, Globe, Wrench } from 'lucide-react';
 import { SidebarBody, SidebarLink, Sidebar } from '../components/ui/sidebar';
+import { useAuthStore } from '../store/authStore';
 
 const mockUser = {
   name: 'John Doe',
@@ -53,6 +54,7 @@ const LogoIcon = () => {
 export function Settings() {
   const { theme, toggleTheme } = useThemeStore();
   const [open, setOpen] = useState(false);
+  const { user, profile } = useAuthStore();
 
   const links = [
     {
@@ -96,6 +98,7 @@ export function Settings() {
       subLinks: [
         { label: "Criptografar Texto", href: "/tools/encrypt", icon: <Circle className="h-4 w-4" /> },
         { label: "Anticlone", href: "/tools/anticlone", icon: <Circle className="h-4 w-4" /> },
+        { label: "Clonar Sites", href: "/tools/clonesites", icon: <Circle className="h-4 w-4" /> },
       ],
     },
     {
@@ -122,11 +125,11 @@ export function Settings() {
           <div>
             <SidebarLink
               link={{
-                label: mockUser.name,
+                label: profile?.full_name || user?.email || 'Usuário',
                 href: "/profile",
                 icon: (
                   <img
-                    src={mockUser.avatar}
+                    src={profile?.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(profile?.full_name || user?.email || 'U')}
                     className="h-7 w-7 flex-shrink-0 rounded-full"
                     alt="Avatar"
                   />
@@ -141,17 +144,17 @@ export function Settings() {
         <header className={`${theme === 'dark' ? 'bg-gray-800 border-b border-gray-700' : 'bg-white shadow-sm'}`}>
           <div className="max-w-7xl mx-auto px-4 py-4 flex items-center gap-2">
             <SettingsIcon className="w-6 h-6 text-blue-600" />
-            <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Settings</h1>
+            <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Configurações</h1>
           </div>
         </header>
 
         <main className="max-w-7xl mx-auto px-4 py-8">
           <div className="max-w-2xl mx-auto p-6">
-            <h1 className="text-2xl font-bold mb-8 dark:text-white">Settings</h1>
+            <h1 className="text-2xl font-bold mb-8 dark:text-white">Configurações</h1>
 
             <div className="space-y-6">
               <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
-                <h2 className="text-lg font-semibold mb-4 dark:text-white">Appearance</h2>
+                <h2 className="text-lg font-semibold mb-4 dark:text-white">Aparência</h2>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {theme === 'dark' ? (
@@ -159,24 +162,24 @@ export function Settings() {
                     ) : (
                       <Sun className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                     )}
-                    <span className="text-gray-700 dark:text-gray-300">Theme</span>
+                    <span className="text-gray-700 dark:text-gray-300">Tema</span>
                   </div>
                   <button
                     onClick={toggleTheme}
                     className="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                   >
-                    {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                    {theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
                   </button>
                 </div>
               </div>
 
               <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
-                <h2 className="text-lg font-semibold mb-4 dark:text-white">Notifications</h2>
+                <h2 className="text-lg font-semibold mb-4 dark:text-white">Notificações</h2>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Bell className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                      <span className="text-gray-700 dark:text-gray-300">Email Notifications</span>
+                      <span className="text-gray-700 dark:text-gray-300">Email Notificações</span>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input type="checkbox" className="sr-only peer" />
@@ -187,11 +190,11 @@ export function Settings() {
               </div>
 
               <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
-                <h2 className="text-lg font-semibold mb-4 dark:text-white">Language & Region</h2>
+                <h2 className="text-lg font-semibold mb-4 dark:text-white">Idioma e Região</h2>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Globe className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                    <span className="text-gray-700 dark:text-gray-300">Language</span>
+                    <span className="text-gray-700 dark:text-gray-300">Idioma</span>
                   </div>
                   <select className="bg-gray-100 dark:bg-gray-700 border-0 rounded-md px-3 py-2">
                     <option value="en">English</option>

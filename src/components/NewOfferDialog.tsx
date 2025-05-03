@@ -62,7 +62,7 @@ export function NewOfferDialog({ isOpen, onClose, onSubmit }: NewOfferDialogProp
     <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 ${theme === 'dark' ? 'dark' : ''}`}>
       <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-lg">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold dark:text-white">Add New Offer</h2>
+          <h2 className="text-xl font-bold dark:text-white">Adicionar Nova Oferta</h2>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"
@@ -74,7 +74,7 @@ export function NewOfferDialog({ isOpen, onClose, onSubmit }: NewOfferDialogProp
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Title
+              Título
             </label>
             <input
               type="text"
@@ -87,7 +87,7 @@ export function NewOfferDialog({ isOpen, onClose, onSubmit }: NewOfferDialogProp
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Offer URL
+              URL Bibliotela de Anúncios
             </label>
             <input
               type="url"
@@ -113,7 +113,7 @@ export function NewOfferDialog({ isOpen, onClose, onSubmit }: NewOfferDialogProp
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Description
+              Descrição
             </label>
             <textarea
               value={formData.description}
@@ -125,7 +125,7 @@ export function NewOfferDialog({ isOpen, onClose, onSubmit }: NewOfferDialogProp
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Tags (comma-separated)
+              Tags (separados por vírgula)
             </label>
             <input
               type="text"
@@ -138,7 +138,7 @@ export function NewOfferDialog({ isOpen, onClose, onSubmit }: NewOfferDialogProp
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Metrics
+              Métricas
             </label>
             <div className="space-y-2">
               {formData.metrics.map((metric, index) => (
@@ -166,7 +166,7 @@ export function NewOfferDialog({ isOpen, onClose, onSubmit }: NewOfferDialogProp
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   />
-                  <input
+                  {/* <input
                     type="number"
                     placeholder="Spend"
                     value={metric.spend || ''}
@@ -187,7 +187,7 @@ export function NewOfferDialog({ isOpen, onClose, onSubmit }: NewOfferDialogProp
                       setFormData({ ...formData, metrics: newMetrics });
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  />
+                  /> */}
                 </div>
               ))}
               <button
@@ -208,7 +208,7 @@ export function NewOfferDialog({ isOpen, onClose, onSubmit }: NewOfferDialogProp
                 }}
                 className="text-sm text-blue-600 hover:text-blue-800"
               >
-                + Add Metric
+                + Adicionar Métrica
               </button>
             </div>
           </div>
@@ -219,13 +219,13 @@ export function NewOfferDialog({ isOpen, onClose, onSubmit }: NewOfferDialogProp
               type="button"
               className="px-4 py-2 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
             >
-              Cancel
+              Cancelar
             </button>
             <button
               type="submit"
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
             >
-              Add Offer
+              Adicionar Oferta
             </button>
           </div>
         </form>

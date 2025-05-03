@@ -1,6 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ExternalLink, Tag, Clock, Edit2, TrendingUp } from 'lucide-react';
+import { ExternalLink, Tag, Clock, Edit2, TrendingUp, Copy } from 'lucide-react';
 import type { Offer } from '../types';
 import { useEditDialogStore } from '../store/editDialogStore';
 import { cn } from '../lib/utils'; // ou use clsx se preferir
@@ -108,15 +108,29 @@ export function OfferCard({ offer, isOverlay }: OfferCardProps) {
             <ExternalLink className="w-4 h-4" />
             Offer URL
           </a>
-          <a
-            href={offer.landingPageUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
-          >
-            <ExternalLink className="w-4 h-4" />
-            Landing Page
-          </a>
+          <div className="flex items-center gap-2">
+            <a
+              href={offer.landingPageUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Landing Page
+            </a>
+            <button
+              onClick={e => {
+                e.preventDefault();
+                e.stopPropagation();
+                window.location.href = `/tools/editor?url=${encodeURIComponent(offer.landingPageUrl)}`;
+              }}
+              className="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs flex items-center gap-1"
+              title="Clonar Landing Page"
+            >
+              <Copy className="w-4 h-4" />
+              Clonar
+            </button>
+          </div>
         </div>
       </div>
     </div>

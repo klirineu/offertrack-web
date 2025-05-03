@@ -4,12 +4,7 @@ import { Sidebar, SidebarBody, SidebarLink } from '../../components/ui/sidebar';
 import { Layout, UserCog, LogOut, Wrench, ArrowLeft, Circle, SettingsIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-
-const mockUser = {
-  name: 'John Doe',
-  email: 'john@example.com',
-  avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-};
+import { useAuthStore } from '../../store/authStore';
 
 const Logo = () => {
   return (
@@ -42,6 +37,7 @@ const LogoIcon = () => {
 
 export function EncryptText() {
   const { theme } = useThemeStore();
+  const { user, profile } = useAuthStore();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [output, setOutput] = useState('');
@@ -134,6 +130,7 @@ export function EncryptText() {
       subLinks: [
         { label: "Criptografar Texto", href: "/tools/encrypt", icon: <Circle className="h-4 w-4" /> },
         { label: "Anticlone", href: "/tools/anticlone", icon: <Circle className="h-4 w-4" /> },
+        { label: "Clonar Sites", href: "/tools/clonesites", icon: <Circle className="h-4 w-4" /> },
       ],
     },
     {
@@ -160,11 +157,11 @@ export function EncryptText() {
           <div>
             <SidebarLink
               link={{
-                label: mockUser.name,
+                label: profile?.full_name || user?.email || 'Usuário',
                 href: "/profile",
                 icon: (
                   <img
-                    src={mockUser.avatar}
+                    src={profile?.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(profile?.full_name || user?.email || 'U')}
                     className="h-7 w-7 flex-shrink-0 rounded-full"
                     alt="Avatar"
                   />
