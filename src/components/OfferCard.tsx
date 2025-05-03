@@ -122,7 +122,7 @@ export function OfferCard({ offer, isOverlay }: OfferCardProps) {
               onClick={e => {
                 e.preventDefault();
                 e.stopPropagation();
-                window.location.href = `/tools/editor?url=${encodeURIComponent(offer.landingPageUrl)}`;
+                window.location.href = `/tools/clonesites?url=${encodeURIComponent(offer.landingPageUrl)}`;
               }}
               className="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs flex items-center gap-1"
               title="Clonar Landing Page"
