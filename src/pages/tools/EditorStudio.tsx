@@ -85,7 +85,7 @@ export default function EditorStudio() {
                 (window.gjsEditor as any).destroy();
               }
               window.gjsEditor = undefined;
-              navigate('/tools/editor')
+              navigate('/tools/clonesites')
             }}
             className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
           >
