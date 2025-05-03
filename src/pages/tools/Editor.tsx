@@ -63,6 +63,13 @@ export default function Editor() {
     fetchClones();
   }, [fetchClones]);
 
+  useEffect(() => {
+    if (urlParam) {
+      setCloneUrlToProcess(urlParam);
+    }
+
+  }, [urlParam]);
+
   const links = [
     {
       label: "Dashboard",
