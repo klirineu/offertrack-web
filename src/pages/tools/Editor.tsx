@@ -294,7 +294,12 @@ export default function Editor() {
                     </button>
                     <button
                       className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                      onClick={() => navigate(`/tools/editor-studio?id=${editorResult.id}`)}
+                      onClick={() => {
+                        const urlSite = editorResult.url;
+                        const regex = /\/sites\/([a-f0-9-]+)/;
+                        const match = urlSite.match(regex);
+                        navigate(`/tools/editor-studio?id=${match![1]}`)
+                      }}
                     >
                       Ir para o Editor
                     </button>
@@ -327,7 +332,12 @@ export default function Editor() {
                     </a>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => navigate(`/tools/editor-studio?id=${clone.id}`)}
+                        onClick={() => {
+                          const urlSite = clone.url;
+                          const regex = /\/sites\/([a-f0-9-]+)/;
+                          const match = urlSite.match(regex);
+                          navigate(`/tools/editor-studio?id=${match![1]}`)
+                        }}
                         className="p-2 text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400"
                         title="Editar"
                       >
