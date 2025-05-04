@@ -1,17 +1,17 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ExternalLink, Tag, Clock, Edit2, TrendingUp, Copy } from 'lucide-react';
+import { ExternalLink, Tag, Clock, Edit2, TrendingUp, Copy, Trash2 } from 'lucide-react';
 import type { Offer } from '../types';
 import { useEditDialogStore } from '../store/editDialogStore';
-import { cn } from '../lib/utils'; // ou use clsx se preferir
+import { useOfferStore } from '../store/offerStore';
 
 interface OfferCardProps {
   offer: Offer;
-  isOverlay?: boolean;
 }
 
-export function OfferCard({ offer, isOverlay }: OfferCardProps) {
+export function OfferCard({ offer }: OfferCardProps) {
   const { openDialog } = useEditDialogStore();
+  const { deleteOffer } = useOfferStore();
 
   const {
     attributes,
@@ -37,6 +37,12 @@ export function OfferCard({ offer, isOverlay }: OfferCardProps) {
     ? latestMetric.activeAds - previousMetric.activeAds
     : 0;
 
+  async function handleDeleteOffer() {
+    if (window.confirm('Tem certeza que deseja excluir esta oferta?')) {
+      await deleteOffer(offer.id);
+    }
+  }
+
   return (
     <div
       ref={setNodeRef}
@@ -53,16 +59,25 @@ export function OfferCard({ offer, isOverlay }: OfferCardProps) {
       <div className="relative z-10">
         <div className="flex justify-between items-start mb-2">
           <h3 className="font-semibold text-lg dark:text-white">{offer.title}</h3>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              openDialog(offer.id);
-            }}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 z-50"
-          >
-            <Edit2 className="w-4 h-4" />
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                openDialog(offer.id);
+              }}
+              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 z-50"
+            >
+              <Edit2 className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleDeleteOffer}
+              className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 z-50"
+              title="Excluir Oferta"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 mb-2 text-sm text-gray-600 dark:text-gray-400">

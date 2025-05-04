@@ -4,7 +4,7 @@ import { Offer, AdMetrics } from "../types";
 import { supabase } from "../lib/supabase";
 import { Database, Json } from "../types/supabase";
 
-type SupabaseOffer = Database['public']['Tables']['offers']['Row'];
+type SupabaseOffer = Database["public"]["Tables"]["offers"]["Row"];
 
 const mapSupabaseOffer = (offer: SupabaseOffer): Offer => ({
   id: offer.id,
@@ -16,7 +16,7 @@ const mapSupabaseOffer = (offer: SupabaseOffer): Offer => ({
   status: offer.status,
   createdAt: new Date(offer.created_at),
   updatedAt: new Date(offer.updated_at),
-  metrics: (offer.metrics as unknown as AdMetrics[]) || []
+  metrics: (offer.metrics as unknown as AdMetrics[]) || [],
 });
 
 const mapToSupabaseOffer = (offer: Partial<Offer>) => ({
@@ -26,7 +26,7 @@ const mapToSupabaseOffer = (offer: Partial<Offer>) => ({
   description: offer.description,
   tags: offer.tags,
   status: offer.status,
-  metrics: offer.metrics as unknown as Json[]
+  metrics: offer.metrics as unknown as Json[],
 });
 
 interface OfferStore {
@@ -36,11 +36,13 @@ interface OfferStore {
   fetchOffers: () => Promise<void>;
   setOffers: (offers: Offer[]) => void;
   updateOffer: (offerId: string, updates: Partial<Offer>) => Promise<void>;
-  addOffer: (newOffer: Omit<Offer, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  addOffer: (
+    newOffer: Omit<Offer, "id" | "createdAt" | "updatedAt">
+  ) => Promise<void>;
   deleteOffer: (offerId: string) => Promise<void>;
 }
 
-export const useOfferStore = create<OfferStore>((set, get) => ({
+export const useOfferStore = create<OfferStore>((set) => ({
   offers: [],
   isLoading: false,
   error: null,
@@ -48,21 +50,27 @@ export const useOfferStore = create<OfferStore>((set, get) => ({
   fetchOffers: async () => {
     set({ isLoading: true, error: null });
     try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
       const { data: offers, error } = await supabase
-        .from('offers')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .from("offers")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
 
       set({
         offers: offers.map(mapSupabaseOffer),
-        isLoading: false
+        isLoading: false,
       });
     } catch (error) {
       set({
-        error: error instanceof Error ? error.message : 'Failed to fetch offers',
-        isLoading: false
+        error:
+          error instanceof Error ? error.message : "Failed to fetch offers",
+        isLoading: false,
       });
     }
   },
@@ -73,9 +81,9 @@ export const useOfferStore = create<OfferStore>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const { error } = await supabase
-        .from('offers')
+        .from("offers")
         .update(mapToSupabaseOffer(updates))
-        .eq('id', offerId);
+        .eq("id", offerId);
 
       if (error) throw error;
 
@@ -85,16 +93,17 @@ export const useOfferStore = create<OfferStore>((set, get) => ({
             ? {
                 ...offer,
                 ...updates,
-                updatedAt: new Date()
+                updatedAt: new Date(),
               }
             : offer
         ),
-        isLoading: false
+        isLoading: false,
       }));
     } catch (error) {
       set({
-        error: error instanceof Error ? error.message : 'Failed to update offer',
-        isLoading: false
+        error:
+          error instanceof Error ? error.message : "Failed to update offer",
+        isLoading: false,
       });
     }
   },
@@ -102,15 +111,17 @@ export const useOfferStore = create<OfferStore>((set, get) => ({
   addOffer: async (newOffer) => {
     set({ isLoading: true, error: null });
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) throw new Error('User not authenticated');
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) throw new Error("User not authenticated");
 
       const { data, error } = await supabase
-        .from('offers')
+        .from("offers")
         .insert({
           ...mapToSupabaseOffer(newOffer),
-          user_id: user.id
+          user_id: user.id,
         })
         .select()
         .single();
@@ -119,35 +130,37 @@ export const useOfferStore = create<OfferStore>((set, get) => ({
 
       set((state) => ({
         offers: [mapSupabaseOffer(data), ...state.offers],
-        isLoading: false
+        isLoading: false,
       }));
     } catch (error) {
       set({
-        error: error instanceof Error ? error.message : 'Failed to add offer',
-        isLoading: false
+        error: error instanceof Error ? error.message : "Failed to add offer",
+        isLoading: false,
       });
     }
   },
 
   deleteOffer: async (offerId) => {
+    console.log("Deleting offerrrr:", offerId);
     set({ isLoading: true, error: null });
     try {
       const { error } = await supabase
-        .from('offers')
+        .from("offers")
         .delete()
-        .eq('id', offerId);
+        .eq("id", offerId);
 
       if (error) throw error;
 
       set((state) => ({
         offers: state.offers.filter((offer) => offer.id !== offerId),
-        isLoading: false
+        isLoading: false,
       }));
     } catch (error) {
       set({
-        error: error instanceof Error ? error.message : 'Failed to delete offer',
-        isLoading: false
+        error:
+          error instanceof Error ? error.message : "Failed to delete offer",
+        isLoading: false,
       });
     }
-  }
+  },
 }));
