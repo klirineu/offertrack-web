@@ -5,9 +5,8 @@ import { motion } from 'framer-motion';
 import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, ArrowLeft, Plus, Copy, ExternalLink, Shield, Wrench } from 'lucide-react';
 import { SidebarBody, SidebarLink, Sidebar } from '../../components/ui/sidebar';
 import { useAnticloneStore } from '../../store/anticloneStore';
-import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
+import { supabase } from '../../lib/supabase';
 
 type ActionType = 'redirect' | 'replace_links' | 'replace_images';
 
@@ -116,6 +115,7 @@ const ClonedDomainsList = ({ siteId }: { siteId: string }) => {
     type: 'redirect',
     data: ''
   });
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     const fetchClones = async () => {
@@ -149,12 +149,23 @@ const ClonedDomainsList = ({ siteId }: { siteId: string }) => {
     fetchClones();
   }, [siteId, site]);
 
+  useEffect(() => {
+    if (site) {
+      setEditingAction({
+        type: site.action_type,
+        data: site.action_data,
+      });
+    }
+  }, [site]);
+
   const handleUpdateAction = async () => {
     if (site && editingAction.type && (editingAction.type === 'redirect' || editingAction.data)) {
       await updateSite(site.id, {
         action_type: editingAction.type,
         action_data: editingAction.data
       });
+      setSuccessMessage('Ação salva com sucesso!');
+      setTimeout(() => setSuccessMessage(''), 2000);
     }
   };
 
@@ -203,6 +214,10 @@ const ClonedDomainsList = ({ siteId }: { siteId: string }) => {
                   }`}
               />
             </div>
+          )}
+
+          {successMessage && (
+            <div className="mb-2 p-2 bg-green-100 text-green-700 rounded">{successMessage}</div>
           )}
 
           <button
@@ -311,7 +326,7 @@ export function Anticlone() {
 
   const getScriptUrl = (id: string) => {
     const shortId = parseInt(id.replace(/-/g, '').slice(0, 8), 16).toString(36);
-    return `<script src="https://production-web.up.railway.app/${shortId}" ></script>`;
+    return `<script src="https://production-web.up.railway.app/${shortId}"></script>`;
   };
 
   if (!user) {
