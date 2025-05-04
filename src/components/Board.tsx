@@ -91,7 +91,7 @@ export function Board() {
         </div>
 
         <DragOverlay>
-          {activeOffer && <OfferCard offer={activeOffer} isOverlay />}
+          {activeOffer && <OfferCard offer={activeOffer} />}
         </DragOverlay>
       </DndContext>
 

@@ -114,15 +114,15 @@ export const useOfferStore = create<OfferStore>((set) => ({
       const {
         data: { user },
       } = await supabase.auth.getUser();
-
       if (!user) throw new Error("User not authenticated");
-
+      const insertObj = {
+        ...mapToSupabaseOffer(newOffer),
+        user_id: user.id,
+      };
+      console.log("[DEBUG] addOffer insertObj", insertObj);
       const { data, error } = await supabase
         .from("offers")
-        .insert({
-          ...mapToSupabaseOffer(newOffer),
-          user_id: user.id,
-        })
+        .insert(insertObj)
         .select()
         .single();
 
@@ -133,6 +133,7 @@ export const useOfferStore = create<OfferStore>((set) => ({
         isLoading: false,
       }));
     } catch (error) {
+      console.error("[DEBUG] addOffer error", error);
       set({
         error: error instanceof Error ? error.message : "Failed to add offer",
         isLoading: false,

@@ -37,6 +37,7 @@ export function NewOfferDialog({ isOpen, onClose, onSubmit }: NewOfferDialogProp
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
     onSubmit({
       ...formData,
       tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean),
