@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { AdMetrics } from '../types';
 import { useThemeStore } from '../store/themeStore';
@@ -13,10 +13,11 @@ interface NewOfferDialogProps {
     description: string;
     tags: string[];
     metrics: AdMetrics[];
-  }) => void;
+  }) => Promise<void>;
+  onError?: (err: unknown) => void;
 }
 
-export function NewOfferDialog({ isOpen, onClose, onSubmit }: NewOfferDialogProps) {
+export function NewOfferDialog({ isOpen, onClose, onSubmit, onError }: NewOfferDialogProps) {
   const { theme } = useThemeStore()
 
   const [formData, setFormData] = useState({
@@ -25,38 +26,55 @@ export function NewOfferDialog({ isOpen, onClose, onSubmit }: NewOfferDialogProp
     landingPageUrl: '',
     description: '',
     tags: '',
-    metrics: [{
-      date: new Date().toISOString().split('T')[0], // Data atual como padrão
-      activeAds: 0,
-      spend: 0,
-      impressions: 0
-    }] as AdMetrics[]
+    metrics: [] as AdMetrics[]
   });
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        title: '',
+        offerUrl: '',
+        landingPageUrl: '',
+        description: '',
+        tags: '',
+        metrics: [] as AdMetrics[]
+      });
+      setLoading(false);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    onSubmit({
-      ...formData,
-      tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean),
-      metrics: formData.metrics.map(metric => ({
-        ...metric,
-        // Garantir números válidos
-        spend: metric.spend || 0,
-        impressions: metric.impressions || 0
-      }))
-    });
-    setFormData({
-      title: '',
-      offerUrl: '',
-      landingPageUrl: '',
-      description: '',
-      tags: '',
-      metrics: []
-    });
-    onClose();
+  const handleSubmit = async () => {
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      await onSubmit({
+        ...formData,
+        tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean),
+        metrics: formData.metrics.map(metric => ({
+          ...metric,
+          spend: metric.spend || 0,
+          impressions: metric.impressions || 0
+        }))
+      });
+      setFormData({
+        title: '',
+        offerUrl: '',
+        landingPageUrl: '',
+        description: '',
+        tags: '',
+        metrics: [] as AdMetrics[]
+      });
+      onClose();
+    } catch (err) {
+      setErrorMsg('Erro ao adicionar oferta. Veja o console para detalhes.');
+      if (onError) onError(err);
+      console.error('Erro ao adicionar oferta:', err);
+    }
+    setLoading(false);
   };
 
   return (
@@ -72,7 +90,8 @@ export function NewOfferDialog({ isOpen, onClose, onSubmit }: NewOfferDialogProp
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form className="space-y-4">
+          {errorMsg && <div className="text-red-500 text-sm mb-2">{errorMsg}</div>}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Título
@@ -223,10 +242,12 @@ export function NewOfferDialog({ isOpen, onClose, onSubmit }: NewOfferDialogProp
               Cancelar
             </button>
             <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
+              type="button"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+              disabled={loading}
+              onClick={handleSubmit}
             >
-              Adicionar Oferta
+              {loading ? 'Adicionando...' : 'Adicionar Oferta'}
             </button>
           </div>
         </form>

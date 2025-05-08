@@ -7,6 +7,7 @@ import { SidebarBody, SidebarLink, Sidebar } from '../../components/ui/sidebar';
 import { useThemeStore } from '../../store/themeStore';
 import { useClonesStore } from '../../store/clonesStore';
 import { useAuthStore } from '../../store/authStore';
+import api from '../../services/api';
 
 // Permitir tipagem global para o editor
 declare global {
@@ -136,22 +137,12 @@ export default function Editor() {
   async function handleCloneToEditor(url: string) {
     setActionLoading('editor');
     try {
-      const res = await fetch('https://production-web.up.railway.app/api/clone/folder', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url })
-      });
-      if (!res.ok) {
-        alert('Erro ao clonar para o editor');
-        setActionLoading(null);
-        return;
-      }
-      const data = await res.json();
+      const res = await api.post('/api/clone/folder', { url });
+      const data = res.data;
       const urlSite = data.url;
       const regex = /\/sites\/([a-f0-9-]+)/;
       const match = urlSite.match(regex);
       if (match && match[1]) {
-        console.log('aqui entrou')
         await addClone(urlSite);
         setEditorResult({ url: urlSite, id: match[1] });
         setCloneUrlToProcess(null);
@@ -235,14 +226,10 @@ export default function Editor() {
                       disabled={actionLoading !== null || !cloneUrlToProcess}
                       onClick={async () => {
                         setActionLoading('zip');
-                        const res = await fetch('https://production-web.up.railway.app/api/clone/zip', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ url: cloneUrlToProcess })
-                        });
+                        const res = await api.post('/api/clone/zip', { url: cloneUrlToProcess }, { responseType: 'blob' });
                         setActionLoading(null);
                         if (!res.ok) return alert('Erro ao baixar ZIP');
-                        const blob = await res.blob();
+                        const blob = res.data;
                         const a = document.createElement('a');
                         a.href = window.URL.createObjectURL(blob);
                         const domain = getDomainFromUrl(cloneUrlToProcess);

@@ -52,6 +52,7 @@ export const useOfferStore = create<OfferStore>((set) => ({
     try {
       const {
         data: { user },
+        error: userError,
       } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
       const { data: offers, error } = await supabase
@@ -59,9 +60,7 @@ export const useOfferStore = create<OfferStore>((set) => ({
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
-
       if (error) throw error;
-
       set({
         offers: offers.map(mapSupabaseOffer),
         isLoading: false,
@@ -72,6 +71,8 @@ export const useOfferStore = create<OfferStore>((set) => ({
           error instanceof Error ? error.message : "Failed to fetch offers",
         isLoading: false,
       });
+    } finally {
+      set((state) => ({ ...state, isLoading: false }));
     }
   },
 
@@ -84,9 +85,7 @@ export const useOfferStore = create<OfferStore>((set) => ({
         .from("offers")
         .update(mapToSupabaseOffer(updates))
         .eq("id", offerId);
-
       if (error) throw error;
-
       set((state) => ({
         offers: state.offers.map((offer) =>
           offer.id === offerId
@@ -105,53 +104,79 @@ export const useOfferStore = create<OfferStore>((set) => ({
           error instanceof Error ? error.message : "Failed to update offer",
         isLoading: false,
       });
+    } finally {
+      set((state) => ({ ...state, isLoading: false }));
     }
   },
 
-  addOffer: async (newOffer) => {
+  addOffer: async (newOffer: Omit<Offer, "id" | "createdAt" | "updatedAt">) => {
     set({ isLoading: true, error: null });
+    let insertResult;
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) throw new Error("User not authenticated");
+
+      if (!user) {
+        console.error("[DEBUG] addOffer - User not authenticated");
+        throw new Error("User not authenticated");
+      }
       const insertObj = {
         ...mapToSupabaseOffer(newOffer),
         user_id: user.id,
       };
-      console.log("[DEBUG] addOffer insertObj", insertObj);
-      const { data, error } = await supabase
-        .from("offers")
-        .insert(insertObj)
-        .select()
-        .single();
 
-      if (error) throw error;
+      try {
+        insertResult = await supabase
+          .from("offers")
+          .insert(insertObj)
+          .select()
+          .single();
+      } catch (err) {
+        console.error(
+          "[DEBUG] addOffer - insert promise error:",
+          err,
+          "insertObj:",
+          insertObj
+        );
+        throw new Error(
+          "Supabase insert promise failed: " +
+            (err instanceof Error ? err.message : String(err))
+        );
+      }
 
+      if (!insertResult) {
+        console.error(
+          "[DEBUG] addOffer - insertResult is undefined! insertObj:",
+          insertObj
+        );
+        throw new Error(
+          "Supabase insertResult is undefined. Veja o insertObj e o schema da tabela."
+        );
+      }
+      const data = insertResult.data;
+      const error = insertResult.error;
+      if (error) {
+        console.error("[DEBUG] addOffer - insert error:", error);
+        throw error;
+      }
       set((state) => ({
-        offers: [mapSupabaseOffer(data), ...state.offers],
+        offers: data ? [mapSupabaseOffer(data), ...state.offers] : state.offers,
         isLoading: false,
       }));
-    } catch (error) {
-      console.error("[DEBUG] addOffer error", error);
-      set({
-        error: error instanceof Error ? error.message : "Failed to add offer",
-        isLoading: false,
-      });
+    } finally {
+      set((state) => ({ ...state, isLoading: false }));
     }
   },
 
   deleteOffer: async (offerId) => {
-    console.log("Deleting offerrrr:", offerId);
     set({ isLoading: true, error: null });
     try {
       const { error } = await supabase
         .from("offers")
         .delete()
         .eq("id", offerId);
-
       if (error) throw error;
-
       set((state) => ({
         offers: state.offers.filter((offer) => offer.id !== offerId),
         isLoading: false,
@@ -162,6 +187,8 @@ export const useOfferStore = create<OfferStore>((set) => ({
           error instanceof Error ? error.message : "Failed to delete offer",
         isLoading: false,
       });
+    } finally {
+      set((state) => ({ ...state, isLoading: false }));
     }
   },
 }));

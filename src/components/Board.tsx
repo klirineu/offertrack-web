@@ -53,11 +53,16 @@ export function Board() {
     });
   };
 
-  const handleNewOffer = (offerData: Omit<Offer, 'id' | 'status' | 'createdAt' | 'updatedAt'>) => {
-    useOfferStore.getState().addOffer({
-      ...offerData,
-      status: 'waiting'
-    });
+  const handleNewOffer = async (offerData: Omit<Offer, 'id' | 'status' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      await useOfferStore.getState().addOffer({
+        ...offerData,
+        status: 'waiting'
+      });
+      setIsNewOfferDialogOpen(false);
+    } catch (err) {
+      console.error('[DEBUG] handleNewOffer error', err);
+    }
   };
 
   return (

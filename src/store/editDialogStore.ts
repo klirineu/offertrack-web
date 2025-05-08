@@ -10,7 +10,6 @@ interface EditDialogState {
 export const useEditDialogStore = create<EditDialogState>((set) => ({
   selectedOfferId: null,
   openDialog: (offerId) => {
-    console.log(offerId);
     set({ selectedOfferId: offerId });
   },
   closeDialog: () => set({ selectedOfferId: null }),
