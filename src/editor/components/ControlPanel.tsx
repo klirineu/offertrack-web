@@ -15,6 +15,38 @@ function isStylable(el: HTMLElement | null) {
   return !nonStylable.includes(el.tagName);
 }
 
+function insertScriptInHtml(html: string, script: string, position: 'head' | 'body') {
+  if (!script.trim()) return html;
+  if (position === 'head') {
+    return html.replace(/<\/head>/i, script + '\n</head>');
+  } else {
+    return html.replace(/<\/body>/i, script + '\n</body>');
+  }
+}
+
+function isRelevantScript(s: HTMLScriptElement) {
+  // Externo
+  if (s.src) {
+    if (
+      s.src.includes('localhost') ||
+      s.src.includes('127.0.0.1') ||
+      s.src.includes('5173') ||
+      s.src.match(/\/(assets|main|static|js|vite|@vite|sockjs-node|__vite_ping|@react-refresh|@vite\/client|local|dev|webpack|node_modules|esbuild|hmr|hot-update)\//)
+    ) {
+      return false;
+    }
+    return true;
+  }
+  // Inline
+  if (s.innerHTML) {
+    const sysWords = ['vite', 'react', 'hmr', 'webpack', 'editor', 'dnd', 'ot-', 'hot-update'];
+    if (sysWords.some(w => s.innerHTML.toLowerCase().includes(w))) return false;
+    if (s.innerHTML.trim().length < 10) return false;
+    return true;
+  }
+  return false;
+}
+
 const ControlPanel = () => {
   const selectedElement = useEditorStore((s) => s.selectedElement);
   const selectedOtId = useEditorStore((s) => s.selectedOtId);
@@ -45,6 +77,12 @@ const ControlPanel = () => {
   const [selectedTag, setSelectedTag] = useState('');
   const [bgColorInput, setBgColorInput] = useState('');
   const [colorInput, setColorInput] = useState('');
+  const [showScriptModal, setShowScriptModal] = useState(false);
+  const [scriptHead, setScriptHead] = useState('');
+  const [scriptBody, setScriptBody] = useState('');
+  const [showScriptManager, setShowScriptManager] = useState(false);
+  const [headScriptsText, setHeadScriptsText] = useState('');
+  const [bodyScriptsText, setBodyScriptsText] = useState('');
 
   // Sincroniza atributos do elemento selecionado
   useEffect(() => {
@@ -154,12 +192,16 @@ const ControlPanel = () => {
     const doc = iframe.contentDocument;
     if (!doc) return;
 
-    // 1. Remove todas as classes do editor de TODOS os elementos (head e body)
+    // Clone o DOM inteiro do iframe
+    const docClone = doc.documentElement.cloneNode(true) as HTMLElement;
+    const cloneDoc = document.implementation.createHTMLDocument('');
+    cloneDoc.replaceChild(docClone, cloneDoc.documentElement);
+
+    // 1. Remove todas as classes do editor de TODOS os elementos (head e body) no clone
     const removeEditorClasses = (root: Document) => {
       root.querySelectorAll('[class]').forEach((el) => {
         const htmlEl = el as HTMLElement;
         htmlEl.classList.remove('__ot-draggable', '__ot-selected');
-        // Remove qualquer classe do editor que comece com __ot-
         if (typeof htmlEl.className === 'string') {
           htmlEl.className = htmlEl.className
             .split(' ')
@@ -171,47 +213,52 @@ const ControlPanel = () => {
         }
       });
     };
-    removeEditorClasses(doc);
+    removeEditorClasses(cloneDoc);
 
-    // 1b. Remove todos os <div class="__ot-drag-handle"> e <div title="Arrastar para mover">
-    Array.from(doc.querySelectorAll('div.__ot-drag-handle')).forEach(el => el.remove());
-    Array.from(doc.querySelectorAll('div[title="Arrastar para mover"]')).forEach(el => el.remove());
-    // Remove qualquer elemento (qualquer tag) com title="Arrastar para mover"
-    Array.from(doc.querySelectorAll('[title="Arrastar para mover"]')).forEach(el => el.remove());
-    // Remove qualquer elemento cujo innerText seja exatamente '↕'
-    Array.from(doc.querySelectorAll('body *')).forEach(el => {
+    // 1b. Remove todos os <div class="__ot-drag-handle"> e <div title="Arrastar para mover"> no clone
+    Array.from(cloneDoc.querySelectorAll('div.__ot-drag-handle')).forEach(el => el.remove());
+    Array.from(cloneDoc.querySelectorAll('div[title="Arrastar para mover"]')).forEach(el => el.remove());
+    Array.from(cloneDoc.querySelectorAll('[title="Arrastar para mover"]')).forEach(el => el.remove());
+    Array.from(cloneDoc.querySelectorAll('body *')).forEach(el => {
       const htmlEl = el as HTMLElement;
       if (htmlEl.innerText && htmlEl.innerText.trim() === '↕') htmlEl.remove();
     });
 
-    // 2. Mover elementos do head de volta para o head
+    // 2. Mover elementos do head de volta para o head no clone
     const headTags = ['META', 'TITLE', 'LINK', 'SCRIPT', 'STYLE', 'NOSCRIPT'];
     headTags.forEach(tag => {
-      const nodes = Array.from(doc.body.querySelectorAll(tag));
+      const nodes = Array.from(cloneDoc.body.querySelectorAll(tag));
       nodes.forEach(node => {
-        doc.head.appendChild(node);
+        if (tag === 'LINK' && node.getAttribute('rel') === 'stylesheet') {
+          const href = node.getAttribute('href');
+          if (href && cloneDoc.head.querySelector(`link[rel="stylesheet"][href="${href}"]`)) {
+            node.remove(); // Já existe, não move
+            return;
+          }
+        }
+        cloneDoc.head.appendChild(node);
       });
     });
 
-    // 3. Remover <style> extras do head (mantém só se for do usuário)
-    Array.from(doc.head.querySelectorAll('style')).forEach(style => {
+    // 3. Remover <style> extras do head (mantém só se for do usuário) no clone
+    Array.from(cloneDoc.head.querySelectorAll('style')).forEach(style => {
       if (!style.hasAttribute('data-user-inserted')) style.remove();
     });
 
-    // 4. Remover todos os <script> que não tenham data-user-inserted="true"
-    Array.from(doc.head.querySelectorAll('script')).forEach(script => {
-      if (!script.hasAttribute('data-user-inserted')) script.remove();
+    // 4. Remover apenas scripts do sistema/editor/iframe no clone
+    Array.from(cloneDoc.head.querySelectorAll('script')).forEach(script => {
+      if (!isRelevantScript(script)) script.remove();
     });
-    Array.from(doc.body.querySelectorAll('script')).forEach(script => {
-      if (!script.hasAttribute('data-user-inserted')) script.remove();
+    Array.from(cloneDoc.body.querySelectorAll('script')).forEach(script => {
+      if (!isRelevantScript(script)) script.remove();
     });
 
-    // 5. Monta o HTML final manualmente
+    // 5. Monta o HTML final manualmente a partir do clone
     const doctype = '<!DOCTYPE html>';
     const htmlOpen = '<html>';
     const htmlClose = '</html>';
-    const headHtml = doc.head.innerHTML;
-    const bodyHtml = doc.body.innerHTML;
+    const headHtml = cloneDoc.head.innerHTML;
+    const bodyHtml = cloneDoc.body.innerHTML;
     const finalHtml = `${doctype}\n${htmlOpen}\n<head>${headHtml}</head>\n<body>${bodyHtml}</body>\n${htmlClose}`;
 
     // Obter id da query string
@@ -228,6 +275,8 @@ const ControlPanel = () => {
       setSaveMsg('Erro ao salvar o site.');
     }
     setSaving(false);
+
+    // Após salvar, recarregar o iframe para garantir preview e seleção funcionando
   }
 
   function handleRemoveElement() {
@@ -250,6 +299,74 @@ const ControlPanel = () => {
     }
   }
 
+  function handleAddScript() {
+    const iframe = document.querySelector('iframe');
+    if (!iframe) return;
+    const doc = iframe.contentDocument;
+    if (!doc) return;
+    let html = doc.documentElement.outerHTML;
+    if (scriptHead.trim()) {
+      html = insertScriptInHtml(html, scriptHead, 'head');
+    }
+    if (scriptBody.trim()) {
+      html = insertScriptInHtml(html, scriptBody, 'body');
+    }
+    // Atualiza o iframe em tempo real
+    doc.open();
+    doc.write(html);
+    doc.close();
+    setShowScriptModal(false);
+    setScriptHead('');
+    setScriptBody('');
+    setSaveMsg('Script inserido com sucesso!');
+    setTimeout(() => setSaveMsg(''), 3000);
+  }
+
+  function openScriptManager() {
+    const iframe = document.querySelector('iframe');
+    if (!iframe) return;
+    const doc = iframe.contentDocument;
+    if (!doc) return;
+    // Extrai todos os scripts do head (apenas relevantes)
+    const headScripts = Array.from(doc.head.querySelectorAll('script'))
+      .filter(isRelevantScript)
+      .map(s => s.outerHTML)
+      .join('\n');
+    // Extrai todos os scripts do body (apenas relevantes)
+    const bodyScripts = Array.from(doc.body.querySelectorAll('script'))
+      .filter(isRelevantScript)
+      .map(s => s.outerHTML)
+      .join('\n');
+    setHeadScriptsText(headScripts);
+    setBodyScriptsText(bodyScripts);
+    setShowScriptManager(true);
+  }
+
+  function handleSaveScripts() {
+    const iframe = document.querySelector('iframe');
+    if (!iframe) return;
+    const doc = iframe.contentDocument;
+    if (!doc) return;
+    // Remove todos os scripts do head/body
+    Array.from(doc.head.querySelectorAll('script')).forEach(s => s.remove());
+    Array.from(doc.body.querySelectorAll('script')).forEach(s => s.remove());
+    // Insere scripts do textarea do head
+    if (headScriptsText.trim()) {
+      const temp = doc.createElement('div');
+      temp.innerHTML = headScriptsText;
+      Array.from(temp.childNodes).forEach(node => doc.head.appendChild(node));
+    }
+    // Insere scripts do textarea do body
+    if (bodyScriptsText.trim()) {
+      const temp = doc.createElement('div');
+      temp.innerHTML = bodyScriptsText;
+      Array.from(temp.childNodes).forEach(node => doc.body.appendChild(node));
+    }
+    setShowScriptManager(false);
+    setSaveMsg('Scripts atualizados!');
+    setTimeout(() => setSaveMsg(''), 3000);
+  }
+
   if (!selectedElement) {
     return (
       <aside className="w-96 bg-gray-900 text-gray-100 p-6 rounded-lg shadow-lg h-full flex flex-col min-w-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900 pt-4">
@@ -259,6 +376,12 @@ const ControlPanel = () => {
           disabled={saving}
         >
           {saving ? 'Salvando...' : 'Salvar site'}
+        </button>
+        <button
+          className="mb-4 py-2 px-4 rounded bg-green-600 hover:bg-green-700 text-white font-bold shadow"
+          onClick={openScriptManager}
+        >
+          Gerenciar Scripts
         </button>
         {saveMsg && <div className={`mb-4 text-sm ${saveMsg.includes('sucesso') ? 'text-green-400' : 'text-red-400'}`}>{saveMsg}</div>}
         <div>Selecione um elemento para editar.</div>
@@ -274,6 +397,12 @@ const ControlPanel = () => {
         disabled={saving}
       >
         {saving ? 'Salvando...' : 'Salvar site'}
+      </button>
+      <button
+        className="mb-4 py-2 px-4 rounded bg-green-600 hover:bg-green-700 text-white font-bold shadow"
+        onClick={openScriptManager}
+      >
+        Gerenciar Scripts
       </button>
       {saveMsg && <div className={`mb-4 text-sm ${saveMsg.includes('sucesso') ? 'text-green-400' : 'text-red-400'}`}>{saveMsg}</div>}
       <h2 className="font-bold text-xl mb-4 text-blue-400">Painel de Edição</h2>
@@ -390,6 +519,64 @@ const ControlPanel = () => {
         >
           Remover elemento
         </button>
+      )}
+      {showScriptModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+          <div className="bg-gray-900 p-6 rounded-lg shadow-lg w-full max-w-lg relative">
+            <h3 className="text-lg font-bold mb-4 text-blue-400">Adicionar Script</h3>
+            <label className="block text-sm mb-1">Script para &lt;head&gt;:</label>
+            <textarea
+              className="w-full border border-gray-700 bg-gray-800 text-gray-100 rounded px-2 py-1 mb-4"
+              rows={4}
+              value={scriptHead}
+              onChange={e => setScriptHead(e.target.value)}
+              placeholder="&lt;script&gt;...&lt;/script&gt; ou &lt;script src=...&gt;&lt;/script&gt;"
+            />
+            <label className="block text-sm mb-1">Script para &lt;body&gt;:</label>
+            <textarea
+              className="w-full border border-gray-700 bg-gray-800 text-gray-100 rounded px-2 py-1 mb-4"
+              rows={4}
+              value={scriptBody}
+              onChange={e => setScriptBody(e.target.value)}
+              placeholder="&lt;script&gt;...&lt;/script&gt; ou &lt;script src=...&gt;&lt;/script&gt;"
+            />
+            <div className="flex gap-2 mt-2">
+              <button className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold" onClick={handleAddScript}>Salvar</button>
+              <button className="px-4 py-2 rounded bg-gray-700 hover:bg-gray-800 text-white font-bold" onClick={() => setShowScriptModal(false)}>Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showScriptManager && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+          <div className="bg-gray-900 p-6 rounded-lg shadow-lg w-full max-w-2xl relative">
+            <h3 className="text-lg font-bold mb-4 text-blue-400">Gerenciar Scripts</h3>
+            <div className="mb-4">
+              <h4 className="font-bold text-blue-300 mb-2">Scripts no &lt;head&gt;</h4>
+              <textarea
+                className="w-full border border-gray-700 bg-gray-800 text-gray-100 rounded px-2 py-1 mb-4"
+                rows={6}
+                value={headScriptsText}
+                onChange={e => setHeadScriptsText(e.target.value)}
+                placeholder="Cole aqui seus <script>...</script> ou <script src=...></script> para o <head>"
+              />
+            </div>
+            <div className="mb-4">
+              <h4 className="font-bold text-blue-300 mb-2">Scripts no &lt;body&gt;</h4>
+              <textarea
+                className="w-full border border-gray-700 bg-gray-800 text-gray-100 rounded px-2 py-1 mb-4"
+                rows={6}
+                value={bodyScriptsText}
+                onChange={e => setBodyScriptsText(e.target.value)}
+                placeholder="Cole aqui seus <script>...</script> ou <script src=...></script> para o <body>"
+              />
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold" onClick={handleSaveScripts}>Salvar Scripts</button>
+              <button className="px-4 py-2 rounded bg-gray-700 hover:bg-gray-800 text-white font-bold" onClick={() => setShowScriptManager(false)}>Cancelar</button>
+            </div>
+          </div>
+        </div>
       )}
     </aside>
   );

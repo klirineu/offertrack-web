@@ -38,8 +38,7 @@ const LivePreview = ({ previewMode, content, onSelectElement, dragType, style, s
 
   // Ajusta os caminhos antes de extrair head/body
   const htmlComPathsAbsolutos = absolutizeAssetPaths(content.html, siteId!);
-  console.log(content.css, 'css')
-  console.log(content.html, 'html')
+
   // Só atualiza o conteúdo do iframe quando o HTML base muda
   useEffect(() => {
     if (iframeRef.current) {
@@ -90,17 +89,6 @@ const LivePreview = ({ previewMode, content, onSelectElement, dragType, style, s
           </html>
         `);
         doc.close();
-        // Após doc.close(), injeta manualmente os <link rel="stylesheet"> do userHead
-        const linkRegex = /<link[^>]+rel=["']stylesheet["'][^>]*>/gi;
-        const links = userHead.match(linkRegex) || [];
-        links.forEach(linkHtml => {
-          const temp = document.createElement('div');
-          temp.innerHTML = linkHtml;
-          const linkEl = temp.firstElementChild;
-          if (linkEl && doc.head) {
-            doc.head.appendChild(linkEl);
-          }
-        });
       }
     }
   }, [content, htmlComPathsAbsolutos]);
