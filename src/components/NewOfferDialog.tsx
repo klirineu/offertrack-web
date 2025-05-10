@@ -72,7 +72,7 @@ export function NewOfferDialog({ isOpen, onClose, onSubmit, onError }: NewOfferD
     } catch (err) {
       setErrorMsg('Erro ao adicionar oferta. Veja o console para detalhes.');
       if (onError) onError(err);
-      console.error('Erro ao adicionar oferta:', err);
+      console.error('[DEBUG] NewOfferDialog handleSubmit error:', err);
     }
     setLoading(false);
   };

@@ -27,6 +27,7 @@ export function Board() {
 
   const [isNewOfferDialogOpen, setIsNewOfferDialogOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     fetchOffers();
@@ -59,6 +60,8 @@ export function Board() {
         ...offerData,
         status: 'waiting'
       });
+      await fetchOffers();
+      setRefreshKey((k) => k + 1);
       setIsNewOfferDialogOpen(false);
     } catch (err) {
       console.error('[DEBUG] handleNewOffer error', err);
@@ -85,7 +88,7 @@ export function Board() {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex gap-6 p-6 overflow-x-auto pb-8">
+        <div key={refreshKey} className="flex gap-6 p-6 overflow-x-auto pb-8">
           {columns.map((column) => (
             <Column
               key={column.id}

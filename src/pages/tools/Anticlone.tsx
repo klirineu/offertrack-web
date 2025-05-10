@@ -300,7 +300,8 @@ export function Anticlone() {
 
   useEffect(() => {
     fetchSites();
-  }, [fetchSites]);
+    // eslint-disable-next-line
+  }, []);
 
   const handleAddSite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -363,7 +364,7 @@ export function Anticlone() {
       label: "Filtro de Tráfego",
       href: "#",
       icon: (
-        <svg className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" ><path d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z" /></svg>
+        <svg className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" ><path d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z" /></svg>
       ),
       subLinks: [
         { label: "Requisições", href: "/traffic-filter/requests", icon: <Circle className="h-4 w-4" /> },
@@ -430,6 +431,12 @@ export function Anticlone() {
                 <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   Anticlone
                 </h1>
+                <button
+                  onClick={fetchSites}
+                  className="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded text-sm ml-2"
+                >
+                  Atualizar
+                </button>
               </div>
               <button
                 onClick={() => setShowNewOfferForm(true)}

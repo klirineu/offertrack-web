@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Wrench, Edit, Trash2, Plus, Download } from 'lucide-react';
@@ -50,6 +50,7 @@ export default function Editor() {
   const navigate = useNavigate();
   const { theme } = useThemeStore();
   const [open, setOpen] = useState(false);
+  const location = useLocation();
 
   const urlParam = searchParams.get('url');
 
@@ -62,7 +63,8 @@ export default function Editor() {
 
   useEffect(() => {
     fetchClones();
-  }, [fetchClones]);
+    // eslint-disable-next-line
+  }, [location.pathname]);
 
   useEffect(() => {
     if (urlParam) {

@@ -1,8 +1,13 @@
 // stores/offerStore.ts
 import { create } from "zustand";
 import { Offer, AdMetrics } from "../types";
-import { supabase } from "../lib/supabase";
-import { Database, Json } from "../types/supabase";
+import {
+  fetchOffersService,
+  addOfferService,
+  updateOfferService,
+  deleteOfferService,
+} from "../services/offerService";
+import { Database } from "../types/supabase";
 
 type SupabaseOffer = Database["public"]["Tables"]["offers"]["Row"];
 
@@ -26,7 +31,7 @@ const mapToSupabaseOffer = (offer: Partial<Offer>) => ({
   description: offer.description,
   tags: offer.tags,
   status: offer.status,
-  metrics: offer.metrics as unknown as Json[],
+  metrics: offer.metrics,
 });
 
 interface OfferStore {
@@ -50,19 +55,10 @@ export const useOfferStore = create<OfferStore>((set) => ({
   fetchOffers: async () => {
     set({ isLoading: true, error: null });
     try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("User not authenticated");
-      const { data: offers, error } = await supabase
-        .from("offers")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+      const { data, error } = await fetchOffersService();
       if (error) throw error;
       set({
-        offers: offers.map(mapSupabaseOffer),
+        offers: data ? data.map(mapSupabaseOffer) : [],
         isLoading: false,
       });
     } catch (error) {
@@ -81,10 +77,10 @@ export const useOfferStore = create<OfferStore>((set) => ({
   updateOffer: async (offerId, updates) => {
     set({ isLoading: true, error: null });
     try {
-      const { error } = await supabase
-        .from("offers")
-        .update(mapToSupabaseOffer(updates))
-        .eq("id", offerId);
+      const { error } = await updateOfferService(
+        offerId,
+        mapToSupabaseOffer(updates)
+      );
       if (error) throw error;
       set((state) => ({
         offers: state.offers.map((offer) =>
@@ -111,71 +107,43 @@ export const useOfferStore = create<OfferStore>((set) => ({
 
   addOffer: async (newOffer: Omit<Offer, "id" | "createdAt" | "updatedAt">) => {
     set({ isLoading: true, error: null });
-    let insertResult;
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        console.error("[DEBUG] addOffer - User not authenticated");
-        throw new Error("User not authenticated");
-      }
       const insertObj = {
         ...mapToSupabaseOffer(newOffer),
-        user_id: user.id,
       };
+      const { data, error } = await addOfferService(insertObj);
 
-      try {
-        insertResult = await supabase
-          .from("offers")
-          .insert(insertObj)
-          .select()
-          .single();
-      } catch (err) {
+      if (error || !data) {
         console.error(
-          "[DEBUG] addOffer - insert promise error:",
-          err,
-          "insertObj:",
-          insertObj
+          "[DEBUG] addOffer - Supabase error ou dados ausentes:",
+          error,
+          data
         );
-        throw new Error(
-          "Supabase insert promise failed: " +
-            (err instanceof Error ? err.message : String(err))
-        );
+        const errorMsg =
+          error instanceof Error
+            ? error.message
+            : typeof error === "object" && error && "message" in error
+            ? (error as any).message
+            : "No data returned from Supabase";
+        throw new Error(errorMsg);
       }
-
-      if (!insertResult) {
-        console.error(
-          "[DEBUG] addOffer - insertResult is undefined! insertObj:",
-          insertObj
-        );
-        throw new Error(
-          "Supabase insertResult is undefined. Veja o insertObj e o schema da tabela."
-        );
+      if (typeof data !== "object" || data === null) {
+        throw new Error("Dados inválidos retornados do Supabase");
       }
-      const data = insertResult.data;
-      const error = insertResult.error;
-      if (error) {
-        console.error("[DEBUG] addOffer - insert error:", error);
-        throw error;
-      }
-      set((state) => ({
-        offers: data ? [mapSupabaseOffer(data), ...state.offers] : state.offers,
+    } catch (error) {
+      console.error("[DEBUG] addOffer - catch error:", error);
+      set({
+        error: error instanceof Error ? error.message : String(error),
         isLoading: false,
-      }));
-    } finally {
-      set((state) => ({ ...state, isLoading: false }));
+      });
+      throw error; // Propaga o erro para o dialog
     }
   },
 
   deleteOffer: async (offerId) => {
     set({ isLoading: true, error: null });
     try {
-      const { error } = await supabase
-        .from("offers")
-        .delete()
-        .eq("id", offerId);
+      const { error } = await deleteOfferService(offerId);
       if (error) throw error;
       set((state) => ({
         offers: state.offers.filter((offer) => offer.id !== offerId),
