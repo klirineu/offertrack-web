@@ -36,6 +36,9 @@ const VisualEditor = ({ clonedData }: EditorProps) => {
     if (otId) setSelectedOtId(otId);
   }
 
+  const params = new URLSearchParams(location.search);
+  const siteId = params.get('id');
+
   return (
     <div className="flex h-full">
       <div>
@@ -76,7 +79,7 @@ const VisualEditor = ({ clonedData }: EditorProps) => {
         {/* Preview principal */}
         <div className="flex-1 flex justify-center items-center bg-gray-900 min-w-0">
           <div className="w-full h-full flex justify-center items-center min-w-0">
-            <LivePreview previewMode={previewMode} content={{ ...clonedData, html: currentHtml }} onSelectElement={(selector: string, otId?: string) => handleSelectElement(selector, otId)} dragType={dragType} style={{ width: '100%', maxWidth: '100%', minWidth: 0 }} />
+            <LivePreview previewMode={previewMode} content={{ ...clonedData, html: currentHtml }} onSelectElement={(selector: string, otId?: string) => handleSelectElement(selector, otId)} dragType={dragType} style={{ width: '100%', maxWidth: '100%', minWidth: 0 }} siteId={siteId} />
           </div>
         </div>
       </div>

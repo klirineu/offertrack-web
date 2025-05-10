@@ -153,18 +153,72 @@ const ControlPanel = () => {
     if (!iframe) return;
     const doc = iframe.contentDocument;
     if (!doc) return;
-    // Remove todos os <script> do body antes de salvar
-    doc.body.querySelectorAll('script').forEach(s => s.remove());
-    // Remove todos os destaques de seleção
-    doc.body.querySelectorAll('.__ot-selected').forEach(el => el.classList.remove('__ot-selected'));
-    // Remove todos os drag handles do editor
-    doc.body.querySelectorAll('div.__ot-drag-handle').forEach(el => el.remove());
-    const html = doc.documentElement.outerHTML;
+
+    // 1. Remove todas as classes do editor de TODOS os elementos (head e body)
+    const removeEditorClasses = (root: Document) => {
+      root.querySelectorAll('[class]').forEach((el) => {
+        const htmlEl = el as HTMLElement;
+        htmlEl.classList.remove('__ot-draggable', '__ot-selected');
+        // Remove qualquer classe do editor que comece com __ot-
+        if (typeof htmlEl.className === 'string') {
+          htmlEl.className = htmlEl.className
+            .split(' ')
+            .filter((c: string) => !c.startsWith('__ot-'))
+            .join(' ');
+          if (htmlEl.className === '') htmlEl.removeAttribute('class');
+        } else {
+          htmlEl.removeAttribute('class');
+        }
+      });
+    };
+    removeEditorClasses(doc);
+
+    // 1b. Remove todos os <div class="__ot-drag-handle"> e <div title="Arrastar para mover">
+    Array.from(doc.querySelectorAll('div.__ot-drag-handle')).forEach(el => el.remove());
+    Array.from(doc.querySelectorAll('div[title="Arrastar para mover"]')).forEach(el => el.remove());
+    // Remove qualquer elemento (qualquer tag) com title="Arrastar para mover"
+    Array.from(doc.querySelectorAll('[title="Arrastar para mover"]')).forEach(el => el.remove());
+    // Remove qualquer elemento cujo innerText seja exatamente '↕'
+    Array.from(doc.querySelectorAll('body *')).forEach(el => {
+      const htmlEl = el as HTMLElement;
+      if (htmlEl.innerText && htmlEl.innerText.trim() === '↕') htmlEl.remove();
+    });
+
+    // 2. Mover elementos do head de volta para o head
+    const headTags = ['META', 'TITLE', 'LINK', 'SCRIPT', 'STYLE', 'NOSCRIPT'];
+    headTags.forEach(tag => {
+      const nodes = Array.from(doc.body.querySelectorAll(tag));
+      nodes.forEach(node => {
+        doc.head.appendChild(node);
+      });
+    });
+
+    // 3. Remover <style> extras do head (mantém só se for do usuário)
+    Array.from(doc.head.querySelectorAll('style')).forEach(style => {
+      if (!style.hasAttribute('data-user-inserted')) style.remove();
+    });
+
+    // 4. Remover todos os <script> que não tenham data-user-inserted="true"
+    Array.from(doc.head.querySelectorAll('script')).forEach(script => {
+      if (!script.hasAttribute('data-user-inserted')) script.remove();
+    });
+    Array.from(doc.body.querySelectorAll('script')).forEach(script => {
+      if (!script.hasAttribute('data-user-inserted')) script.remove();
+    });
+
+    // 5. Monta o HTML final manualmente
+    const doctype = '<!DOCTYPE html>';
+    const htmlOpen = '<html>';
+    const htmlClose = '</html>';
+    const headHtml = doc.head.innerHTML;
+    const bodyHtml = doc.body.innerHTML;
+    const finalHtml = `${doctype}\n${htmlOpen}\n<head>${headHtml}</head>\n<body>${bodyHtml}</body>\n${htmlClose}`;
+
     // Obter id da query string
     const params = new URLSearchParams(location.search);
     const id = params.get('id');
     try {
-      const res = await api.post('/api/clone/save', { id, html });
+      const res = await api.post('/api/clone/save', { id, html: finalHtml });
       if (res.status === 200) {
         setSaveMsg('Site salvo com sucesso!');
       } else {

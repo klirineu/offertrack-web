@@ -7,26 +7,55 @@ interface LivePreviewProps {
   onSelectElement?: (selector: string, otId?: string) => void;
   dragType?: string | null;
   style?: React.CSSProperties;
+  siteId: string;
 }
 
-const LivePreview = ({ previewMode, content, onSelectElement, dragType, style }: LivePreviewProps) => {
+// Função utilitária para extrair <head> e <body> do HTML do usuário
+function extractHeadAndBody(html: string) {
+  const headMatch = html.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  const userHead = headMatch ? headMatch[1] : '';
+  let userBody = bodyMatch ? bodyMatch[1] : html;
+  // Se não houver <body>, remove <html> e <head> para evitar duplicidade
+  if (!bodyMatch) {
+    userBody = userBody.replace(/<head[\s\S]*?<\/head>/i, '').replace(/<html[^>]*>|<\/html>/gi, '');
+  }
+  return { userHead, userBody };
+}
+
+// Função utilitária para tornar caminhos de assets absolutos
+function absolutizeAssetPaths(html: string, siteId: string) {
+  const base = `https://production-web.up.railway.app/sites/${siteId}/`;
+  // Substitui href/src que começam com css/, js/, img/, assets/, static/
+  return html.replace(/(href|src)=(['"])(css|js|img|assets|static)\//g, `$1=$2${base}$3/`);
+}
+
+const LivePreview = ({ previewMode, content, onSelectElement, dragType, style, siteId }: LivePreviewProps) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { setNodeRef } = useDroppable({ id: 'preview-drop' });
+  // Pegue o siteId de algum lugar (exemplo: do content ou de uma prop)
+  // Aqui, supondo que venha em content.assets.siteId
 
+  // Ajusta os caminhos antes de extrair head/body
+  const htmlComPathsAbsolutos = absolutizeAssetPaths(content.html, siteId!);
+  console.log(content.css, 'css')
+  console.log(content.html, 'html')
   // Só atualiza o conteúdo do iframe quando o HTML base muda
   useEffect(() => {
     if (iframeRef.current) {
       const doc = iframeRef.current.contentDocument;
       if (doc) {
+        // Usa o HTML com paths absolutos
+        const { userHead, userBody } = extractHeadAndBody(htmlComPathsAbsolutos);
         doc.open();
         doc.write(`
           <html>
             <head>
+              ${userHead}
               <style>
                 ${content.css}
-                .__ot-selected { outline: 2px solid #2563eb !important; outline-offset: 2px !important; }
-                .__ot-drag-handle { position: absolute; top: 2px; left: 2px; z-index: 100; background: #2563eb; color: #fff; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: grab; }
-                .__ot-draggable { position: relative; }
+                /* Se quiser highlight de seleção, use apenas outline temporário via CSS */
+                .ot-preview-selected { outline: 2px solid #2563eb !important; outline-offset: 2px !important; }
                 html {
                   scroll-behavior: smooth;
                   overflow-y: scroll;
@@ -36,81 +65,45 @@ const LivePreview = ({ previewMode, content, onSelectElement, dragType, style }:
                 html::-webkit-scrollbar { display: none; }
               </style>
             </head>
-            <body>${content.html}
+            <body>
+              ${userBody}
               <script>
-                // Adiciona handles de drag em cada filho do body
-                function addDragHandles() {
-                  Array.from(document.body.children).forEach(function(el) {
-                    if (!el.classList.contains('__ot-draggable')) {
-                      el.classList.add('__ot-draggable');
-                      var handle = document.createElement('div');
-                      handle.className = '__ot-drag-handle';
-                      handle.innerHTML = '↕';
-                      handle.title = 'Arrastar para mover';
-                      handle.onmousedown = function(e) {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        if (!el.dataset.otId) el.dataset.otId = Date.now().toString() + Math.random().toString(36).slice(2);
-                        window.parent.postMessage({ type: 'ot-drag-internal', otId: el.dataset.otId }, '*');
-                      };
-                      el.insertBefore(handle, el.firstChild);
-                    }
-                  });
-                }
-                addDragHandles();
-                // Reaplica handles ao adicionar novos elementos
-                var observer = new MutationObserver(addDragHandles);
-                observer.observe(document.body, { childList: true });
                 document.body.addEventListener('click', function(e) {
                   e.preventDefault();
                   e.stopPropagation();
                   let el = e.target;
                   if (!el || el === document.body) return;
-                  document.querySelectorAll('.__ot-selected').forEach(x => x.classList.remove('__ot-selected'));
-                  el.classList.add('__ot-selected');
+                  // Gera otId se não existir
                   if (!el.dataset.otId) el.dataset.otId = Date.now().toString() + Math.random().toString(36).slice(2);
+                  // Remove highlight anterior
+                  document.querySelectorAll('.ot-preview-selected').forEach(x => x.classList.remove('ot-preview-selected'));
+                  // Adiciona highlight visual temporário
+                  el.classList.add('ot-preview-selected');
+                  // Monta seletor simples
                   let selector = el.tagName.toLowerCase();
                   if (el.id) selector += '#' + el.id;
                   if (el.className) selector += '.' + [...el.classList].join('.');
                   window.parent.postMessage({ type: 'element-selected', selector, otId: el.dataset.otId }, '*');
-                }, true);
-                // Drag-and-drop real para o iframe
-                document.body.addEventListener('mouseup', function(e) {
-                  try {
-                    if (window.parent && window.parent.__otDragType) {
-                      var type = window.parent.__otDragType;
-                      var html = '';
-                      if (type === 'button') html = '<button>Botão</button>';
-                      if (type === 'text') html = '<p>Texto de exemplo</p>';
-                      if (type === 'image') html = '<img src="https://placehold.co/200x100" alt="Imagem" />';
-                      if (type === 'video') html = '<video src="https://www.w3schools.com/html/mov_bbb.mp4" controls width="200"></video>';
-                      if (type === 'link') html = '<a href="#">Link</a>';
-                      if (type === 'input') html = '<input type="text" placeholder="Digite aqui" />';
-                      if (type === 'header') html = '<header style="background:#222;color:#fff;padding:24px;text-align:center;font-size:2rem;">Header Moderno</header>';
-                      if (type === 'hero') html = '<section style="padding:48px;text-align:center;background:#f5f5f5;"><h1>Hero Section</h1><p>Chamada de destaque</p></section>';
-                      if (type === 'cta') html = '<section style="padding:32px;text-align:center;background:#2563eb;color:#fff;"><h2>Chamada para ação</h2><button style="margin-top:16px;">Quero saber mais</button></section>';
-                      if (type === 'contact') html = '<section style="padding:32px;text-align:center;"><h2>Fale conosco</h2><form><input type="text" placeholder="Seu nome" style="margin:8px;"/><input type="email" placeholder="Seu email" style="margin:8px;"/><button>Enviar</button></form></section>';
-                      if (type === 'pricing') html = '<section style="padding:32px;text-align:center;background:#f0f0f0;"><h2>Planos</h2><div style="display:flex;justify-content:center;gap:16px;"><div style="background:#fff;padding:16px;">Básico</div><div style="background:#fff;padding:16px;">Pro</div></div></section>';
-                      if (html) {
-                        var temp = document.createElement('div');
-                        temp.innerHTML = html;
-                        Array.from(temp.childNodes).forEach(function(node) {
-                          document.body.appendChild(node);
-                        });
-                      }
-                      window.parent.__otDragType = null;
-                      window.parent.postMessage({ type: 'ot-drag-reset' }, '*');
-                    }
-                  } catch (err) {}
                 }, true);
               </script>
             </body>
           </html>
         `);
         doc.close();
+        // Após doc.close(), injeta manualmente os <link rel="stylesheet"> do userHead
+        const linkRegex = /<link[^>]+rel=["']stylesheet["'][^>]*>/gi;
+        const links = userHead.match(linkRegex) || [];
+        links.forEach(linkHtml => {
+          const temp = document.createElement('div');
+          temp.innerHTML = linkHtml;
+          const linkEl = temp.firstElementChild;
+          if (linkEl && doc.head) {
+            doc.head.appendChild(linkEl);
+          }
+        });
       }
     }
-  }, []);
+  }, [content, htmlComPathsAbsolutos]);
 
   useEffect(() => {
     function handler(event: MessageEvent) {

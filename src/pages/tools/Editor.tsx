@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Wrench, Edit, Trash2, Plus, Download } from 'lucide-react';
@@ -50,7 +50,6 @@ export default function Editor() {
   const navigate = useNavigate();
   const { theme } = useThemeStore();
   const [open, setOpen] = useState(false);
-  const location = useLocation();
 
   const urlParam = searchParams.get('url');
 
@@ -63,8 +62,7 @@ export default function Editor() {
 
   useEffect(() => {
     fetchClones();
-    // eslint-disable-next-line
-  }, [location.pathname]);
+  }, []);
 
   useEffect(() => {
     if (urlParam) {
@@ -144,15 +142,16 @@ export default function Editor() {
       const urlSite = data.url;
       const regex = /\/sites\/([a-f0-9-]+)/;
       const match = urlSite.match(regex);
-      if (match && match[1]) {
-        await addClone(urlSite);
-        setEditorResult({ url: urlSite, id: match[1] });
-        setCloneUrlToProcess(null);
-      } else {
-        alert('Erro ao processar resposta do backend');
-      }
+      await addClone(url, urlSite);
+      setEditorResult({ url: urlSite, id: match[1] });
+      await fetchClones();
+
+    } catch (err) {
+      alert('Erro inesperado ao clonar: ' + (err instanceof Error ? err.message : String(err)));
+      console.error('Erro inesperado no handleCloneToEditor:', err);
     } finally {
       setActionLoading(null);
+      setCloneUrlToProcess(null);
     }
   }
 
@@ -230,7 +229,7 @@ export default function Editor() {
                         setActionLoading('zip');
                         const res = await api.post('/api/clone/zip', { url: cloneUrlToProcess }, { responseType: 'blob' });
                         setActionLoading(null);
-                        if (!res.ok) return alert('Erro ao baixar ZIP');
+                        if (res.status < 200 || res.status >= 300) return alert('Erro ao baixar ZIP');
                         const blob = res.data;
                         const a = document.createElement('a');
                         a.href = window.URL.createObjectURL(blob);
@@ -311,14 +310,21 @@ export default function Editor() {
                   <li className="px-6 py-4 text-gray-500 dark:text-gray-400">Nenhum site clonado ainda.</li>
                 ) : clones.map(clone => (
                   <li key={clone.id} className="flex items-center justify-between px-6 py-4 group hover:bg-gray-50 dark:hover:bg-gray-900 transition">
-                    <a
-                      href={clone.url}
-                      className="text-blue-600 dark:text-blue-400 underline break-all"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {clone.url}
-                    </a>
+                    <div>
+                      <a
+                        href={clone.url}
+                        className="text-blue-600 dark:text-blue-400 underline break-all"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {clone.url}
+                      </a>
+                      {clone.original_url && (
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          <span className="font-semibold">Original:</span> {clone.original_url}
+                        </div>
+                      )}
+                    </div>
                     <div className="flex gap-2">
                       <button
                         onClick={() => {
@@ -333,7 +339,17 @@ export default function Editor() {
                         <Edit className="w-5 h-5" />
                       </button>
                       <button
-                        onClick={() => removeClone(clone.id)}
+                        onClick={async () => {
+                          const urlSite = clone.url;
+                          const regex = /\/sites\/([a-f0-9-]+)/;
+                          const match = urlSite.match(regex);
+                          try {
+                            await removeClone(clone.id, match![1]);
+                          } catch (err) {
+                            alert('Erro ao excluir clone: ' + (err instanceof Error ? err.message : String(err)));
+                            console.error('Erro ao excluir clone:', err);
+                          }
+                        }}
                         className="p-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                         title="Excluir"
                       >

@@ -1,10 +1,11 @@
 import { create } from "zustand";
 import { supabase } from "../lib/supabase";
-import { Database } from "../types/supabase";
+import api from "../services/api";
 
 export interface CloneSite {
   id: string;
   url: string;
+  original_url?: string;
 }
 
 interface ClonesStore {
@@ -13,8 +14,8 @@ interface ClonesStore {
   error: string | null;
   fetchClones: () => Promise<void>;
   setClones: (clones: CloneSite[]) => void;
-  addClone: (url: string) => Promise<void>;
-  removeClone: (id: string) => Promise<void>;
+  addClone: (originalUrl: string, clonedUrl: string) => Promise<void>;
+  removeClone: (id: string, urlId: string) => Promise<void>;
   getClone: (id: string) => CloneSite | undefined;
 }
 
@@ -32,7 +33,7 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
       if (!user) throw new Error("User not authenticated");
       const { data, error } = await supabase
         .from("cloned_sites")
-        .select("id, url")
+        .select("id, url, original_url")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -48,7 +49,7 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
 
   setClones: (clones) => set({ clones }),
 
-  addClone: async (url) => {
+  addClone: async (originalUrl, clonedUrl) => {
     set({ isLoading: true, error: null });
     try {
       const {
@@ -57,8 +58,8 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
       if (!user) throw new Error("User not authenticated");
       const { data, error } = await supabase
         .from("cloned_sites")
-        .insert({ user_id: user.id, url })
-        .select("id, url")
+        .insert({ user_id: user.id, original_url: originalUrl, url: clonedUrl })
+        .select("id, url, original_url")
         .single();
       if (error) throw error;
       set((state) => ({
@@ -73,7 +74,7 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
     }
   },
 
-  removeClone: async (id) => {
+  removeClone: async (id, urlId) => {
     set({ isLoading: true, error: null });
     try {
       const {
@@ -86,6 +87,11 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
         .eq("id", id)
         .eq("user_id", user.id);
       if (error) throw error;
+
+      // Chamada à API para remover arquivos/recursos do clone
+
+      await api.delete(`/api/clone/${urlId}`);
+
       set((state) => ({
         clones: state.clones.filter((c) => c.id !== id),
         isLoading: false,
