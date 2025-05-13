@@ -22,6 +22,7 @@ export function OfferCard({ offer }: OfferCardProps) {
   const { deleteOffer } = useOfferStore();
   const [metrics, setMetrics] = useState<{ count: number; checked_at: string }[]>([]);
   const [loadingMetrics, setLoadingMetrics] = useState(true);
+  const [downloading, setDownloading] = useState(false);
 
   const {
     attributes,
@@ -68,12 +69,19 @@ export function OfferCard({ offer }: OfferCardProps) {
   async function handleDownloadMedia(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    setDownloading(true);
     try {
-      const response = await api.post('/api/facebook/download-media', { url: offer.offerUrl }, { responseType: 'blob' });
+      const response = await api.post('/api/facebook/download-media', { url: offer.offerUrl, title: offer.title }, { responseType: 'blob' });
       const blob = response.data;
+      let filename = `${offer.title.replace(/\s+/g, "_").toLowerCase()}-media.zip`;
+      const disposition = response.headers && response.headers['content-disposition'];
+      if (disposition) {
+        const match = disposition.match(/filename="?([^";]+)"?/);
+        if (match && match[1]) filename = decodeURIComponent(match[1]);
+      }
       const link = document.createElement('a');
       link.href = window.URL.createObjectURL(blob);
-      link.download = `media-${offer.id}.zip`;
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -83,6 +91,8 @@ export function OfferCard({ offer }: OfferCardProps) {
         msg = (err as { message: string }).message;
       }
       alert('Erro ao baixar mídia: ' + msg);
+    } finally {
+      setDownloading(false);
     }
   }
 
@@ -158,59 +168,66 @@ export function OfferCard({ offer }: OfferCardProps) {
           <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">{offer.description}</p>
         )}
 
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            <a
-              href={offer.offerUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
-            >
-              <ExternalLink className="w-4 h-4" />
-              Offer URL
-            </a>
-            <a
-              href={`/offers/${offer.id}/metrics`}
-              className="px-2 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-xs flex items-center gap-1"
-              title="Ver Métricas Detalhadas"
-            >
-              <TrendingUp className="w-4 h-4" />
-              Métricas
-            </a>
-            <button
-              onClick={handleDownloadMedia}
-              className="px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-xs flex items-center gap-1"
-              title="Baixar Mídia da Oferta"
-            >
-              <Download className="w-4 h-4" />
-              Baixar Mídia
-            </button>
-          </div>
-          <div className="flex items-center gap-2">
-            <a
-              href={offer.landingPageUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
-            >
-              <ExternalLink className="w-4 h-4" />
-              Landing Page
-            </a>
-            <button
-              onClick={e => {
-                e.preventDefault();
-                e.stopPropagation();
-                window.location.href = `/tools/clonesites?url=${encodeURIComponent(offer.landingPageUrl)}`;
-              }}
-              className="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs flex items-center gap-1"
-              title="Clonar Landing Page"
-            >
-              <Copy className="w-4 h-4" />
-              Clonar
-            </button>
-          </div>
+        <div className="flex flex-wrap gap-2 mt-2">
+          <a
+            href={offer.offerUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+          >
+            <ExternalLink className="w-4 h-4" />
+            Ver Oferta
+          </a>
+          <a
+            href={`/offers/${offer.id}/metrics`}
+            className="flex items-center gap-1 px-3 py-1 rounded-md bg-emerald-50 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-200 hover:bg-emerald-100 dark:hover:bg-emerald-800 transition font-medium shadow-sm"
+            title="Ver Métricas Detalhadas"
+          >
+            <TrendingUp className="w-4 h-4" />
+            Métricas
+          </a>
+          <button
+            onClick={handleDownloadMedia}
+            className="flex items-center gap-1 px-3 py-1 rounded-md bg-indigo-50 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-indigo-800 transition font-medium shadow-sm"
+            title="Baixar Mídia da Oferta"
+          >
+            <Download className="w-4 h-4" />
+            Baixar Mídia
+          </button>
+          <a
+            href={offer.landingPageUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+          >
+            <ExternalLink className="w-4 h-4" />
+            Landing Page
+          </a>
+          <button
+            onClick={e => {
+              e.preventDefault();
+              e.stopPropagation();
+              window.location.href = `/tools/clonesites?url=${encodeURIComponent(offer.landingPageUrl)}`;
+            }}
+            className="flex items-center gap-1 px-3 py-1 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition font-medium shadow-sm"
+            title="Clonar Landing Page"
+          >
+            <Copy className="w-4 h-4" />
+            Clonar
+          </button>
         </div>
       </div>
+      {downloading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="flex flex-col items-center gap-4 bg-white dark:bg-gray-800 rounded-lg p-8 shadow-lg">
+            <svg className="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+            <span className="text-gray-700 dark:text-gray-200 font-semibold">Baixando mídia...</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

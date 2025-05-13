@@ -31,6 +31,7 @@ export function EditOfferDialog() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('submit', selectedOfferId, formData);
     if (!selectedOfferId) return;
     updateOffer(selectedOfferId, {
       ...formData,
