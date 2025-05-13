@@ -18,6 +18,7 @@ import { RegisterForm } from './components/auth/RegisterForm';
 import Editor from './pages/tools/Editor';
 import EditorStudio from './pages/tools/EditorStudio';
 import { useAuthStore } from './store/authStore';
+import OfferMetrics from './pages/OfferMetrics';
 
 function App() {
   const initialize = useAuthStore((s) => s.initialize);
@@ -47,6 +48,7 @@ function App() {
           <Route path="/tools/anticlone" element={<ProtectedRoute><Anticlone /></ProtectedRoute>} />
           <Route path="/tools/clonesites" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
           <Route path="/tools/editor-studio" element={<ProtectedRoute><EditorStudio /></ProtectedRoute>} />
+          <Route path="/offers/:offerId/metrics" element={<ProtectedRoute><OfferMetrics /></ProtectedRoute>} />
         </Routes>
       </AuthProvider>
     </Router>

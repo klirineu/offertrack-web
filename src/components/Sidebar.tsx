@@ -1,10 +1,16 @@
 import React from 'react';
 import { User, Settings, CreditCard, LogOut } from 'lucide-react';
-import type { User as UserType } from '../types';
 import { useThemeStore } from '../store/themeStore';
 
+// Adicionar tipo mínimo para Sidebar
+export type SidebarUser = {
+  name: string;
+  email: string;
+  avatar: string;
+};
+
 interface SidebarProps {
-  user: UserType;
+  user: SidebarUser;
 }
 
 // components/Sidebar.tsx

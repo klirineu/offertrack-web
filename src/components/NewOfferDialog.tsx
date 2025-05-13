@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { AdMetrics } from '../types';
 import { useThemeStore } from '../store/themeStore';
 
 interface NewOfferDialogProps {
@@ -12,7 +11,6 @@ interface NewOfferDialogProps {
     landingPageUrl: string;
     description: string;
     tags: string[];
-    metrics: AdMetrics[];
   }) => Promise<void>;
   onError?: (err: unknown) => void;
 }
@@ -26,7 +24,6 @@ export function NewOfferDialog({ isOpen, onClose, onSubmit, onError }: NewOfferD
     landingPageUrl: '',
     description: '',
     tags: '',
-    metrics: [] as AdMetrics[]
   });
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -39,7 +36,6 @@ export function NewOfferDialog({ isOpen, onClose, onSubmit, onError }: NewOfferD
         landingPageUrl: '',
         description: '',
         tags: '',
-        metrics: [] as AdMetrics[]
       });
       setLoading(false);
     }
@@ -53,12 +49,7 @@ export function NewOfferDialog({ isOpen, onClose, onSubmit, onError }: NewOfferD
     try {
       await onSubmit({
         ...formData,
-        tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean),
-        metrics: formData.metrics.map(metric => ({
-          ...metric,
-          spend: metric.spend || 0,
-          impressions: metric.impressions || 0
-        }))
+        tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean)
       });
       setFormData({
         title: '',
@@ -66,7 +57,6 @@ export function NewOfferDialog({ isOpen, onClose, onSubmit, onError }: NewOfferD
         landingPageUrl: '',
         description: '',
         tags: '',
-        metrics: [] as AdMetrics[]
       });
       onClose();
     } catch (err) {
@@ -154,83 +144,6 @@ export function NewOfferDialog({ isOpen, onClose, onSubmit, onError }: NewOfferD
               placeholder="e.g., ecommerce, fashion, electronics"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Métricas
-            </label>
-            <div className="space-y-2">
-              {formData.metrics.map((metric, index) => (
-                <div key={index} className="grid grid-cols-2 gap-2">
-                  <input
-                    type="date"
-                    required
-                    value={metric.date}
-                    onChange={(e) => {
-                      const newMetrics = [...formData.metrics];
-                      newMetrics[index].date = e.target.value;
-                      setFormData({ ...formData, metrics: newMetrics });
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  />
-                  <input
-                    type="number"
-                    placeholder="Active Ads"
-                    required
-                    value={metric.activeAds}
-                    onChange={(e) => {
-                      const newMetrics = [...formData.metrics];
-                      newMetrics[index].activeAds = Number(e.target.value);
-                      setFormData({ ...formData, metrics: newMetrics });
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  />
-                  {/* <input
-                    type="number"
-                    placeholder="Spend"
-                    value={metric.spend || ''}
-                    onChange={(e) => {
-                      const newMetrics = [...formData.metrics];
-                      newMetrics[index].spend = Number(e.target.value);
-                      setFormData({ ...formData, metrics: newMetrics });
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  />
-                  <input
-                    type="number"
-                    placeholder="Impressions"
-                    value={metric.impressions || ''}
-                    onChange={(e) => {
-                      const newMetrics = [...formData.metrics];
-                      newMetrics[index].impressions = Number(e.target.value);
-                      setFormData({ ...formData, metrics: newMetrics });
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  /> */}
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => {
-                  setFormData({
-                    ...formData,
-                    metrics: [
-                      ...formData.metrics,
-                      {
-                        date: new Date().toISOString().split('T')[0],
-                        activeAds: 0,
-                        spend: 0,
-                        impressions: 0
-                      }
-                    ]
-                  });
-                }}
-                className="text-sm text-blue-600 hover:text-blue-800"
-              >
-                + Adicionar Métrica
-              </button>
-            </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-4">

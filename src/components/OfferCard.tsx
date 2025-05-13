@@ -1,17 +1,27 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ExternalLink, Tag, Clock, Edit2, TrendingUp, Copy, Trash2 } from 'lucide-react';
+import { ExternalLink, Tag, Clock, Edit2, TrendingUp, Copy, Trash2, Download } from 'lucide-react';
 import type { Offer } from '../types';
 import { useEditDialogStore } from '../store/editDialogStore';
 import { useOfferStore } from '../store/offerStore';
+import api from '../services/api';
+import { useEffect, useState } from 'react';
+import { createClient } from '@supabase/supabase-js';
 
 interface OfferCardProps {
   offer: Offer;
 }
 
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
+
 export function OfferCard({ offer }: OfferCardProps) {
   const { openDialog } = useEditDialogStore();
   const { deleteOffer } = useOfferStore();
+  const [metrics, setMetrics] = useState<{ count: number; checked_at: string }[]>([]);
+  const [loadingMetrics, setLoadingMetrics] = useState(true);
 
   const {
     attributes,
@@ -31,15 +41,48 @@ export function OfferCard({ offer }: OfferCardProps) {
     boxShadow: isDragging ? '0 0 0 3px rgba(59,130,246,0.3)' : undefined,
   };
 
-  const latestMetric = offer.metrics?.at(-1);
-  const previousMetric = offer.metrics?.at(-2);
-  const adsTrend = latestMetric && previousMetric
-    ? latestMetric.activeAds - previousMetric.activeAds
-    : 0;
+  useEffect(() => {
+    async function fetchMetrics() {
+      setLoadingMetrics(true);
+      const { data, error } = await supabase
+        .from('offer_metrics')
+        .select('count,checked_at')
+        .eq('offer_id', offer.id)
+        .order('checked_at', { ascending: true });
+      if (!error && data) setMetrics(data);
+      setLoadingMetrics(false);
+    }
+    fetchMetrics();
+  }, [offer.id]);
+
+  const latestMetric = metrics.at(-1);
+  const firstMetric = metrics.at(0);
+  const adsTrend = latestMetric && firstMetric ? latestMetric.count - firstMetric.count : 0;
 
   async function handleDeleteOffer() {
     if (window.confirm('Tem certeza que deseja excluir esta oferta?')) {
       await deleteOffer(offer.id);
+    }
+  }
+
+  async function handleDownloadMedia(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      const response = await api.post('/api/facebook/download-media', { url: offer.offerUrl }, { responseType: 'blob' });
+      const blob = response.data;
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = `media-${offer.id}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err: unknown) {
+      let msg = String(err);
+      if (typeof err === 'object' && err && 'message' in err && typeof (err as { message?: unknown }).message === 'string') {
+        msg = (err as { message: string }).message;
+      }
+      alert('Erro ao baixar mídia: ' + msg);
     }
   }
 
@@ -85,17 +128,19 @@ export function OfferCard({ offer }: OfferCardProps) {
           <span>{new Date(offer.createdAt).toLocaleDateString()}</span>
         </div>
 
-        {latestMetric && (
+        {loadingMetrics ? (
+          <div className="text-gray-500 dark:text-gray-400 text-sm mb-2">Carregando métricas...</div>
+        ) : latestMetric ? (
           <div className="flex items-center gap-2 mb-2 text-sm">
             <TrendingUp className="w-4 h-4" />
-            <span className="dark:text-white">Active Ads: {latestMetric.activeAds}</span>
+            <span className="dark:text-white">Active Ads: {latestMetric.count}</span>
             {adsTrend !== 0 && (
               <span className={adsTrend > 0 ? 'text-green-600' : 'text-red-600'}>
                 ({adsTrend > 0 ? '+' : ''}{adsTrend})
               </span>
             )}
           </div>
-        )}
+        ) : null}
 
         <div className="flex flex-wrap gap-2 mb-3">
           {offer.tags.map((tag) => (
@@ -114,15 +159,33 @@ export function OfferCard({ offer }: OfferCardProps) {
         )}
 
         <div className="flex flex-col gap-2">
-          <a
-            href={offer.offerUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
-          >
-            <ExternalLink className="w-4 h-4" />
-            Offer URL
-          </a>
+          <div className="flex items-center gap-2">
+            <a
+              href={offer.offerUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Offer URL
+            </a>
+            <a
+              href={`/offers/${offer.id}/metrics`}
+              className="px-2 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-xs flex items-center gap-1"
+              title="Ver Métricas Detalhadas"
+            >
+              <TrendingUp className="w-4 h-4" />
+              Métricas
+            </a>
+            <button
+              onClick={handleDownloadMedia}
+              className="px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-xs flex items-center gap-1"
+              title="Baixar Mídia da Oferta"
+            >
+              <Download className="w-4 h-4" />
+              Baixar Mídia
+            </button>
+          </div>
           <div className="flex items-center gap-2">
             <a
               href={offer.landingPageUrl}
