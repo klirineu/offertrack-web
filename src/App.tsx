@@ -19,6 +19,9 @@ import Editor from './pages/tools/Editor';
 import EditorStudio from './pages/tools/EditorStudio';
 import { useAuthStore } from './store/authStore';
 import OfferMetrics from './pages/OfferMetrics';
+import About from './pages/About';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfUse from './pages/TermsOfUse';
 
 function App() {
   const initialize = useAuthStore((s) => s.initialize);
@@ -49,6 +52,9 @@ function App() {
           <Route path="/tools/clonesites" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
           <Route path="/tools/editor-studio" element={<ProtectedRoute><EditorStudio /></ProtectedRoute>} />
           <Route path="/offers/:offerId/metrics" element={<ProtectedRoute><OfferMetrics /></ProtectedRoute>} />
+          <Route path="/about" element={<About />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsOfUse />} />
         </Routes>
       </AuthProvider>
     </Router>

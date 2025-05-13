@@ -194,6 +194,9 @@ export function OfferCard({ offer }: OfferCardProps) {
             <Download className="w-4 h-4" />
             Baixar Mídia
           </button>
+
+        </div>
+        <div className="flex flex-wrap gap-2 mt-2">
           <a
             href={offer.landingPageUrl}
             target="_blank"
