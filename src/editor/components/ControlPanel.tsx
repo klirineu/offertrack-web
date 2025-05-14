@@ -263,9 +263,9 @@ const ControlPanel = () => {
 
     // Obter id da query string
     const params = new URLSearchParams(location.search);
-    const id = params.get('id');
+    const subdomain = params.get('id');
     try {
-      const res = await api.post('/api/clone/save', { id, html: finalHtml });
+      const res = await api.post('/api/clone/save', { html: finalHtml, subdomain });
       if (res.status === 200) {
         setSaveMsg('Site salvo com sucesso!');
       } else {

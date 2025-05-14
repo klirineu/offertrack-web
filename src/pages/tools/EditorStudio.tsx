@@ -19,8 +19,9 @@ export default function EditorStudio() {
 
     const loadContent = async () => {
       try {
-        // Buscar o HTML principal diretamente
-        const htmlRes = await api.get(`/sites/${cloneId}`);
+        // Buscar o HTML principal diretamente do subdomínio
+        const siteUrl = `https://${cloneId}.clonup.site`;
+        const htmlRes = await api.get(siteUrl);
         const html = htmlRes.data;
 
         setHtml(html);

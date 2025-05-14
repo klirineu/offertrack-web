@@ -25,7 +25,7 @@ function extractHeadAndBody(html: string) {
 
 // Função utilitária para tornar caminhos de assets absolutos
 function absolutizeAssetPaths(html: string, siteId: string) {
-  const base = `https://production-web.up.railway.app/sites/${siteId}/`;
+  const base = `https://${siteId}.clonup.site/`;
   // Substitui href/src que começam com css/, js/, img/, assets/, static/
   return html.replace(/(href|src)=(['"])(css|js|img|assets|static)\//g, `$1=$2${base}$3/`);
 }
