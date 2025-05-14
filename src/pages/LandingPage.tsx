@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sun, Moon, Mail, ExternalLink, Globe } from 'lucide-react';
+import { Sun, Moon, Mail } from 'lucide-react';
 import { useThemeStore } from '../store/themeStore';
 import { Line } from 'react-chartjs-2';
 import { Chart, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';

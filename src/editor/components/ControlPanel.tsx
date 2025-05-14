@@ -192,6 +192,9 @@ const ControlPanel = () => {
     const doc = iframe.contentDocument;
     if (!doc) return;
 
+    // Remove qualquer classe de seleção visual do DOM antes de serializar
+    doc.querySelectorAll('.__ot-selected, .ot-preview-selected').forEach(el => el.classList.remove('__ot-selected', 'ot-preview-selected'));
+
     // Serializa o HTML do iframe
     let html = doc.documentElement.outerHTML;
 

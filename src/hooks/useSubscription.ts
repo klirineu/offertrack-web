@@ -1,22 +1,22 @@
-import { useEffect, useState } from 'react'
-import { useAuth } from '../contexts/AuthContext'
-import { Database } from '../types/supabase'
+import { useEffect, useState } from "react";
+import { useAuthStore } from "../store/authStore";
+import { Database } from "../types/supabase";
 
-type Profile = Database['public']['Tables']['profiles']['Row']
-type SubscriptionTier = Profile['subscription_tier']
-type SubscriptionStatus = Profile['subscription_status']
+type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+type SubscriptionTier = Profile["subscription_tier"];
+type SubscriptionStatus = Profile["subscription_status"];
 
 interface SubscriptionInfo {
-  tier: SubscriptionTier
-  status: SubscriptionStatus
-  isActive: boolean
+  tier: SubscriptionTier;
+  status: SubscriptionStatus;
+  isActive: boolean;
   features: {
-    maxProjects: number
-    maxCollaborators: number
-    customDomain: boolean
-    analytics: boolean
-    prioritySupport: boolean
-  }
+    maxProjects: number;
+    maxCollaborators: number;
+    customDomain: boolean;
+    analytics: boolean;
+    prioritySupport: boolean;
+  };
 }
 
 const TIER_FEATURES = {
@@ -41,43 +41,43 @@ const TIER_FEATURES = {
     analytics: true,
     prioritySupport: true,
   },
-}
+};
 
 export function useSubscription() {
-  const { profile } = useAuth()
+  const { profile } = useAuthStore();
   const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo>({
-    tier: 'free',
+    tier: "free",
     status: null,
     isActive: false,
     features: TIER_FEATURES.free,
-  })
+  });
 
   useEffect(() => {
     if (profile) {
-      const tier = profile.subscription_tier || 'free'
-      const status = profile.subscription_status
-      const isActive = status === 'active' || status === 'trialing'
+      const tier = profile.subscription_tier || "free";
+      const status = profile.subscription_status;
+      const isActive = status === "active" || status === "trialing";
 
       setSubscriptionInfo({
         tier,
         status,
         isActive,
-        features: TIER_FEATURES[tier || 'free'],
-      })
+        features: TIER_FEATURES[tier || "free"],
+      });
     }
-  }, [profile])
+  }, [profile]);
 
   const canAccessFeature = (feature: keyof typeof TIER_FEATURES.free) => {
-    return subscriptionInfo.isActive && subscriptionInfo.features[feature]
-  }
+    return subscriptionInfo.isActive && subscriptionInfo.features[feature];
+  };
 
-  const getFeatureLimit = (feature: 'maxProjects' | 'maxCollaborators') => {
-    return subscriptionInfo.features[feature]
-  }
+  const getFeatureLimit = (feature: "maxProjects" | "maxCollaborators") => {
+    return subscriptionInfo.features[feature];
+  };
 
   return {
     ...subscriptionInfo,
     canAccessFeature,
     getFeatureLimit,
-  }
-} 
+  };
+}

@@ -4,7 +4,8 @@ import React, { useState, createContext, useContext } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { useThemeStore } from '../../store/themeStore';
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuthStore } from '../../store/authStore';
+
 interface Links {
   label: string;
   href: string;
@@ -169,7 +170,7 @@ export const SidebarLink = ({
   props?: any;
 }) => {
   const { open, animate } = useSidebar();
-  const { signOut } = useAuth();
+  const { signOut } = useAuthStore();
   return (
     <>
       <Link

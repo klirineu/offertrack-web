@@ -1,13 +1,12 @@
 import { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuthStore } from '../../store/authStore';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 
 export function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { signIn } = useAuth();
+  const { signIn, isLoading } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -15,7 +14,6 @@ export function LoginForm() {
     e.preventDefault();
     try {
       setError('');
-      setLoading(true);
       const { error: signInError } = await signIn(email, password);
       if (signInError) {
         setError('Falha ao fazer login. Verifique suas credenciais.');
@@ -26,8 +24,6 @@ export function LoginForm() {
       navigate(origin);
     } catch (err) {
       setError('Ocorreu um erro inesperado. Tente novamente.');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -74,10 +70,10 @@ export function LoginForm() {
             </div>
             <button
               type="submit"
-              disabled={loading}
-              className="w-full px-4 py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              disabled={isLoading}
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
             >
-              {loading ? 'Entrando...' : 'Entrar'}
+              {isLoading ? 'Loading...' : 'Entrar'}
             </button>
           </form>
           <div className="mt-6 text-center">
