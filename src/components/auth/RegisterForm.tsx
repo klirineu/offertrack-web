@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+
+import { useAuthStore } from '../../store/authStore'
+
 import { Link, useNavigate } from 'react-router-dom';
 
 export function RegisterForm() {
@@ -8,7 +10,9 @@ export function RegisterForm() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signUp } = useAuth();
+
+  const { signUp } = useAuthStore()
+
   const navigate = useNavigate();
   const [fullName, setFullName] = useState('');
 
