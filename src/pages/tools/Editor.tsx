@@ -16,13 +16,16 @@ declare global {
   }
 }
 
+import LogoBranco from '../../assets/logo-branco.png';
+import IconBranco from '../../assets/ico-branco.png';
+
 const Logo = () => {
   return (
     <Link
       to="/"
       className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
     >
-      <div className="h-5 w-6 bg-black dark:bg-white rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0" />
+      <img src={LogoBranco} alt="" />
       <motion.span
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -40,7 +43,7 @@ const LogoIcon = () => {
       to="/"
       className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
     >
-      <div className="h-5 w-6 bg-black dark:bg-white rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0" />
+      <img src={IconBranco} alt="" />
     </Link>
   );
 };
@@ -133,6 +136,18 @@ export default function Editor() {
     }
   };
 
+  // Função utilitária para extrair o subdomínio
+  function getSubdomainFromUrl(url: string): string {
+    try {
+      const { hostname } = new URL(url);
+      const parts = hostname.split('.');
+      if (parts.length > 2) return parts[0];
+      return '';
+    } catch {
+      return '';
+    }
+  }
+
   // Adicionar função para clonar para o editor
   async function handleCloneToEditor(url: string) {
     setActionLoading('editor');
@@ -140,12 +155,10 @@ export default function Editor() {
       const res = await api.post('/api/clone/folder', { url });
       const data = res.data;
       const urlSite = data.url;
-      const regex = /\/sites\/([a-f0-9-]+)/;
-      const match = urlSite.match(regex);
+      const subdomain = getSubdomainFromUrl(urlSite);
       await addClone(url, urlSite);
-      setEditorResult({ url: urlSite, id: match[1] });
+      setEditorResult({ url: urlSite, id: subdomain || '' });
       await fetchClones();
-
     } catch (err) {
       alert('Erro inesperado ao clonar: ' + (err instanceof Error ? err.message : String(err)));
       console.error('Erro inesperado no handleCloneToEditor:', err);
@@ -284,9 +297,12 @@ export default function Editor() {
                       className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
                       onClick={() => {
                         const urlSite = editorResult.url;
-                        const regex = /\/sites\/([a-f0-9-]+)/;
-                        const match = urlSite.match(regex);
-                        navigate(`/tools/editor-studio?id=${match![1]}`)
+                        const subdomain = getSubdomainFromUrl(urlSite);
+                        if (subdomain && subdomain.length > 0) {
+                          navigate(`/tools/editor-studio?id=${subdomain}`);
+                        } else {
+                          alert('Não foi possível identificar o subdomínio do site clonado.');
+                        }
                       }}
                     >
                       Ir para o Editor

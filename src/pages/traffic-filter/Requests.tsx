@@ -31,13 +31,16 @@ const mockRequests = [
   }
 ];
 
+import LogoBranco from '../../assets/logo-branco.png';
+import IconBranco from '../../assets/ico-branco.png';
+
 const Logo = () => {
   return (
     <Link
       to="/"
       className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
     >
-      <div className="h-5 w-6 bg-black dark:bg-white rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0" />
+      <img src={LogoBranco} alt="" />
       <motion.span
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -55,7 +58,7 @@ const LogoIcon = () => {
       to="/"
       className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
     >
-      <div className="h-5 w-6 bg-black dark:bg-white rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0" />
+      <img src={IconBranco} alt="" />
     </Link>
   );
 };

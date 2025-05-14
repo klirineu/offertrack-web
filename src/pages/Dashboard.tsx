@@ -7,6 +7,9 @@ import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Wrench } fro
 import { SidebarBody, SidebarLink, Sidebar } from '../components/ui/sidebar';
 import { useAuthStore } from '../store/authStore';
 
+import LogoBranco from '../assets/logo-branco.png';
+import IconBranco from '../assets/ico-branco.png';
+
 const mockUser = {
   name: 'John Doe',
   email: 'john@example.com',
@@ -29,14 +32,7 @@ const Logo = () => {
       to="/"
       className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
     >
-      <div className="h-5 w-6 bg-black dark:bg-white rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0" />
-      <motion.span
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="font-medium text-black dark:text-white whitespace-pre"
-      >
-        OfferTrack
-      </motion.span>
+      <img src={LogoBranco} alt="" />
     </Link>
   );
 };
@@ -47,7 +43,7 @@ const LogoIcon = () => {
       to="/"
       className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
     >
-      <div className="h-5 w-6 bg-black dark:bg-white rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0" />
+      <img src={IconBranco} alt="" />
     </Link>
   );
 };
