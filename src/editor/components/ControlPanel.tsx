@@ -195,6 +195,9 @@ const ControlPanel = () => {
     // Serializa o HTML do iframe
     let html = doc.documentElement.outerHTML;
 
+    // Remove o script de seleção do editor (iframe)
+    html = html.replace(/<script[^>]*>[^<]*document\.body\.addEventListener[\s\S]*?<\/script>/g, '');
+
     // Remove classes do editor via regex
     html = html.replace(/\s(__ot-draggable|__ot-selected)\b/g, '');
 
