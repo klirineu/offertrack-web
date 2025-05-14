@@ -345,9 +345,12 @@ export default function Editor() {
                       <button
                         onClick={() => {
                           const urlSite = clone.url;
-                          const regex = /\/sites\/([a-f0-9-]+)/;
-                          const match = urlSite.match(regex);
-                          navigate(`/tools/editor-studio?id=${match![1]}`)
+                          const subdomain = getSubdomainFromUrl(urlSite);
+                          if (subdomain && subdomain.length > 0) {
+                            navigate(`/tools/editor-studio?id=${subdomain}`);
+                          } else {
+                            alert('Não foi possível identificar o subdomínio do site clonado.');
+                          }
                         }}
                         className="p-2 text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400"
                         title="Editar"
@@ -357,10 +360,13 @@ export default function Editor() {
                       <button
                         onClick={async () => {
                           const urlSite = clone.url;
-                          const regex = /\/sites\/([a-f0-9-]+)/;
-                          const match = urlSite.match(regex);
+                          const subdomain = getSubdomainFromUrl(urlSite);
+                          if (!subdomain || subdomain.length === 0) {
+                            alert('Não foi possível identificar o subdomínio do site clonado.');
+                            return;
+                          }
                           try {
-                            await removeClone(clone.id, match![1]);
+                            await removeClone(clone.id, subdomain);
                           } catch (err) {
                             alert('Erro ao excluir clone: ' + (err instanceof Error ? err.message : String(err)));
                             console.error('Erro ao excluir clone:', err);
