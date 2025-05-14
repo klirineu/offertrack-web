@@ -192,80 +192,22 @@ const ControlPanel = () => {
     const doc = iframe.contentDocument;
     if (!doc) return;
 
-    // Clone o DOM inteiro do iframe
-    const docClone = doc.documentElement.cloneNode(true) as HTMLElement;
-    const cloneDoc = document.implementation.createHTMLDocument('');
-    cloneDoc.replaceChild(docClone, cloneDoc.documentElement);
+    // Serializa o HTML do iframe
+    let html = doc.documentElement.outerHTML;
 
-    // 1. Remove todas as classes do editor de TODOS os elementos (head e body) no clone
-    const removeEditorClasses = (root: Document) => {
-      root.querySelectorAll('[class]').forEach((el) => {
-        const htmlEl = el as HTMLElement;
-        htmlEl.classList.remove('__ot-draggable', '__ot-selected');
-        if (typeof htmlEl.className === 'string') {
-          htmlEl.className = htmlEl.className
-            .split(' ')
-            .filter((c: string) => !c.startsWith('__ot-'))
-            .join(' ');
-          if (htmlEl.className === '') htmlEl.removeAttribute('class');
-        } else {
-          htmlEl.removeAttribute('class');
-        }
-      });
-    };
-    removeEditorClasses(cloneDoc);
+    // Remove classes do editor via regex
+    html = html.replace(/\s(__ot-draggable|__ot-selected)\b/g, '');
 
-    // 1b. Remove todos os <div class="__ot-drag-handle"> e <div title="Arrastar para mover"> no clone
-    Array.from(cloneDoc.querySelectorAll('div.__ot-drag-handle')).forEach(el => el.remove());
-    Array.from(cloneDoc.querySelectorAll('div[title="Arrastar para mover"]')).forEach(el => el.remove());
-    Array.from(cloneDoc.querySelectorAll('[title="Arrastar para mover"]')).forEach(el => el.remove());
-    Array.from(cloneDoc.querySelectorAll('body *')).forEach(el => {
-      const htmlEl = el as HTMLElement;
-      if (htmlEl.innerText && htmlEl.innerText.trim() === '↕') htmlEl.remove();
-    });
+    // Remove drag handles e overlays
+    html = html.replace(/<div[^>]*class="[^"]*__ot-drag-handle[^"]*"[^>]*>.*?<\/div>/gs, '');
+    html = html.replace(/<div[^>]*title="Arrastar para mover"[^>]*>.*?<\/div>/gs, '');
+    html = html.replace(/<div[^>]*>↕<\/div>/gs, '');
 
-    // 2. Mover elementos do head de volta para o head no clone
-    const headTags = ['META', 'TITLE', 'LINK', 'SCRIPT', 'STYLE', 'NOSCRIPT'];
-    headTags.forEach(tag => {
-      const nodes = Array.from(cloneDoc.body.querySelectorAll(tag));
-      nodes.forEach(node => {
-        if (tag === 'LINK' && node.getAttribute('rel') === 'stylesheet') {
-          const href = node.getAttribute('href');
-          if (href && cloneDoc.head.querySelector(`link[rel="stylesheet"][href="${href}"]`)) {
-            node.remove(); // Já existe, não move
-            return;
-          }
-        }
-        cloneDoc.head.appendChild(node);
-      });
-    });
-
-    // 3. Remover <style> extras do head (mantém só se for do usuário) no clone
-    Array.from(cloneDoc.head.querySelectorAll('style')).forEach(style => {
-      if (!style.hasAttribute('data-user-inserted')) style.remove();
-    });
-
-    // 4. Remover apenas scripts do sistema/editor/iframe no clone
-    Array.from(cloneDoc.head.querySelectorAll('script')).forEach(script => {
-      if (!isRelevantScript(script)) script.remove();
-    });
-    Array.from(cloneDoc.body.querySelectorAll('script')).forEach(script => {
-      if (!isRelevantScript(script)) script.remove();
-    });
-
-    // 5. Monta o HTML final manualmente a partir do clone
-    const doctype = '<!DOCTYPE html>';
-    const htmlOpen = '<html>';
-    const htmlClose = '</html>';
-    const headHtml = cloneDoc.head.innerHTML;
-    const bodyHtml = cloneDoc.body.innerHTML;
-    const finalHtml = `${doctype}\n${htmlOpen}\n<head>${headHtml}</head>\n<body>${bodyHtml}</body>\n${htmlClose}`;
-
-    // Obter id da query string
+    // Obter subdomínio
     const params = new URLSearchParams(location.search);
     const subdomain = params.get('id');
     try {
-      const res = await api.post('/api/clone/save', { html: finalHtml, subdomain });
+      const res = await api.post('/api/clone/save', { html, subdomain });
       if (res.status === 200) {
         setSaveMsg('Site salvo com sucesso!');
       } else {
@@ -275,8 +217,6 @@ const ControlPanel = () => {
       setSaveMsg('Erro ao salvar o site.');
     }
     setSaving(false);
-
-    // Após salvar, recarregar o iframe para garantir preview e seleção funcionando
   }
 
   function handleRemoveElement() {
