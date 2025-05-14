@@ -90,7 +90,7 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
 
       // Chamada à API para remover arquivos/recursos do clone
 
-      await api.delete(`/api/clone/${urlId}`);
+      await api.delete("/api/clone", { data: { subdomain: urlId } });
 
       set((state) => ({
         clones: state.clones.filter((c) => c.id !== id),
