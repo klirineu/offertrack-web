@@ -21,6 +21,7 @@ import OfferMetrics from './pages/OfferMetrics';
 import About from './pages/About';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfUse from './pages/TermsOfUse';
+import EscolherPlano from './pages/EscolherPlano';
 
 function App() {
   const initialize = useAuthStore((s) => s.initialize);
@@ -35,6 +36,7 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginForm />} />
         <Route path="/register" element={<RegisterForm />} />
+        <Route path="/escolher-plano" element={<EscolherPlano />} />
 
         {/* Protected Routes */}
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

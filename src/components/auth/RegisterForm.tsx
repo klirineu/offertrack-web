@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { useAuthStore } from '../../store/authStore'
 
 export function RegisterForm() {
   const [email, setEmail] = useState('');
@@ -10,10 +11,11 @@ export function RegisterForm() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const navigate = useNavigate();
   const [fullName, setFullName] = useState('');
   const [plans, setPlans] = useState<{ id: string; name: string; price: string }[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<string>('');
+
+  const { signUp } = useAuthStore()
 
   useEffect(() => {
     // Buscar planos do Supabase
@@ -35,24 +37,20 @@ export function RegisterForm() {
     try {
       setError('');
       setLoading(true);
-      // Chamar Edge Function do Supabase para criar sessão Stripe
-      const res = await fetch('https://gakbtbjbywiphvspibbv.functions.supabase.co/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          planId: selectedPlan,
-          fullName,
-          password
-        })
-      });
-      const data = await res.json();
-      if (!data.url) {
-        setError('Erro ao iniciar checkout. Tente novamente.');
+      const { error: signUpError } = await signUp(email, password, { full_name: fullName, plan_id: selectedPlan });
+      if (signUpError) {
+        setError('Falha ao criar conta. O email já está em uso ou é inválido.');
         setLoading(false);
         return;
       }
-      window.location.href = data.url;
+      // Buscar checkout_url do plano escolhido
+      const { data: plan, error: planError } = await supabase.from('plans').select('checkout_url').eq('id', selectedPlan).single();
+      if (planError || !plan?.checkout_url) {
+        setError('Erro ao buscar URL de pagamento do plano.');
+        setLoading(false);
+        return;
+      }
+      window.location.href = plan.checkout_url;
     } catch (err) {
       setError('Ocorreu um erro inesperado. Tente novamente.');
     } finally {

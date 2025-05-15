@@ -165,7 +165,7 @@ export function OfferCard({ offer }: OfferCardProps) {
         </div>
 
         {offer.description && (
-          <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">{offer.description}</p>
+          <p className="text-gray-600 dark:text-gray-400 text-sm mb-3 break-words">{offer.description}</p>
         )}
 
         <div className="flex flex-wrap gap-2 mt-2">

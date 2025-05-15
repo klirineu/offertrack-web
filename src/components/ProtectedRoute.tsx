@@ -1,11 +1,48 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading, profile } = useAuthStore();
   const location = useLocation();
+  const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
 
-  if (isLoading) {
+  useEffect(() => {
+    async function checkPlan() {
+      if (!profile) return;
+      setChecking(true);
+      if (!profile.plan_id) {
+        setRedirectUrl('/escolher-plano');
+        setChecking(false);
+        return;
+      }
+      // Bloquear se status for refused, refunded ou chargeback
+      const blockedStatus = ['refused', 'refunded', 'chargeback'];
+      if (blockedStatus.includes(profile.subscription_status)) {
+        setRedirectUrl('/escolher-plano');
+        setChecking(false);
+        return;
+      }
+      if (profile.subscription_status !== 'active') {
+        // Buscar checkout_url do plano
+        const { data: plan } = await supabase.from('plans').select('checkout_url').eq('id', profile.plan_id).single();
+        if (plan?.checkout_url) {
+          setRedirectUrl(plan.checkout_url);
+        } else {
+          setRedirectUrl('/escolher-plano');
+        }
+        setChecking(false);
+        return;
+      }
+      setRedirectUrl(null);
+      setChecking(false);
+    }
+    checkPlan();
+  }, [profile]);
+
+  if (isLoading || checking) {
     return <div className="p-8">Carregando...</div>;
   }
 
@@ -13,14 +50,9 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Bloqueio de acesso se trial expirou ou assinatura inativa
-  if (profile) {
-    const status = profile.subscription_status;
-    const trialExpires = profile.trial_expires_at ? new Date(profile.trial_expires_at) : null;
-    const now = new Date();
-    if ((status !== 'active' && status !== 'trialing') || (status === 'trialing' && trialExpires && now > trialExpires)) {
-      return <Navigate to="/planos" state={{ from: location }} replace />;
-    }
+  if (redirectUrl) {
+    window.location.href = redirectUrl;
+    return null;
   }
 
   return <>{children}</>;
