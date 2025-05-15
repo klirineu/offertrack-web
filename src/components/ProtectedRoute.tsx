@@ -25,6 +25,19 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
         setChecking(false);
         return;
       }
+      // Verificar expiração do plano mensal
+      if (profile.subscription_status === 'active' && profile.subscription_renewed_at) {
+        const renewedAt = new Date(profile.subscription_renewed_at);
+        const now = new Date();
+        const diffDays = (now.getTime() - renewedAt.getTime()) / (1000 * 60 * 60 * 24);
+        if (diffDays >= 30) {
+          // Atualizar status para expired
+          await supabase.from('profiles').update({ subscription_status: 'expired' }).eq('id', profile.id);
+          setRedirectUrl('/escolher-plano');
+          setChecking(false);
+          return;
+        }
+      }
       if (profile.subscription_status !== 'active') {
         // Buscar checkout_url do plano
         const { data: plan } = await supabase.from('plans').select('checkout_url').eq('id', profile.plan_id).single();

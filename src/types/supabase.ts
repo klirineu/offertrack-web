@@ -30,6 +30,7 @@ export interface Database {
           plan_id: string | null;
           trial_started_at: string | null;
           trial_expires_at: string | null;
+          subscription_renewed_at: string | null;
         };
         Insert: {
           id: string;
@@ -51,6 +52,7 @@ export interface Database {
           plan_id?: string | null;
           trial_started_at?: string | null;
           trial_expires_at?: string | null;
+          subscription_renewed_at?: string | null;
         };
         Update: {
           id?: string;
@@ -72,6 +74,7 @@ export interface Database {
           plan_id?: string | null;
           trial_started_at?: string | null;
           trial_expires_at?: string | null;
+          subscription_renewed_at?: string | null;
         };
       };
       offers: {
