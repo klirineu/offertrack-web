@@ -1,10 +1,10 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuthStore } from '../store/authStore';
+import { useAuth } from '../context/AuthContext';
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, isLoading, profile, refreshProfile } = useAuthStore();
+  const { user, isLoading, profile, refreshProfile } = useAuth();
   const location = useLocation();
   const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);

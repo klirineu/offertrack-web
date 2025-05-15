@@ -4,7 +4,7 @@ import { Sidebar, SidebarBody, SidebarLink } from '../../components/ui/sidebar';
 import { Layout, UserCog, LogOut, Wrench, ArrowLeft, Circle, SettingsIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useAuthStore } from '../../store/authStore';
+import { useAuth } from '../../context/AuthContext';
 
 import LogoBranco from '../../assets/logo-branco.png';
 import IconBranco from '../../assets/ico-branco.png';
@@ -40,7 +40,7 @@ const LogoIcon = () => {
 
 export function EncryptText() {
   const { theme } = useThemeStore();
-  const { user, profile } = useAuthStore();
+  const { user, profile } = useAuth();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [output, setOutput] = useState('');

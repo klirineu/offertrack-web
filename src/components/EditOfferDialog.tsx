@@ -1,13 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { useThemeStore } from '../store/themeStore';
 import { useEditDialogStore } from '../store/editDialogStore';
-import { useOfferStore } from '../store/offerStore';
+import { updateOfferService } from '../services/offerService';
+import type { Offer } from '../types';
 
-export function EditOfferDialog() {
+export function EditOfferDialog({ offers, onOfferUpdated }: { offers: Offer[], onOfferUpdated: (offer: Offer) => void }) {
   const { theme } = useThemeStore();
   const { selectedOfferId, closeDialog } = useEditDialogStore();
-  const { offers, updateOffer } = useOfferStore();
   const [formData, setFormData] = useState({
     title: '',
     offerUrl: '',
@@ -17,27 +17,31 @@ export function EditOfferDialog() {
   });
 
   useEffect(() => {
-    const offer = offers.find(o => o.id === selectedOfferId);
-    if (offer) {
-      setFormData({
-        title: offer.title,
-        offerUrl: offer.offerUrl,
-        landingPageUrl: offer.landingPageUrl,
-        description: offer.description || '',
-        tags: offer.tags.join(', '),
-      });
+    if (selectedOfferId) {
+      const offer = offers.find(o => o.id === selectedOfferId);
+      if (offer) {
+        setFormData({
+          title: offer.title,
+          offerUrl: offer.offerUrl,
+          landingPageUrl: offer.landingPageUrl,
+          description: offer.description || '',
+          tags: offer.tags.join(', '),
+        });
+      }
     }
   }, [selectedOfferId, offers]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('submit', selectedOfferId, formData);
     if (!selectedOfferId) return;
-    updateOffer(selectedOfferId, {
+    const { data, error } = await updateOfferService(selectedOfferId, {
       ...formData,
       tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean),
       updatedAt: new Date(),
     });
+    if (!error && data) {
+      onOfferUpdated(data);
+    }
     closeDialog();
   };
 

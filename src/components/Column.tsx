@@ -11,9 +11,10 @@ import { useThemeStore } from '../store/themeStore';
 interface ColumnProps {
   column: ColumnType;
   offers: Offer[];
+  onDeleteOffer: (offerId: string) => void;
 }
 
-export function Column({ column, offers }: ColumnProps) {
+export function Column({ column, offers, onDeleteOffer }: ColumnProps) {
   const { theme } = useThemeStore(); // Obtenha o tema
   const { setNodeRef } = useDroppable({ id: column.id });
 
@@ -36,7 +37,7 @@ export function Column({ column, offers }: ColumnProps) {
       <div ref={setNodeRef} className="min-h-[200px]">
         <SortableContext items={offers.map((o) => o.id)} strategy={verticalListSortingStrategy}>
           {offers.map((offer) => (
-            <OfferCard key={offer.id} offer={offer} />
+            <OfferCard key={offer.id} offer={offer} onDelete={onDeleteOffer} />
           ))}
         </SortableContext>
       </div>

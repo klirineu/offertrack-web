@@ -3,17 +3,17 @@ import { CSS } from '@dnd-kit/utilities';
 import { ExternalLink, Tag, Clock, Edit2, TrendingUp, Copy, Trash2, Download } from 'lucide-react';
 import type { Offer } from '../types';
 import { useEditDialogStore } from '../store/editDialogStore';
-import { useOfferStore } from '../store/offerStore';
 import api from '../services/api';
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+
 interface OfferCardProps {
   offer: Offer;
+  onDelete: (offerId: string) => void;
 }
 
-export function OfferCard({ offer }: OfferCardProps) {
+export function OfferCard({ offer, onDelete }: OfferCardProps) {
   const { openDialog } = useEditDialogStore();
-  const { deleteOffer } = useOfferStore();
   const [metrics, setMetrics] = useState<{ count: number; checked_at: string }[]>([]);
   const [loadingMetrics, setLoadingMetrics] = useState(true);
   const [downloading, setDownloading] = useState(false);
@@ -54,9 +54,9 @@ export function OfferCard({ offer }: OfferCardProps) {
   const firstMetric = metrics.at(0);
   const adsTrend = latestMetric && firstMetric ? latestMetric.count - firstMetric.count : 0;
 
-  async function handleDeleteOffer() {
+  function handleDeleteOffer() {
     if (window.confirm('Tem certeza que deseja excluir esta oferta?')) {
-      await deleteOffer(offer.id);
+      onDelete(offer.id);
     }
   }
 

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useAuthStore } from '../../store/authStore'
+import { useAuth } from '../../context/AuthContext'
 
 interface AuthFormProps {
   mode: 'signin' | 'signup'
@@ -9,7 +9,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const { signIn, signUp, isLoading } = useAuthStore()
+  const { signIn, signUp, isLoading } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

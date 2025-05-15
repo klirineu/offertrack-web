@@ -16,7 +16,7 @@ import { LoginForm } from './components/auth/LoginForm';
 import { RegisterForm } from './components/auth/RegisterForm';
 import Editor from './pages/tools/Editor';
 import EditorStudio from './pages/tools/EditorStudio';
-import { useAuthStore } from './store/authStore';
+import { useAuth } from './context/AuthContext';
 import OfferMetrics from './pages/OfferMetrics';
 import About from './pages/About';
 import PrivacyPolicy from './pages/PrivacyPolicy';
@@ -24,7 +24,7 @@ import TermsOfUse from './pages/TermsOfUse';
 import EscolherPlano from './pages/EscolherPlano';
 
 function App() {
-  const initialize = useAuthStore((s) => s.initialize);
+  const { initialize } = useAuth();
   useEffect(() => {
     initialize();
   }, [initialize]);

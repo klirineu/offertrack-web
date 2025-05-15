@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { useAuthStore } from '../../store/authStore'
+import { useAuth } from '../../context/AuthContext'
 
 export function RegisterForm() {
   const [email, setEmail] = useState('');
@@ -15,7 +15,7 @@ export function RegisterForm() {
   const [plans, setPlans] = useState<{ id: string; name: string; price: string }[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<string>('');
 
-  const { signUp } = useAuthStore()
+  const { signUp } = useAuth()
 
   useEffect(() => {
     // Buscar planos do Supabase

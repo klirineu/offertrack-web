@@ -5,7 +5,7 @@ import { Sidebar, SidebarBody, SidebarLink } from '../components/ui/sidebar';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Layout, UserCog, Settings as SettingsIcon, LogOut } from 'lucide-react';
-import { useAuthStore } from '../store/authStore';
+import { useAuth } from '../context/AuthContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -44,7 +44,7 @@ const LogoIcon = () => {
 export function Profile() {
   const { theme } = useThemeStore();
   const [open, setOpen] = React.useState(false);
-  const { user, profile, updateProfile, isLoading } = useAuthStore();
+  const { user, profile, updateProfile, isLoading } = useAuth();
   const [fullName, setFullName] = React.useState(profile?.full_name || '');
   const [success, setSuccess] = React.useState('');
   const [error, setError] = React.useState('');

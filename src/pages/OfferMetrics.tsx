@@ -5,7 +5,7 @@ import { Chart, CategoryScale, LinearScale, PointElement, LineElement, Title, To
 import { motion } from 'framer-motion';
 import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Wrench } from 'lucide-react';
 import { Sidebar, SidebarBody, SidebarLink } from '../components/ui/sidebar';
-import { useAuthStore } from '../store/authStore';
+import { useAuth } from '../context/AuthContext';
 import { useThemeStore } from '../store/themeStore';
 
 Chart.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
@@ -65,8 +65,8 @@ export default function OfferMetrics() {
   const [error, setError] = useState('');
   const [period, setPeriod] = useState(7);
   const [open, setOpen] = React.useState(false);
-  const { user, profile, } = useAuthStore();
   const { theme } = useThemeStore();
+  const { user, profile } = useAuth();
 
   useEffect(() => {
     async function fetchMetrics() {

@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Filter, Plus, Search, Wrench } from 'lucide-react';
 import { Sidebar, SidebarBody, SidebarLink } from '../../components/ui/sidebar';
-import { useAuthStore } from '../../store/authStore';
+import { useAuth } from '../../context/AuthContext';
 
 import LogoBranco from '../../assets/logo-branco.png';
 import IconBranco from '../../assets/ico-branco.png';
@@ -40,7 +40,7 @@ const LogoIcon = () => {
 
 export function Campaigns() {
   const { theme } = useThemeStore();
-  const { user, profile } = useAuthStore();
+  const { user, profile } = useAuth();
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
 

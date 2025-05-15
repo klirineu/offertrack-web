@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Wrench } from 'lucide-react';
 import { SidebarBody, SidebarLink, Sidebar } from '../components/ui/sidebar';
-import { useAuthStore } from '../store/authStore';
+import { useAuth } from '../context/AuthContext';
 
 import LogoBranco from '../assets/logo-branco.png';
 import IconBranco from '../assets/ico-branco.png';
@@ -51,7 +51,7 @@ const LogoIcon = () => {
 export function Dashboard() {
   const { theme } = useThemeStore(); // Obtenha o tema do store
   const [open, setOpen] = useState(false);
-  const { user, profile } = useAuthStore();
+  const { user, profile } = useAuth();
   const links = [
     {
       label: "Dashboard",

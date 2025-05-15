@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Moon, Sun, Bell, Globe, Wrench } from 'lucide-react';
 import { SidebarBody, SidebarLink, Sidebar } from '../components/ui/sidebar';
-import { useAuthStore } from '../store/authStore';
+import { useAuth } from '../context/AuthContext';
 
 const mockUser = {
   name: 'John Doe',
@@ -57,7 +57,7 @@ const LogoIcon = () => {
 export function Settings() {
   const { theme, toggleTheme } = useThemeStore();
   const [open, setOpen] = useState(false);
-  const { user, profile } = useAuthStore();
+  const { user, profile } = useAuth();
 
   const links = [
     {

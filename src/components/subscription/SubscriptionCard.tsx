@@ -1,7 +1,7 @@
-import { useAuthStore } from '../../store/authStore'
+import { useAuth } from '../../context/AuthContext'
 
 export function SubscriptionCard() {
-  const { profile } = useAuthStore()
+  const { profile } = useAuth()
   const isActive = profile?.subscription_status === 'active' || profile?.subscription_status === 'trialing'
   const tier = profile?.subscription_tier || 'free'
 

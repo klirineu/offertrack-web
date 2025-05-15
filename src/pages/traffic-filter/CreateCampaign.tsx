@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, ArrowLeft, Facebook, Globe, Smartphone, Tablet, Monitor, Wrench } from 'lucide-react';
 import { SidebarBody, SidebarLink, Sidebar } from '../../components/ui/sidebar';
-import { useAuthStore } from '../../store/authStore';
+import { useAuth } from '../../context/AuthContext';
 
 import LogoBranco from '../../assets/logo-branco.png';
 import IconBranco from '../../assets/ico-branco.png';
@@ -40,7 +40,7 @@ const LogoIcon = () => {
 
 export function CreateCampaign() {
   const { theme } = useThemeStore();
-  const { user, profile } = useAuthStore();
+  const { user, profile } = useAuth();
   const [open, setOpen] = useState(false);
   const [selectedDevices, setSelectedDevices] = useState<string[]>([]);
   const [selectedNetworks, setSelectedNetworks] = useState<string[]>([]);

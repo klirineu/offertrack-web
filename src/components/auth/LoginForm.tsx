@@ -1,29 +1,39 @@
-import { useState } from 'react';
-import { useAuthStore } from '../../store/authStore';
+import { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 
 export function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { signIn, isLoading } = useAuthStore();
+  const { signIn, isLoading, user, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [submitting, setSubmitting] = useState(false);
+
+  // Redireciona para o dashboard quando o user for preenchido
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitting(true);
     try {
       setError('');
       const { error: signInError } = await signIn(email, password);
       if (signInError) {
         setError('Falha ao fazer login. Verifique suas credenciais.');
+        setSubmitting(false);
         return;
       }
-      // Redirecionar para a rota original ou dashboard
-      const origin = location.state?.from?.pathname || '/dashboard';
-      navigate(origin);
+      await refreshProfile();
     } catch (err) {
       setError('Ocorreu um erro inesperado. Tente novamente.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -70,10 +80,10 @@ export function LoginForm() {
             </div>
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={submitting}
               className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
             >
-              {isLoading ? 'Loading...' : 'Entrar'}
+              {submitting ? 'Loading...' : 'Entrar'}
             </button>
           </form>
           <div className="mt-6 text-center">

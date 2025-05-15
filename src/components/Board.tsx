@@ -8,11 +8,12 @@ import {
 } from '@dnd-kit/core';
 import { Column } from './Column';
 import { NewOfferDialog } from './NewOfferDialog';
-import type { Offer, OfferStatus } from '../types';
+import type { Offer } from '../types';
 import { useThemeStore } from '../store/themeStore';
 import { EditOfferDialog } from './EditOfferDialog';
-import { useOfferStore } from '../store/offerStore';
+import { fetchOffersService, addOfferService, updateOfferService, deleteOfferService } from '../services/offerService';
 import { OfferCard } from './OfferCard';
+import { useAuth } from '../context/AuthContext';
 
 const columns = [
   { id: 'waiting' as const, title: 'Waiting', color: 'yellow' },
@@ -23,15 +24,26 @@ const columns = [
 
 export function Board() {
   const { theme } = useThemeStore();
-  const { offers, fetchOffers, addOffer } = useOfferStore();
-
+  const { user } = useAuth();
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isNewOfferDialogOpen, setIsNewOfferDialogOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    fetchOffers();
-  }, []);
+    const loadOffers = async () => {
+      if (!user) return;
+      setLoading(true);
+      setError(null);
+      const { data, error } = await fetchOffersService(user.id);
+      if (error) setError(error.message);
+      if (data) setOffers(data);
+      setLoading(false);
+    };
+    loadOffers();
+  }, [user]);
 
   const activeOffer = offers.find((o) => o.id === activeId) || null;
 
@@ -39,33 +51,88 @@ export function Board() {
     setActiveId(event.active.id as string);
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
 
     if (!over) return;
 
-    const activeOffer = useOfferStore.getState().offers.find(o => o.id === active.id);
-    if (!activeOffer || activeOffer.status === over.id) return;
+    const activeOffer = offers.find(o => o.id === active.id);
+    if (!activeOffer) return;
 
-    useOfferStore.getState().updateOffer(active.id.toString(), {
-      status: over.id as OfferStatus,
-      updatedAt: new Date()
-    });
+    // Se o drop foi em uma coluna, over.id é o status
+    // Se foi em um card, precisamos descobrir a coluna desse card
+    let newStatus: Offer['status'] | undefined = undefined;
+    const allowedStatus = ['waiting', 'testing', 'approved', 'invalid'] as const;
+
+    if (typeof over.id === 'string' && allowedStatus.includes(over.id as Offer['status'])) {
+      newStatus = over.id as Offer['status'];
+    } else {
+      // over.id é o id de outro card, então pegamos o status desse card
+      const overOffer = offers.find(o => o.id === over.id);
+      if (overOffer && allowedStatus.includes(overOffer.status)) {
+        newStatus = overOffer.status;
+      }
+    }
+
+    if (!newStatus || activeOffer.status === newStatus) return;
+
+    const updatedOffers = offers.map((offer) =>
+      offer.id === active.id ? { ...offer, status: newStatus, updatedAt: new Date() } : offer
+    );
+    setOffers(updatedOffers);
+
+    // Persistir no backend
+    try {
+      await updateOfferService(active.id as string, { status: newStatus, updatedAt: new Date() });
+    } catch (err) {
+      console.error('Erro ao atualizar status da oferta:', err);
+    }
   };
 
-  const handleNewOffer = async (offerData: Omit<Offer, 'id' | 'status' | 'createdAt' | 'updatedAt'>) => {
+  const handleNewOffer = async (offerData: { title: string; offerUrl: string; landingPageUrl: string; description: string; tags: string[] }) => {
     try {
-      await addOffer({
-        ...offerData,
-        status: 'waiting'
-      });
-      await fetchOffers();
+      setLoading(true);
+      setError(null);
+      if (!user) throw new Error('Usuário não autenticado');
+      const { error } = await addOfferService({ ...offerData, status: 'waiting', metrics: [] }, user.id);
+      if (error) throw error;
+      const { data, error: fetchError } = await fetchOffersService(user.id);
+      if (fetchError) setError(fetchError.message);
+      if (data) setOffers(data);
       setRefreshKey((k) => k + 1);
       setIsNewOfferDialogOpen(false);
-    } catch (err) {
-      console.error('[DEBUG] handleNewOffer error', err);
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      setError(error.message || 'Erro ao adicionar oferta');
+      console.error('[DEBUG] handleNewOffer error', error);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleDeleteOffer = async (offerId: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { error } = await deleteOfferService(offerId);
+      if (error) throw error;
+      setOffers((prev) => prev.filter((offer) => offer.id !== offerId));
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      setError(error.message || 'Erro ao excluir oferta');
+      console.error('[DEBUG] handleDeleteOffer error', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOfferUpdated = (updatedOffer: Offer) => {
+    setOffers((prev) =>
+      prev.map((offer) =>
+        offer.id === updatedOffer.id ? { ...offer, ...updatedOffer } : offer
+      )
+    );
   };
 
   return (
@@ -83,25 +150,31 @@ export function Board() {
         </button>
       </div>
 
-      <DndContext
-        collisionDetection={closestCorners}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <div key={refreshKey} className="flex gap-6 p-6 overflow-x-auto pb-8">
-          {columns.map((column) => (
-            <Column
-              key={column.id}
-              column={column}
-              offers={offers.filter((offer) => offer.status === column.id)}
-            />
-          ))}
-        </div>
+      {error && <div className="text-red-500 mb-4">{error}</div>}
+      {loading ? (
+        <div className="p-8">Carregando...</div>
+      ) : (
+        <DndContext
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <div key={refreshKey} className="flex gap-6 p-6 overflow-x-auto pb-8">
+            {columns.map((column) => (
+              <Column
+                key={column.id}
+                column={column}
+                offers={offers.filter((offer) => offer.status === column.id)}
+                onDeleteOffer={handleDeleteOffer}
+              />
+            ))}
+          </div>
 
-        <DragOverlay>
-          {activeOffer && <OfferCard offer={activeOffer} />}
-        </DragOverlay>
-      </DndContext>
+          <DragOverlay>
+            {activeOffer && <OfferCard offer={activeOffer} onDelete={() => { }} />}
+          </DragOverlay>
+        </DndContext>
+      )}
 
       <NewOfferDialog
         isOpen={isNewOfferDialogOpen}
@@ -109,7 +182,7 @@ export function Board() {
         onSubmit={handleNewOffer}
       />
 
-      <EditOfferDialog />
+      <EditOfferDialog offers={offers} onOfferUpdated={handleOfferUpdated} />
     </>
   );
 }

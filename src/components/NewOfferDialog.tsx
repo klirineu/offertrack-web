@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { useThemeStore } from '../store/themeStore';
-import { useAuthStore } from '../store/authStore';
+import { useAuth } from '../context/AuthContext';
 
 interface NewOfferDialogProps {
   isOpen: boolean;
@@ -18,7 +18,7 @@ interface NewOfferDialogProps {
 
 export function NewOfferDialog({ isOpen, onClose, onSubmit, onError }: NewOfferDialogProps) {
   const { theme } = useThemeStore()
-  const { profile } = useAuthStore();
+  const { profile } = useAuth();
 
   const [formData, setFormData] = useState({
     title: '',

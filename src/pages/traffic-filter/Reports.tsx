@@ -14,7 +14,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { useAuthStore } from '../../store/authStore';
+import { useAuth } from '../../context/AuthContext';
 
 ChartJS.register(
   CategoryScale,
@@ -89,7 +89,7 @@ const LogoIcon = () => {
 
 export function Reports() {
   const { theme } = useThemeStore();
-  const { user, profile } = useAuthStore();
+  const { user, profile } = useAuth();
   const [open, setOpen] = useState(false);
   const [period, setPeriod] = useState('7d');
 

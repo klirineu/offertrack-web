@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, ArrowLeft, Plus, Copy, ExternalLink, Shield, Wrench } from 'lucide-react';
 import { SidebarBody, SidebarLink, Sidebar } from '../../components/ui/sidebar';
 import { useAnticloneStore } from '../../store/anticloneStore';
-import { useAuthStore } from '../../store/authStore';
+import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 
 type ActionType = 'redirect' | 'replace_links' | 'replace_images';
@@ -293,7 +293,7 @@ const LogoIcon = () => {
 
 export function Anticlone() {
   const { theme } = useThemeStore();
-  const { user, profile } = useAuthStore();
+  const { user, profile } = useAuth();
   const { sites, isLoading, error, fetchSites, addSite, deleteSite } = useAnticloneStore();
 
   const [open, setOpen] = useState(false);

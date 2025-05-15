@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useAuthStore } from "../store/authStore";
+import { useAuth } from "../context/AuthContext";
 import { Database } from "../types/supabase";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
@@ -44,7 +44,7 @@ const TIER_FEATURES = {
 };
 
 export function useSubscription() {
-  const { profile } = useAuthStore();
+  const { profile } = useAuth();
   const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo>({
     tier: "free",
     status: null,

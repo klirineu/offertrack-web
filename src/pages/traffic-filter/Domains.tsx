@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Filter, Plus, X, Wrench } from 'lucide-react';
 import { Sidebar, SidebarBody, SidebarLink } from '../../components/ui/sidebar';
-import { useAuthStore } from '../../store/authStore';
+import { useAuth } from '../../context/AuthContext';
 
 const mockDomains = [
   {
@@ -55,7 +55,7 @@ const LogoIcon = () => {
 
 export function Domains() {
   const { theme } = useThemeStore();
-  const { user, profile } = useAuthStore();
+  const { user, profile } = useAuth();
   const [open, setOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newDomain, setNewDomain] = useState('');

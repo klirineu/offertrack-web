@@ -1,43 +1,77 @@
 import { supabase } from "../lib/supabase";
+import { Offer, AdMetrics } from "../types";
+import { Database } from "../types/supabase";
 
-async function getCurrentUserId() {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("User not authenticated");
-  return user.id;
-}
+type SupabaseOffer = Database["public"]["Tables"]["offers"]["Row"];
 
-export async function fetchOffersService() {
-  const userId = await getCurrentUserId();
-  return await supabase
+const mapSupabaseOffer = (offer: SupabaseOffer): Offer => ({
+  id: offer.id,
+  title: offer.title,
+  offerUrl: offer.offer_url,
+  landingPageUrl: offer.landing_page_url,
+  description: offer.description || undefined,
+  tags: offer.tags,
+  status: offer.status,
+  createdAt: new Date(offer.created_at),
+  updatedAt: new Date(offer.updated_at),
+  metrics: (offer.metrics as unknown as AdMetrics[]) || [],
+});
+
+const mapToSupabaseOffer = (offer: Partial<Offer>) => ({
+  title: offer.title,
+  offer_url: offer.offerUrl,
+  landing_page_url: offer.landingPageUrl,
+  description: offer.description,
+  tags: offer.tags,
+  status: offer.status,
+  metrics: offer.metrics,
+});
+
+export async function fetchOffersService(user_id: string) {
+  const { data, error } = await supabase
     .from("offers")
     .select("*")
-    .eq("user_id", userId)
+    .eq("user_id", user_id)
     .order("created_at", { ascending: false });
+  if (error) return { data: null, error };
+  return { data: data ? data.map(mapSupabaseOffer) : [], error: null };
 }
 
-export async function addOfferService(offer: Record<string, unknown>) {
-  const userId = await getCurrentUserId();
-  const result = await supabase
+export async function addOfferService(
+  newOffer: Partial<Offer>,
+  user_id: string
+) {
+  if (!user_id)
+    return { data: null, error: new Error("Usuário não autenticado") };
+  const insertObj = { ...mapToSupabaseOffer(newOffer), user_id };
+  const { data, error } = await supabase
     .from("offers")
-    .insert({ ...offer, user_id: userId })
+    .insert(insertObj)
     .select("*")
     .single();
-  console.log(
-    "[DEBUG] Resposta completa do Supabase (addOfferService):",
-    result
-  );
-  return result;
+  if (error) return { data: null, error };
+  return { data: mapSupabaseOffer(data), error: null };
 }
 
 export async function updateOfferService(
   offerId: string,
-  updates: Record<string, unknown>
+  updates: Partial<Offer>
 ) {
-  return await supabase.from("offers").update(updates).eq("id", offerId);
+  const allowedStatus = ["waiting", "testing", "approved", "invalid"];
+  if (updates.status && !allowedStatus.includes(updates.status)) {
+    throw new Error("Status inválido");
+  }
+  const updateObj = mapToSupabaseOffer(updates);
+  const { data, error } = await supabase
+    .from("offers")
+    .update(updateObj)
+    .eq("id", offerId)
+    .select("*")
+    .single();
+  return { data: data ? mapSupabaseOffer(data) : null, error };
 }
 
 export async function deleteOfferService(offerId: string) {
-  return await supabase.from("offers").delete().eq("id", offerId);
+  const { error } = await supabase.from("offers").delete().eq("id", offerId);
+  return { error };
 }

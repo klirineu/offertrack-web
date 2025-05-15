@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Filter, Search, Eye, Wrench } from 'lucide-react';
 import { Sidebar, SidebarBody, SidebarLink } from '../../components/ui/sidebar';
-import { useAuthStore } from '../../store/authStore';
+import { useAuth } from '../../context/AuthContext';
 
 const mockRequests = [
   {
@@ -65,7 +65,7 @@ const LogoIcon = () => {
 
 export function Requests() {
   const { theme } = useThemeStore();
-  const { user, profile } = useAuthStore();
+  const { user, profile } = useAuth();
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
 

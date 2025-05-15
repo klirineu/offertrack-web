@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../context/AuthContext';
 
 interface SubLink {
   label: string;

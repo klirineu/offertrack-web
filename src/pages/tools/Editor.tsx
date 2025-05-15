@@ -5,9 +5,9 @@ import { motion } from 'framer-motion';
 import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Wrench, Edit, Trash2, Plus, Download } from 'lucide-react';
 import { SidebarBody, SidebarLink, Sidebar } from '../../components/ui/sidebar';
 import { useThemeStore } from '../../store/themeStore';
-import { useClonesStore } from '../../store/clonesStore';
-import { useAuthStore } from '../../store/authStore';
+import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
+import { fetchClonesService, addCloneService, removeCloneService, CloneSite } from '../../services/clonesService';
 
 // Permitir tipagem global para o editor
 declare global {
@@ -56,17 +56,25 @@ export default function Editor() {
 
   const urlParam = searchParams.get('url');
 
-  const { clones, isLoading: clonesLoading, addClone, removeClone, fetchClones } = useClonesStore();
+  const { user } = useAuth();
+  const [clones, setClones] = useState<CloneSite[]>([]);
+  const [clonesLoading, setClonesLoading] = useState(false);
   const [editorResult, setEditorResult] = useState<{ url: string, id: string } | null>(null);
   const copyRef = useRef<HTMLInputElement>(null);
   const [actionLoading, setActionLoading] = useState<'editor' | 'zip' | null>(null);
   const [cloneUrlToProcess, setCloneUrlToProcess] = useState<string | null>(null);
-  const { user, profile } = useAuthStore();
-  const [profileError, setProfileError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchClones();
-  }, []);
+    const loadClones = async () => {
+      if (!user) return;
+      setClonesLoading(true);
+      const { data, error } = await fetchClonesService(user.id);
+      if (error) console.error('Erro ao carregar clones:', error);
+      if (data) setClones(data);
+      setClonesLoading(false);
+    };
+    loadClones();
+  }, [user]);
 
   useEffect(() => {
     if (urlParam) {
@@ -151,23 +159,20 @@ export default function Editor() {
 
   // Adicionar função para clonar para o editor
   async function handleCloneToEditor(url: string) {
-    if (!profile) {
-      setProfileError('Sua sessão expirou. Faça login novamente.');
-      setTimeout(() => {
-        setCloneUrlToProcess(null);
-        setProfileError(null);
-      }, 2000);
-      return;
-    }
+    if (!user) return;
     setActionLoading('editor');
     try {
       const res = await api.post('/api/clone/folder', { url });
       const data = res.data;
       const urlSite = data.url;
       const subdomain = getSubdomainFromUrl(urlSite);
-      await addClone(url, urlSite);
+      const { error } = await addCloneService(user.id, url, urlSite);
+      if (error) throw error;
       setEditorResult({ url: urlSite, id: subdomain || '' });
-      await fetchClones();
+      // Atualizar lista de clones
+      const { data: clonesData, error: clonesError } = await fetchClonesService(user.id);
+      if (clonesError) console.error('Erro ao carregar clones:', clonesError);
+      if (clonesData) setClones(clonesData);
     } catch (err) {
       alert('Erro inesperado ao clonar: ' + (err instanceof Error ? err.message : String(err)));
       console.error('Erro inesperado no handleCloneToEditor:', err);
@@ -192,11 +197,11 @@ export default function Editor() {
           <div>
             <SidebarLink
               link={{
-                label: profile?.full_name || user?.email || 'Usuário',
+                label: user?.email || 'Usuário',
                 href: "/profile",
                 icon: (
                   <img
-                    src={profile?.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(profile?.full_name || user?.email || 'U')}
+                    src={'https://ui-avatars.com/api/?name=' + encodeURIComponent(user?.email || 'U')}
                     className="h-7 w-7 flex-shrink-0 rounded-full"
                     alt="Avatar"
                   />
@@ -224,7 +229,6 @@ export default function Editor() {
             {cloneUrlToProcess !== null && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 flex flex-col gap-6 items-center w-full max-w-md">
-                  {profileError && <div className="text-red-500 text-sm mb-2">{profileError}</div>}
                   <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-white mb-2">O que deseja fazer?</h2>
                   <input
                     type="url"
@@ -376,7 +380,12 @@ export default function Editor() {
                             return;
                           }
                           try {
-                            await removeClone(clone.id, subdomain);
+                            if (!user) return;
+                            await removeCloneService(user.id, clone.id, subdomain);
+                            // Atualizar lista de clones
+                            const { data: clonesData, error: clonesError } = await fetchClonesService(user.id);
+                            if (clonesError) console.error('Erro ao carregar clones:', clonesError);
+                            if (clonesData) setClones(clonesData);
                           } catch (err) {
                             alert('Erro ao excluir clone: ' + (err instanceof Error ? err.message : String(err)));
                             console.error('Erro ao excluir clone:', err);
