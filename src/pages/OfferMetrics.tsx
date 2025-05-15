@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Line } from 'react-chartjs-2';
 import { Chart, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
-import { createClient } from '@supabase/supabase-js';
 import { motion } from 'framer-motion';
 import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Wrench } from 'lucide-react';
 import { Sidebar, SidebarBody, SidebarLink } from '../components/ui/sidebar';
@@ -10,11 +9,6 @@ import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
 
 Chart.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
 
 // Tipagem baseada na tabela offer_metrics do Supabase
 interface OfferMetric {
@@ -33,6 +27,7 @@ const PERIODS = [
 
 import LogoBranco from '../assets/logo-branco.png';
 import IconBranco from '../assets/ico-branco.png';
+import { supabase } from '../lib/supabase';
 
 const Logo = () => {
   return (

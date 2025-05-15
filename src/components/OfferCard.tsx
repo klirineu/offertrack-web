@@ -6,16 +6,10 @@ import { useEditDialogStore } from '../store/editDialogStore';
 import { useOfferStore } from '../store/offerStore';
 import api from '../services/api';
 import { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
+import { supabase } from '../lib/supabase';
 interface OfferCardProps {
   offer: Offer;
 }
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
 
 export function OfferCard({ offer }: OfferCardProps) {
   const { openDialog } = useEditDialogStore();
