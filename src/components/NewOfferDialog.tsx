@@ -39,7 +39,7 @@ export function NewOfferDialog({ isOpen, onClose, onSubmit, onError }: NewOfferD
       });
       setLoading(false);
     }
-  }, [isOpen]);
+  }, []);
 
   if (!isOpen) return null;
 

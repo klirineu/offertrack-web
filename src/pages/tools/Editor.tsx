@@ -65,14 +65,14 @@ export default function Editor() {
 
   useEffect(() => {
     fetchClones();
-  }, [fetchClones]);
+  }, []);
 
   useEffect(() => {
     if (urlParam) {
       setCloneUrlToProcess(urlParam);
     }
 
-  }, [urlParam]);
+  }, []);
 
   const links = [
     {

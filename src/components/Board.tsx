@@ -31,7 +31,7 @@ export function Board() {
 
   useEffect(() => {
     fetchOffers();
-  }, [fetchOffers]);
+  }, []);
 
   const activeOffer = offers.find((o) => o.id === activeId) || null;
 
