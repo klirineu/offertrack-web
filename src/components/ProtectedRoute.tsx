@@ -10,19 +10,20 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [checking, setChecking] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
     async function checkPlan() {
       if (!profile) return;
-      setChecking(true);
+      if (isMounted) setChecking(true);
       if (!profile.plan_id) {
-        setRedirectUrl('/escolher-plano');
-        setChecking(false);
+        if (isMounted) setRedirectUrl('/escolher-plano');
+        if (isMounted) setChecking(false);
         return;
       }
       // Bloquear se status for refused, refunded ou chargeback
       const blockedStatus = ['refused', 'refunded', 'chargeback'];
       if (blockedStatus.includes(profile.subscription_status)) {
-        setRedirectUrl('/escolher-plano');
-        setChecking(false);
+        if (isMounted) setRedirectUrl('/escolher-plano');
+        if (isMounted) setChecking(false);
         return;
       }
       // Verificar expiração do plano mensal
@@ -32,27 +33,41 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
         const diffDays = (now.getTime() - renewedAt.getTime()) / (1000 * 60 * 60 * 24);
         if (diffDays >= 30) {
           // Atualizar status para expired
-          await supabase.from('profiles').update({ subscription_status: 'expired' }).eq('id', profile.id);
-          setRedirectUrl('/escolher-plano');
-          setChecking(false);
+          if (profile.id) {
+            await supabase.from('profiles').update({ subscription_status: 'expired' }).eq('id', profile.id);
+          }
+          if (isMounted) setRedirectUrl('/escolher-plano');
+          if (isMounted) setChecking(false);
           return;
         }
       }
       if (profile.subscription_status !== 'active') {
         // Buscar checkout_url do plano
-        const { data: plan } = await supabase.from('plans').select('checkout_url').eq('id', profile.plan_id).single();
-        if (plan?.checkout_url) {
-          setRedirectUrl(plan.checkout_url);
+        if (profile.plan_id) {
+          const { data: plan } = await supabase.from('plans').select('checkout_url').eq('id', profile.plan_id).single();
+          if (isMounted) {
+            if (plan?.checkout_url) {
+              setRedirectUrl(plan.checkout_url);
+            } else {
+              setRedirectUrl('/escolher-plano');
+            }
+            setChecking(false);
+          }
         } else {
-          setRedirectUrl('/escolher-plano');
+          if (isMounted) {
+            setRedirectUrl('/escolher-plano');
+            setChecking(false);
+          }
         }
-        setChecking(false);
         return;
       }
-      setRedirectUrl(null);
-      setChecking(false);
+      if (isMounted) {
+        setRedirectUrl(null);
+        setChecking(false);
+      }
     }
     checkPlan();
+    return () => { isMounted = false; };
   }, [profile]);
 
   if (isLoading || checking) {
@@ -64,8 +79,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (redirectUrl) {
-    window.location.href = redirectUrl;
-    return null;
+    return <Navigate to={redirectUrl} replace />;
   }
 
   return <>{children}</>;
