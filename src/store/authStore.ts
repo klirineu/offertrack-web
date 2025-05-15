@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { User, AuthError } from "@supabase/supabase-js";
+import { User, AuthError, PostgrestError } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import { Database } from "../types/supabase";
 
@@ -17,8 +17,9 @@ interface AuthStore {
   ) => Promise<{ error: AuthError | null }>;
   signUp: (
     email: string,
-    password: string
-  ) => Promise<{ error: AuthError | null }>;
+    password: string,
+    extra?: { full_name?: string; plan_id?: string }
+  ) => Promise<{ error: AuthError | PostgrestError | null }>;
   signOut: () => Promise<void>;
   updateProfile: (
     updates: Partial<Profile>
@@ -99,15 +100,36 @@ export const useAuthStore = create<AuthStore>((set, get) => {
       }
     },
 
-    signUp: async (email: string, password: string) => {
+    signUp: async (
+      email: string,
+      password: string,
+      extra?: { full_name?: string; plan_id?: string }
+    ) => {
       set({ isLoading: true, error: null });
       try {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
         });
+        if (error || !data.user) {
+          set({ isLoading: false });
+          return { error };
+        }
+        // Salvar dados extras no perfil
+        const now = new Date();
+        const trialExpires = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({
+            full_name: extra?.full_name ?? null,
+            plan_id: extra?.plan_id ?? null,
+            trial_started_at: now.toISOString(),
+            trial_expires_at: trialExpires.toISOString(),
+            subscription_status: "trialing",
+          })
+          .eq("id", data.user.id);
         set({ isLoading: false });
-        return { error };
+        return { error: error || profileError };
       } catch (error) {
         set({
           error: error instanceof Error ? error.message : "Failed to sign up",

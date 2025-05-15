@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Sun, Moon, Mail } from 'lucide-react';
 import { useThemeStore } from '../store/themeStore';
 import { Line } from 'react-chartjs-2';
@@ -9,6 +9,7 @@ import logoDark from '../assets/favicon.png';
 import logoLight from '../assets/favicon.png';
 import editorImg from '../assets/editor.png';
 import { Column } from '../components/Column';
+import { supabase } from '../lib/supabase';
 
 // Dados mockados para o board visual
 const mockOffers = [
@@ -80,9 +81,27 @@ const chartData = {
   ],
 };
 
+type Plan = {
+  id: string;
+  name: string;
+  price: number;
+  max_libraries: number;
+  max_clones: number;
+  max_anticlone: number;
+  max_cloaker_requests: number | null;
+  features: string[];
+};
+
 export function LandingPage() {
   const { theme, toggleTheme } = useThemeStore();
   const logo = theme === 'dark' ? logoDark : logoLight;
+  const [plans, setPlans] = useState<Plan[]>([]);
+
+  useEffect(() => {
+    supabase.from('plans').select('*').order('price', { ascending: true }).then(({ data }) => {
+      if (data) setPlans(data as Plan[]);
+    });
+  }, []);
 
   return (
     <div className={theme === 'dark' ? 'min-h-screen bg-[#111827] text-white' : 'min-h-screen bg-white text-gray-900'}>
@@ -228,74 +247,42 @@ export function LandingPage() {
       {/* Planos e Preços */}
       <section id="planos" className={theme === 'dark' ? 'py-20 px-4 bg-[#111827]' : 'py-20 px-4 bg-white'}>
         <div className="max-w-7xl mx-auto text-center mb-12">
-          <h2 className={theme === 'dark' ? 'text-3xl md:text-4xl font-bold mb-4' : 'text-3xl md:text-4xl font-bold mb-4 text-gray-900'}>Planos e Preços — Tudo o que você precisa para dominar os anúncios</h2>
+          <h2 className={theme === 'dark' ? 'text-3xl md:text-4xl font-bold mb-4' : 'text-3xl md:text-4xl font-bold mb-4 text-gray-900'}>🧩 Planos e Preços — Tudo o que você precisa para dominar os anúncios</h2>
           <p className={theme === 'dark' ? 'text-xl text-[#cbd5e1]' : 'text-xl text-gray-600'}>Todos os planos incluem:</p>
           <ul className={theme === 'dark' ? 'text-[#cbd5e1] flex flex-wrap gap-3 justify-center mt-4 text-base' : 'text-gray-600 flex flex-wrap gap-3 justify-center mt-4 text-base'}>
-            <li className="flex items-center gap-2"><span className="text-green-400">✔</span> Extração de criativos vencedores</li>
-            <li className="flex items-center gap-2"><span className="text-green-400">✔</span> Monitoramento de bibliotecas</li>
-            <li className="flex items-center gap-2"><span className="text-green-400">✔</span> Clonagem ilimitada de páginas</li>
-            <li className="flex items-center gap-2"><span className="text-green-400">✔</span> Hospedagem premium</li>
-            <li className="flex items-center gap-2"><span className="text-green-400">✔</span> Anticlone real</li>
-            <li className="flex items-center gap-2"><span className="text-green-400">✔</span> Botão WhatsApp, Pixel, API, verificação Facebook/Hotmart</li>
-            <li className="flex items-center gap-2"><span className="text-green-400">✔</span> Domínios grátis e SSL ilimitado</li>
+            <li className="flex items-center gap-2"><span className="text-green-400">✔</span> Hospedagem premium + SSL gratuito</li>
+            <li className="flex items-center gap-2"><span className="text-green-400">✔</span> Extração e download de criativos vencedores</li>
+            <li className="flex items-center gap-2"><span className="text-green-400">✔</span> Monitoramento de bibliotecas do Facebook Ads</li>
+            <li className="flex items-center gap-2"><span className="text-green-400">✔</span> Clonagem e anticlone (quantidade definida por plano)</li>
             <li className="flex items-center gap-2"><span className="text-green-400">✔</span> Suporte via WhatsApp</li>
           </ul>
         </div>
         <div className="max-w-5xl mx-auto grid md:grid-cols-3 gap-8">
-          {/* Starter */}
-          <div className={theme === 'dark' ? 'bg-[#131a29] rounded-xl shadow-lg p-8 flex flex-col items-center border-2 border-[#2563eb]' : 'bg-white rounded-xl shadow-lg p-8 flex flex-col items-center border-2 border-blue-600'}>
-            <h3 className="text-xl font-bold mb-2">🟢 Starter</h3>
-            <div className="text-3xl font-extrabold mb-2">R$ 47,00 <span className="text-base font-normal">/ mês</span></div>
-            <ul className={theme === 'dark' ? 'text-[#cbd5e1] mb-6 space-y-1 text-center' : 'text-gray-600 mb-6 space-y-1 text-center'}>
-              <li>Até <b>25 bibliotecas</b> monitoradas</li>
-              <li>Clonagem ilimitada</li>
-              <li>Proteção anticlone de até <b>10 páginas</b></li>
-              <li>Domínios ilimitados</li>
-              <li>Hospedagem premium</li>
-              <li>Certificados SSL</li>
-              <li>Verificação de domínio no Facebook e Hotmart</li>
-              <li>Suporte via WhatsApp</li>
-            </ul>
-            <a href="#" className={theme === 'dark' ? 'w-full py-3 bg-[#2563eb] text-white rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors text-center' : 'w-full py-3 bg-blue-600 text-white rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors text-center'}>Assinar Starter</a>
-          </div>
-          {/* Intermediário */}
-          <div className={theme === 'dark' ? 'bg-[#131a29] rounded-xl shadow-lg p-8 flex flex-col items-center border-4 border-yellow-400 scale-105' : 'bg-white rounded-xl shadow-lg p-8 flex flex-col items-center border-4 border-yellow-400 scale-105'}>
-            <h3 className="text-xl font-bold mb-2">🟡 Intermediário <span className="ml-2 px-2 py-1 bg-yellow-400 text-black rounded text-xs font-bold">Recomendado</span></h3>
-            <div className="text-3xl font-extrabold mb-2">R$ 97,00 <span className="text-base font-normal">/ mês</span></div>
-            <ul className={theme === 'dark' ? 'text-[#cbd5e1] mb-6 space-y-1 text-center' : 'text-gray-600 mb-6 space-y-1 text-center'}>
-              <li>Até <b>75 bibliotecas</b> monitoradas</li>
-              <li>Clonagem ilimitada</li>
-              <li>Proteção anticlone de até <b>50 páginas</b></li>
-              <li>Acesso completo ao Clone Inteligente</li>
-              <li>Domínios ilimitados + SSL ilimitado</li>
-              <li>API de conversão + Pixel de qualquer plataforma</li>
-              <li>Botão de WhatsApp</li>
-              <li>Suporte via WhatsApp com prioridade</li>
-            </ul>
-            <a href="#" className={theme === 'dark' ? 'w-full py-3 bg-yellow-400 text-black rounded-lg font-semibold text-lg hover:bg-yellow-300 transition-colors text-center' : 'w-full py-3 bg-yellow-400 text-black rounded-lg font-semibold text-lg hover:bg-yellow-300 transition-colors text-center'}>Assinar Intermediário</a>
-          </div>
-          {/* Avançado */}
-          <div className={theme === 'dark' ? 'bg-[#131a29] rounded-xl shadow-lg p-8 flex flex-col items-center border-2 border-red-500' : 'bg-white rounded-xl shadow-lg p-8 flex flex-col items-center border-2 border-red-500'}>
-            <h3 className="text-xl font-bold mb-2">🔴 Avançado</h3>
-            <div className="text-3xl font-extrabold mb-2">R$ 147,00 <span className="text-base font-normal">/ mês</span></div>
-            <ul className={theme === 'dark' ? 'text-[#cbd5e1] mb-6 space-y-1 text-center' : 'text-gray-600 mb-6 space-y-1 text-center'}>
-              <li>Até <b>200 bibliotecas</b> monitoradas</li>
-              <li>Clonagem ilimitada</li>
-              <li>Proteção anticlone de até <b>100 páginas</b></li>
-              <li>Todas as integrações com Facebook, Hotmart e outras plataformas</li>
-              <li>Certificados SSL ilimitados</li>
-              <li>Verificação, Pixel, API e marcadores de cookie</li>
-              <li>Botão de WhatsApp</li>
-              <li>Suporte Premium e acesso antecipado às novas ferramentas</li>
-              <li className="text-red-400 font-semibold">⚠️ Cloaker será incluso gratuitamente em breve</li>
-            </ul>
-            <a href="#" className={theme === 'dark' ? 'w-full py-3 bg-red-500 text-white rounded-lg font-semibold text-lg hover:bg-red-400 transition-colors text-center' : 'w-full py-3 bg-red-500 text-white rounded-lg font-semibold text-lg hover:bg-red-400 transition-colors text-center'}>Assinar Avançado</a>
-          </div>
+          {plans.map((plan, idx) => (
+            <div key={plan.id} className={theme === 'dark'
+              ? `bg-[#131a29] rounded-xl shadow-lg p-8 flex flex-col items-center border-2 ${idx === 1 ? 'border-4 border-yellow-400 scale-105' : idx === 2 ? 'border-2 border-red-500' : 'border-2 border-[#2563eb]'}`
+              : `bg-white rounded-xl shadow-lg p-8 flex flex-col items-center ${idx === 1 ? 'border-4 border-yellow-400 scale-105' : idx === 2 ? 'border-2 border-red-500' : 'border-2 border-blue-600'}`
+            }>
+              <h3 className="text-xl font-bold mb-2">{plan.name === 'starter' ? '🟢 Starter' : plan.name === 'intermediario' ? '🟡 Intermediário' : '🔴 Avançado'}{idx === 1 && <span className="ml-2 px-2 py-1 bg-yellow-400 text-black rounded text-xs font-bold">Recomendado</span>}</h3>
+              <div className="text-3xl font-extrabold mb-2">R$ {plan.price},00 <span className="text-base font-normal">/ mês</span></div>
+              <ul className={theme === 'dark' ? 'text-[#cbd5e1] mb-6 space-y-1 text-center' : 'text-gray-600 mb-6 space-y-1 text-center'}>
+                <li>📊 Monitoramento de até <b>{plan.max_libraries}</b> bibliotecas</li>
+                <li>🧬 Até <b>{plan.max_clones}</b> páginas clonadas + {plan.max_anticlone} com anticlone</li>
+                {plan.max_cloaker_requests && <li>🛡️ Cloaker incluso com até <b>{plan.max_cloaker_requests.toLocaleString('pt-BR')}</b> requisições/mês</li>}
+                {plan.name === 'intermediario' && <li>⚠️ Excedente: R$ 3,00 a cada 1.000 requisições extras</li>}
+                {plan.name === 'avancado' && <li>⚠️ Excedente: R$ 2,00 a cada 1.000 requisições extras</li>}
+                {Array.isArray(plan.features) && plan.features.map((f: string, i: number) => <li key={i}>{f}</li>)}
+              </ul>
+              <a href="/register" className={theme === 'dark'
+                ? `w-full py-3 ${idx === 1 ? 'bg-yellow-400 text-black' : idx === 2 ? 'bg-red-500 text-white' : 'bg-[#2563eb] text-white'} rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors text-center`
+                : `w-full py-3 ${idx === 1 ? 'bg-yellow-400 text-black' : idx === 2 ? 'bg-red-500 text-white' : 'bg-blue-600 text-white'} rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors text-center`
+              }>Assinar {plan.name.charAt(0).toUpperCase() + plan.name.slice(1)}</a>
+            </div>
+          ))}
         </div>
         <div className={theme === 'dark' ? 'text-[#cbd5e1] text-center mt-8' : 'text-gray-600 text-center mt-8'}>
           <p>Todos os planos contam com <b>garantia de 7 dias</b>. Cancele sem compromisso caso não ache que é para você.</p>
           <p className="mt-2">O <b>plano intermediário</b> oferece o melhor custo-benefício para quem já faz anúncios e quer escalar com segurança e inteligência.</p>
-          <p className="mt-2">Em breve: Módulo de <b>Cloaker</b> incluso nos planos <b>Intermediário</b> e <b>Avançado</b> sem custo adicional.</p>
         </div>
       </section>
 

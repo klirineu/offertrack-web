@@ -74,6 +74,36 @@ export const useAnticloneStore = create<AnticloneStore>((set) => ({
       } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
+      // Buscar perfil do usuário
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("plan_id")
+        .eq("id", user.id)
+        .single();
+      if (!profile || !profile.plan_id)
+        throw new Error("Plano não encontrado.");
+      // Buscar limites do plano
+      const { data: plan } = await supabase
+        .from("plans")
+        .select("max_anticlone")
+        .eq("id", profile.plan_id)
+        .single();
+      if (!plan) throw new Error("Limite do plano não encontrado.");
+      // Contar anticlones existentes
+      const { count } = await supabase
+        .from("anticlone_sites")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id);
+      if (typeof count === "number" && count >= plan.max_anticlone) {
+        set({
+          isLoading: false,
+          error: `Limite de anticlones atingido para seu plano. (${plan.max_anticlone})`,
+        });
+        throw new Error(
+          `Limite de anticlones atingido para seu plano. (${plan.max_anticlone})`
+        );
+      }
+
       // Extract hostname from URL
       const url = new URL(site.original_url);
       const siteWithHost = {

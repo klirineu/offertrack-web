@@ -56,6 +56,37 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
+
+      // Buscar perfil do usuário
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("plan_id")
+        .eq("id", user.id)
+        .single();
+      if (!profile || !profile.plan_id)
+        throw new Error("Plano não encontrado.");
+      // Buscar limites do plano
+      const { data: plan } = await supabase
+        .from("plans")
+        .select("max_clones")
+        .eq("id", profile.plan_id)
+        .single();
+      if (!plan) throw new Error("Limite do plano não encontrado.");
+      // Contar clones existentes
+      const { count } = await supabase
+        .from("cloned_sites")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id);
+      if (typeof count === "number" && count >= plan.max_clones) {
+        set({
+          isLoading: false,
+          error: `Limite de páginas clonadas atingido para seu plano. (${plan.max_clones})`,
+        });
+        throw new Error(
+          `Limite de páginas clonadas atingido para seu plano. (${plan.max_clones})`
+        );
+      }
+
       const { data, error } = await supabase
         .from("cloned_sites")
         .insert({ user_id: user.id, original_url: originalUrl, url: clonedUrl })

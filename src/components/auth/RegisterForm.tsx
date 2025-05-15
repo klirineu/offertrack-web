@@ -1,8 +1,7 @@
-import { useState } from 'react';
-
-import { useAuthStore } from '../../store/authStore'
+import { useState, useEffect } from 'react';
 
 import { Link, useNavigate } from 'react-router-dom';
+import { supabase } from '../../lib/supabase';
 
 export function RegisterForm() {
   const [email, setEmail] = useState('');
@@ -11,27 +10,49 @@ export function RegisterForm() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { signUp } = useAuthStore()
-
   const navigate = useNavigate();
   const [fullName, setFullName] = useState('');
+  const [plans, setPlans] = useState<{ id: string; name: string; price: string }[]>([]);
+  const [selectedPlan, setSelectedPlan] = useState<string>('');
+
+  useEffect(() => {
+    // Buscar planos do Supabase
+    supabase.from('plans').select('id, name, price').order('price', { ascending: true }).then(({ data }) => {
+      if (data) setPlans(data);
+    });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (password !== confirmPassword) {
-      return setError('As senhas não coincidem');
+    if (!selectedPlan) {
+      setError('Selecione um plano para continuar.');
+      return;
     }
-
+    if (password !== confirmPassword) {
+      setError('As senhas não coincidem');
+      return;
+    }
     try {
       setError('');
       setLoading(true);
-      const { error: signUpError } = await signUp(email, password, { full_name: fullName });
-      if (signUpError) {
-        setError('Falha ao criar conta. O email já está em uso ou é inválido.');
+      // Chamar Edge Function do Supabase para criar sessão Stripe
+      const res = await fetch('https://gakbtbjbywiphvspibbv.functions.supabase.co/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          planId: selectedPlan,
+          fullName,
+          password
+        })
+      });
+      const data = await res.json();
+      if (!data.url) {
+        setError('Erro ao iniciar checkout. Tente novamente.');
+        setLoading(false);
         return;
       }
-      navigate('/dashboard');
+      window.location.href = data.url;
     } catch (err) {
       setError('Ocorreu um erro inesperado. Tente novamente.');
     } finally {
@@ -107,6 +128,21 @@ export function RegisterForm() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
               />
+            </div>
+            <div>
+              <label htmlFor="plan" className="block text-sm font-medium text-gray-300">Plano</label>
+              <select
+                id="plan"
+                required
+                className="mt-1 block w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={selectedPlan}
+                onChange={e => setSelectedPlan(e.target.value)}
+              >
+                <option value="">Selecione um plano</option>
+                {plans.map(plan => (
+                  <option key={plan.id} value={plan.id}>{plan.name.charAt(0).toUpperCase() + plan.name.slice(1)} (R$ {plan.price},00)</option>
+                ))}
+              </select>
             </div>
             <button
               type="submit"
