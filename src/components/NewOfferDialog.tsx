@@ -95,7 +95,7 @@ export function NewOfferDialog({ isOpen, onClose, onSubmit, onError }: NewOfferD
           </button>
         </div>
 
-        <form className="space-y-4">
+        <div className="space-y-4">
           {errorMsg && <div className="text-red-500 text-sm mb-2">{errorMsg}</div>}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -178,7 +178,7 @@ export function NewOfferDialog({ isOpen, onClose, onSubmit, onError }: NewOfferD
               {loading ? 'Adicionando...' : 'Adicionar Oferta'}
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

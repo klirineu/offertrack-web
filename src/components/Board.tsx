@@ -23,7 +23,7 @@ const columns = [
 
 export function Board() {
   const { theme } = useThemeStore();
-  const { offers, fetchOffers } = useOfferStore();
+  const { offers, fetchOffers, addOffer } = useOfferStore();
 
   const [isNewOfferDialogOpen, setIsNewOfferDialogOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -56,7 +56,7 @@ export function Board() {
 
   const handleNewOffer = async (offerData: Omit<Offer, 'id' | 'status' | 'createdAt' | 'updatedAt'>) => {
     try {
-      await useOfferStore.getState().addOffer({
+      await addOffer({
         ...offerData,
         status: 'waiting'
       });
