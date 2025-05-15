@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { useThemeStore } from '../store/themeStore';
+import { useAuthStore } from '../store/authStore';
 
 interface NewOfferDialogProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ interface NewOfferDialogProps {
 
 export function NewOfferDialog({ isOpen, onClose, onSubmit, onError }: NewOfferDialogProps) {
   const { theme } = useThemeStore()
+  const { profile } = useAuthStore();
 
   const [formData, setFormData] = useState({
     title: '',
@@ -39,11 +41,24 @@ export function NewOfferDialog({ isOpen, onClose, onSubmit, onError }: NewOfferD
       });
       setLoading(false);
     }
+    if (isOpen && !profile) {
+      setErrorMsg('Sua sessão expirou. Faça login novamente.');
+      setTimeout(() => {
+        onClose();
+      }, 2000);
+    }
   }, []);
 
   if (!isOpen) return null;
 
   const handleSubmit = async () => {
+    if (!profile) {
+      setErrorMsg('Sua sessão expirou. Faça login novamente.');
+      setTimeout(() => {
+        onClose();
+      }, 2000);
+      return;
+    }
     setLoading(true);
     setErrorMsg(null);
     try {

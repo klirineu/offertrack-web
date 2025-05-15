@@ -62,6 +62,7 @@ export default function Editor() {
   const [actionLoading, setActionLoading] = useState<'editor' | 'zip' | null>(null);
   const [cloneUrlToProcess, setCloneUrlToProcess] = useState<string | null>(null);
   const { user, profile } = useAuthStore();
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchClones();
@@ -150,6 +151,14 @@ export default function Editor() {
 
   // Adicionar função para clonar para o editor
   async function handleCloneToEditor(url: string) {
+    if (!profile) {
+      setProfileError('Sua sessão expirou. Faça login novamente.');
+      setTimeout(() => {
+        setCloneUrlToProcess(null);
+        setProfileError(null);
+      }, 2000);
+      return;
+    }
     setActionLoading('editor');
     try {
       const res = await api.post('/api/clone/folder', { url });
@@ -215,6 +224,7 @@ export default function Editor() {
             {cloneUrlToProcess !== null && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 flex flex-col gap-6 items-center w-full max-w-md">
+                  {profileError && <div className="text-red-500 text-sm mb-2">{profileError}</div>}
                   <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-white mb-2">O que deseja fazer?</h2>
                   <input
                     type="url"
