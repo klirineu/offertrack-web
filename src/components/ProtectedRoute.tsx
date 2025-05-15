@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, isLoading, profile } = useAuthStore();
+  const { user, isLoading, profile, refreshProfile } = useAuthStore();
   const location = useLocation();
   const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
@@ -21,7 +21,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
       }
       // Bloquear se status for refused, refunded ou chargeback
       const blockedStatus = ['refused', 'refunded', 'chargeback'];
-      if (blockedStatus.includes(profile.subscription_status)) {
+      if (blockedStatus.includes(profile.subscription_status ?? '')) {
         if (isMounted) setRedirectUrl('/escolher-plano');
         if (isMounted) setChecking(false);
         return;
@@ -69,6 +69,20 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     checkPlan();
     return () => { isMounted = false; };
   }, [profile]);
+
+  // Recarrega o perfil ao reativar a aba
+  useEffect(() => {
+    async function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        await supabase.auth.getSession();
+        refreshProfile?.();
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [refreshProfile]);
 
   if (isLoading || checking) {
     return <div className="p-8">Carregando...</div>;

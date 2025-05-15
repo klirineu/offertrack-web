@@ -24,6 +24,7 @@ interface AuthStore {
   updateProfile: (
     updates: Partial<Profile>
   ) => Promise<{ error: Error | null }>;
+  refreshProfile?: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthStore>((set, get) => {
@@ -179,6 +180,17 @@ export const useAuthStore = create<AuthStore>((set, get) => {
         });
         return { error: error as Error };
       }
+    },
+
+    refreshProfile: async () => {
+      const { user } = get();
+      if (!user) return;
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+      if (!error) set({ profile });
     },
   };
 });
