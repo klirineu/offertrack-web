@@ -1,15 +1,16 @@
-import { useState } from 'react';
-import { useThemeStore } from '../store/themeStore';
+import React, { useState } from 'react';
+
+import { Sidebar, SidebarBody, SidebarLink } from '../../components/ui/sidebar';
+import { Layout, UserCog, LogOut, Wrench, Circle, SettingsIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Moon, Sun, Bell, Globe, Wrench } from 'lucide-react';
-import { SidebarBody, SidebarLink, Sidebar } from '../components/ui/sidebar';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 
-
-
-import LogoBranco from '../assets/logo-branco.png';
-import IconBranco from '../assets/ico-branco.png';
+import LogoBranco from '../../assets/logo-branco.png';
+import IconBranco from '../../assets/ico-branco.png';
+import { useThemeStore } from '../../store/themeStore';
+import api from '../../services/api';
+import { MediaUpload } from '../../components/ui/MediaUpload';
 
 const Logo = () => {
   return (
@@ -40,10 +41,59 @@ const LogoIcon = () => {
   );
 };
 
-export function Settings() {
-  const { theme, toggleTheme } = useThemeStore();
+const Spinner = () => (
+  <div className="flex justify-center items-center py-8">
+    <svg className="animate-spin h-8 w-8 text-blue-600" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+    </svg>
+  </div>
+);
+
+const StripMeta: React.FC = () => {
+  const { theme } = useThemeStore();
   const [open, setOpen] = useState(false);
   const { user, profile } = useAuth();
+  const [file, setFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [cleanFileUrl, setCleanFileUrl] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!file) return;
+    setLoading(true);
+    setError(null);
+    setCleanFileUrl(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await api.post('/api/strip-meta', formData, { responseType: 'blob' });
+      if (response.status < 200 || response.status >= 300) {
+        throw new Error('Erro ao processar o arquivo.');
+      }
+      const blob = response.data;
+      const url = URL.createObjectURL(blob);
+      setCleanFileUrl(url);
+      // Tenta manter a extensão do arquivo original
+      const ext = file.name.split('.').pop();
+      // Baixar automaticamente
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `arquivo-limpo.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Erro desconhecido.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const links = [
     {
@@ -132,73 +182,38 @@ export function Settings() {
       </Sidebar>
 
       <div className={`${open ? 'pl-72' : 'pl-14'} transition-all duration-300`}>
-        <header className={`${theme === 'dark' ? 'bg-gray-800 border-b border-gray-700' : 'bg-white shadow-sm'}`}>
-          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center gap-2">
-            <SettingsIcon className="w-6 h-6 text-blue-600" />
-            <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Configurações</h1>
+        <header className={`${theme === 'dark' ? 'bg-gray-800 border-b border-gray-700' : 'bg-white shadow-sm'} w-full`}>
+          <div className="max-w-7xl mx-auto px-4 py-4">
+            <div className="flex items-center gap-4">
+              <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Remover Metadados de Vídeo/Imagem</h1>
+            </div>
           </div>
         </header>
 
-        <main className="max-w-7xl mx-auto px-4 py-8">
-          <div className="max-w-2xl mx-auto p-6">
-            <h1 className="text-2xl font-bold mb-8 dark:text-white">Configurações</h1>
-
-            <div className="space-y-6">
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
-                <h2 className="text-lg font-semibold mb-4 dark:text-white">Aparência</h2>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {theme === 'dark' ? (
-                      <Moon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                    ) : (
-                      <Sun className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                    )}
-                    <span className="text-gray-700 dark:text-gray-300">Tema</span>
-                  </div>
-                  <button
-                    onClick={toggleTheme}
-                    className="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                  >
-                    {theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
-                  </button>
-                </div>
-              </div>
-
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
-                <h2 className="text-lg font-semibold mb-4 dark:text-white">Notificações</h2>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Bell className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                      <span className="text-gray-700 dark:text-gray-300">Email Notificações</span>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" className="sr-only peer" />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
-                <h2 className="text-lg font-semibold mb-4 dark:text-white">Idioma e Região</h2>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Globe className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                    <span className="text-gray-700 dark:text-gray-300">Idioma</span>
-                  </div>
-                  <select className="bg-gray-100 dark:bg-gray-700 border-0 rounded-md px-3 py-2">
-                    <option value="en">English</option>
-                    <option value="pt">Português</option>
-                    <option value="es">Español</option>
-                  </select>
-                </div>
-              </div>
-            </div>
+        <main className="max-w-3xl mx-auto px-4 py-8">
+          <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <MediaUpload accept="image/*,video/*" onFile={setFile} />
+              {!loading && (
+                <button
+                  type="submit"
+                  disabled={loading || !file}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60"
+                >
+                  Remover Metadados
+                </button>
+              )}
+            </form>
+            {loading && <Spinner />}
+            {error && <div className="mt-4 text-red-600 dark:text-red-400">{error}</div>}
+            {!loading && cleanFileUrl && file && (
+              <div className="mt-6"></div>
+            )}
           </div>
         </main>
       </div>
-
     </div>
   );
-}
+};
+
+export default StripMeta; 

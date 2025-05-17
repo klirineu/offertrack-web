@@ -1,13 +1,16 @@
 import React from 'react';
-import { User, Mail, Building, CreditCard, Circle, Wrench } from 'lucide-react';
+import { User, Mail, CreditCard, Circle, Wrench } from 'lucide-react';
 import { useThemeStore } from '../store/themeStore';
 import { Sidebar, SidebarBody, SidebarLink } from '../components/ui/sidebar';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Layout, UserCog, Settings as SettingsIcon, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { format } from 'date-fns';
+import { format, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useState } from 'react';
+import { supabase } from '../lib/supabase';
+import { differenceInCalendarDays } from 'date-fns';
 
 import LogoBranco from '../assets/logo-branco.png';
 import IconBranco from '../assets/ico-branco.png';
@@ -48,6 +51,51 @@ export function Profile() {
   const [fullName, setFullName] = React.useState(profile?.full_name || '');
   const [success, setSuccess] = React.useState('');
   const [error, setError] = React.useState('');
+  const [cancelLoading, setCancelLoading] = useState(false);
+
+  // Calcular início e expiração da assinatura
+  let inicioAssinatura = null;
+  let expiraEm = null;
+  if (profile?.subscription_renewed_at) {
+    inicioAssinatura = new Date(profile.subscription_renewed_at);
+    expiraEm = addMonths(inicioAssinatura, 1);
+  }
+
+  // Calcular dias restantes
+  let diasRestantes = null;
+  if (expiraEm) {
+    const agora = new Date();
+    diasRestantes = differenceInCalendarDays(expiraEm, agora);
+  }
+
+  // Status em português
+  const statusPt = profile?.subscription_status
+    ? {
+      active: 'Ativa',
+      trialing: 'Em avaliação',
+      canceled: 'Cancelada',
+      expired: 'Expirada',
+      past_due: 'Pagamento em atraso',
+      unpaid: 'Não paga',
+    }[profile.subscription_status] || profile.subscription_status
+    : '';
+
+  // Gerenciar assinatura
+  const handleManage = () => {
+    window.location.href = '/escolher-plano';
+  };
+
+  // Cancelar assinatura
+  const handleCancel = async () => {
+    if (!window.confirm('Tem certeza que deseja cancelar sua assinatura?')) return;
+    setCancelLoading(true);
+    await supabase
+      .from('profiles')
+      .update({ subscription_status: 'canceled' })
+      .eq('id', profile.id);
+    if (typeof window !== 'undefined' && window.location) window.location.reload();
+    setCancelLoading(false);
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,6 +114,31 @@ export function Profile() {
         <Layout className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
       ),
     },
+
+    // {
+    //   label: "Filtro de Tráfego",
+    //   href: "#",
+    //   icon: (
+    //     <svg className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z" /></svg>
+    //   ),
+    //   subLinks: [
+    //     { label: "Requisições", href: "/traffic-filter/requests", icon: <Circle className="h-4 w-4" /> },
+    //     { label: "Domínios", href: "/traffic-filter/domains", icon: <Circle className="h-4 w-4" /> },
+    //     { label: "Relatórios", href: "/traffic-filter/reports", icon: <Circle className="h-4 w-4" /> },
+    //     { label: "Campanha", href: "/traffic-filter/campaigns", icon: <Circle className="h-4 w-4" /> },
+    //   ],
+    // },
+    {
+      label: "Ferramentas",
+      href: "#",
+      icon: <Wrench className="text-neutral-700 dark:text-neutral-200 h-5 w-5" />,
+      subLinks: [
+        { label: "Criptografar Texto", href: "/tools/encrypt", icon: <Circle className="h-4 w-4" /> },
+        { label: "Remover Metadados", href: "/tools/removemetadados", icon: <Circle className="h-4 w-4" /> },
+        { label: "Anticlone", href: "/tools/anticlone", icon: <Circle className="h-4 w-4" /> },
+        { label: "Clonar Sites", href: "/tools/clonesites", icon: <Circle className="h-4 w-4" /> },
+      ],
+    },
     {
       label: "Profile",
       href: "/profile",
@@ -79,29 +152,6 @@ export function Profile() {
       icon: (
         <SettingsIcon className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
       ),
-    },
-    {
-      label: "Filtro de Tráfego",
-      href: "#",
-      icon: (
-        <svg className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z" /></svg>
-      ),
-      subLinks: [
-        { label: "Requisições", href: "/traffic-filter/requests", icon: <Circle className="h-4 w-4" /> },
-        { label: "Domínios", href: "/traffic-filter/domains", icon: <Circle className="h-4 w-4" /> },
-        { label: "Relatórios", href: "/traffic-filter/reports", icon: <Circle className="h-4 w-4" /> },
-        { label: "Campanha", href: "/traffic-filter/campaigns", icon: <Circle className="h-4 w-4" /> },
-      ],
-    },
-    {
-      label: "Ferramentas",
-      href: "#",
-      icon: <Wrench className="text-neutral-700 dark:text-neutral-200 h-5 w-5" />,
-      subLinks: [
-        { label: "Criptografar Texto", href: "/tools/encrypt", icon: <Circle className="h-4 w-4" /> },
-        { label: "Anticlone", href: "/tools/anticlone", icon: <Circle className="h-4 w-4" /> },
-        { label: "Clonar Sites", href: "/tools/clonesites", icon: <Circle className="h-4 w-4" /> },
-      ],
     },
     {
       label: "Logout",
@@ -177,9 +227,32 @@ export function Profile() {
                 </div>
                 <div className="flex items-center gap-3">
                   <CreditCard className="w-5 h-5 text-gray-400" />
-                  <span className="text-gray-600 dark:text-gray-400">Assinatura ativa até:
-                    {/* {user?.created_at} */}
+                  <span className="text-gray-600 dark:text-gray-400">
+                    Status: <b>{profile ? statusPt : ''}</b><br />
+                    {expiraEm && profile ? (
+                      <>
+                        Sua assinatura é válida até: <b>{format(expiraEm, 'dd/MM/yyyy', { locale: ptBR })}</b><br />
+                        {diasRestantes && diasRestantes > 0
+                          ? `Faltam ${diasRestantes} dias para expirar.`
+                          : 'Sua assinatura expirou.'}
+                      </>
+                    ) : null}
                   </span>
+                </div>
+                <div className="flex items-center gap-3 mt-2">
+                  <button
+                    onClick={handleManage}
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
+                    Gerenciar Assinatura
+                  </button>
+                  {/* <button
+                    onClick={handleCancel}
+                    disabled={cancelLoading || !!(profile && profile.subscription_status === 'canceled')}
+                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-60"
+                  >
+                    {cancelLoading ? 'Cancelando...' : 'Cancelar Assinatura'}
+                  </button> */}
                 </div>
               </div>
             </div>

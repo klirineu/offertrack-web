@@ -22,6 +22,7 @@ import About from './pages/About';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfUse from './pages/TermsOfUse';
 import EscolherPlano from './pages/EscolherPlano';
+import StripMeta from './pages/tools/StripMeta';
 
 function App() {
   const { initialize } = useAuth();
@@ -49,6 +50,7 @@ function App() {
         <Route path="/traffic-filter/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
         <Route path="/tools/encrypt" element={<ProtectedRoute><EncryptText /></ProtectedRoute>} />
         <Route path="/tools/anticlone" element={<ProtectedRoute><Anticlone /></ProtectedRoute>} />
+        <Route path="/tools/removemetadados" element={<ProtectedRoute><StripMeta /></ProtectedRoute>} />
         <Route path="/tools/clonesites" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
         <Route path="/tools/editor-studio" element={<ProtectedRoute><EditorStudio /></ProtectedRoute>} />
         <Route path="/offers/:offerId/metrics" element={<ProtectedRoute><OfferMetrics /></ProtectedRoute>} />
