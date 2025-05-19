@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Sun, Moon, Mail } from 'lucide-react';
+import { Sun, Moon, Mail, LayoutDashboard, Link as LinkIcon, Shield, Download, FileText, Lock, TrendingUp } from 'lucide-react';
 import { useThemeStore } from '../store/themeStore';
 import { Line } from 'react-chartjs-2';
 import { Chart, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
@@ -91,6 +91,66 @@ type Plan = {
   max_cloaker_requests: number | null;
   features: string[];
 };
+
+// Seção de funcionalidades poderosas
+const features = [
+  {
+    icon: <LayoutDashboard className="h-6 w-6 text-accent" />,
+    title: 'Dashboard de Ofertas',
+    desc: 'Visualize e gerencie todas suas campanhas em um único lugar, com métricas importantes e controle total.',
+  },
+  {
+    icon: <LinkIcon className="h-6 w-6 text-accent" />,
+    title: 'Clonador de Sites',
+    desc: 'Clone páginas de vendas com apenas um clique, preservando todos os elementos e funcionalidades originais.',
+  },
+  {
+    icon: <Shield className="h-6 w-6 text-accent" />,
+    title: 'Anticlone',
+    desc: 'Proteja suas páginas contra cópias não autorizadas com nossa tecnologia exclusiva de proteção.',
+  },
+  {
+    icon: <Download className="h-6 w-6 text-accent" />,
+    title: 'Download de Criativos',
+    desc: 'Baixe imagens, vídeos e outros elementos de campanhas bem-sucedidas para inspirar suas próximas criações.',
+  },
+  {
+    icon: <FileText className="h-6 w-6 text-accent" />,
+    title: 'Remover Metadados',
+    desc: 'Limpe imagens e vídeos antes de subir para plataformas, aumentando sua segurança digital.',
+  },
+  {
+    icon: <Lock className="h-6 w-6 text-accent" />,
+    title: 'Criptografar Texto',
+    desc: 'Gere textos protegidos para uso em redes sociais, mantendo suas estratégias seguras.',
+  },
+  {
+    icon: <TrendingUp className="h-6 w-6 text-accent" />,
+    title: 'Ofertas Escaladas',
+    desc: 'Ferramenta avançada para automatizar e escalar suas ofertas mais bem-sucedidas com facilidade.',
+  },
+  {
+    icon: <Shield className="h-6 w-6 text-accent" />,
+    title: 'Cloaker',
+    desc: 'Proteja suas campanhas e evite bloqueios de anúncios com tecnologia avançada de cloaking.',
+  },
+];
+
+function FeatureCard({ icon, title, desc, theme }: { icon: React.ReactNode; title: string; desc: string; theme: string }) {
+  return (
+    <div className={theme === 'dark'
+      ? 'bg-[#111827] rounded-lg shadow p-6 hover:shadow-xl transition border border-[#232b3b] group flex flex-col gap-2'
+      : 'bg-white rounded-lg shadow p-6 hover:shadow-xl transition border border-gray-100 group flex flex-col gap-2'}>
+      <div className="flex items-center gap-3 mb-2">
+        {React.cloneElement(icon as React.ReactElement, {
+          className: `h-7 w-7 flex-shrink-0 ${theme === 'dark' ? 'text-blue-400 group-hover:text-blue-300' : 'text-blue-600 group-hover:text-blue-700'} transition-colors duration-200`,
+        })}
+        <h3 className={theme === 'dark' ? 'text-xl font-semibold text-blue-400 group-hover:text-blue-300 transition-colors' : 'text-xl font-semibold text-blue-700 group-hover:text-blue-800 transition-colors'}>{title}</h3>
+      </div>
+      <p className={theme === 'dark' ? 'text-gray-300 group-hover:text-gray-100 transition-colors' : 'text-gray-600 group-hover:text-gray-800 transition-colors'}>{desc}</p>
+    </div>
+  );
+}
 
 export function LandingPage() {
   const { theme, toggleTheme } = useThemeStore();
@@ -240,6 +300,33 @@ export function LandingPage() {
               <div className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-lg px-4 py-2 text-sm">Monitoramento 24/7</div>
               <div className="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded-lg px-4 py-2 text-sm">Ações automáticas</div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Seção de funcionalidades poderosas */}
+      <section className={theme === 'dark' ? 'py-16 bg-gradient-to-b from-[#131a29] to-[#111827]' : 'py-16 bg-gradient-to-b from-blue-50 to-white'}>
+        <div className="max-w-5xl mx-auto px-4">
+          <h2 className={theme === 'dark' ? 'text-3xl font-bold text-center text-blue-400 mb-2' : 'text-3xl font-bold text-center text-blue-700 mb-2'}>
+            Funcionalidades poderosas para sua segurança digital
+          </h2>
+          <p className={theme === 'dark' ? 'text-center text-lg text-gray-300 mb-10' : 'text-center text-lg text-gray-600 mb-10'}>
+            Ferramentas exclusivas criadas para proteger, otimizar e escalar seu desempenho no mercado digital
+          </p>
+          <div className="grid md:grid-cols-2 gap-8">
+            {features.map((f) => (
+              <FeatureCard key={f.title} icon={f.icon} title={f.title} desc={f.desc} theme={theme} />
+            ))}
+          </div>
+          <div className="flex justify-center mt-10">
+            <a
+              href="#planos"
+              className={theme === 'dark'
+                ? 'px-8 py-3 bg-blue-700 text-white rounded-lg font-semibold shadow hover:bg-blue-800 transition'
+                : 'px-8 py-3 bg-blue-600 text-white rounded-lg font-semibold shadow hover:bg-blue-700 transition'}
+            >
+              Experimente todas as funcionalidades
+            </a>
           </div>
         </div>
       </section>
