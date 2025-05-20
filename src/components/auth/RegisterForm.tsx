@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext'
 
@@ -15,13 +14,16 @@ export function RegisterForm() {
   const [plans, setPlans] = useState<{ id: string; name: string; price: string }[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<string>('');
 
-  const { signUp } = useAuth()
+  const { signUp } = useAuth();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    // Buscar planos do Supabase
     supabase.from('plans').select('id, name, price').order('price', { ascending: true }).then(({ data }) => {
       if (data) setPlans(data);
     });
+    // Pré-selecionar plano se vier na URL
+    const planParam = searchParams.get('plan');
+    if (planParam) setSelectedPlan(planParam);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -138,9 +140,21 @@ export function RegisterForm() {
               >
                 <option value="">Selecione um plano</option>
                 {plans.map(plan => (
-                  <option key={plan.id} value={plan.id}>{plan.name.charAt(0).toUpperCase() + plan.name.slice(1)} (R$ {plan.price},00)</option>
+                  <option key={plan.id} value={plan.id}>
+                    {plan.name.charAt(0).toUpperCase() + plan.name.slice(1)}
+                    {plan.name === 'starter' ? ' (de R$67 por R$37/mês - Lançamento)' : ` (R$ ${plan.price},00)`}
+                  </option>
                 ))}
               </select>
+              {/* Aviso do cupom e valor promocional */}
+              {selectedPlan === 'd4d9823e-d0a0-4aba-94e0-a20842908351' && (
+                <>
+                  <div className="mt-2 text-xs text-green-700 bg-green-50 rounded px-2 py-1 text-center">
+                    Para garantir o valor de R$37, use o cupom <b>lancamento</b> no checkout.
+                  </div>
+                </>
+              )
+              }
             </div>
             <button
               type="submit"

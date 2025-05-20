@@ -27,7 +27,7 @@ export function Column({ column, offers, onDeleteOffer }: ColumnProps) {
   };
 
   return (
-    <div className={`rounded-lg p-4 w-80 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
+    <div className={`rounded-lg p-4 w-full md:w-80 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
       <h2 className={`font-bold text-lg mb-4 ${theme === 'dark' ? colorClasses[column.color].dark : colorClasses[column.color].light}`}>
         {column.title}
         <span className={`ml-2 text-sm font-normal ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>

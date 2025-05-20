@@ -18,7 +18,7 @@ export default function PrivacyPolicy() {
             <p><span className="font-semibold">Uso das Informações:</span> Utilizamos seus dados para fornecer, operar e melhorar nossos serviços, personalizar sua experiência, enviar comunicações importantes e garantir a segurança da plataforma.</p>
             <p><span className="font-semibold">Compartilhamento:</span> Não vendemos ou compartilhamos suas informações pessoais com terceiros, exceto quando necessário para cumprir obrigações legais ou proteger nossos direitos.</p>
             <p><span className="font-semibold">Segurança:</span> Adotamos medidas técnicas e organizacionais para proteger seus dados contra acesso não autorizado, alteração, divulgação ou destruição.</p>
-            <p><span className="font-semibold">Seus Direitos:</span> Você pode acessar, corrigir ou excluir suas informações pessoais a qualquer momento. Para isso, entre em contato conosco pelo email <a href="mailto:contato@clonup.com" className="text-blue-600">contato@clonup.com</a>.</p>
+            <p><span className="font-semibold">Seus Direitos:</span> Você pode acessar, corrigir ou excluir suas informações pessoais a qualquer momento. Para isso, entre em contato conosco pelo email <a href="mailto:contato@clonup.pro" className="text-blue-600">contato@clonup.pro</a>.</p>
             <p>Ao utilizar o Clonup, você concorda com esta política. Podemos atualizá-la periodicamente, então recomendamos revisá-la regularmente.</p>
           </div>
           <div className="mt-8 text-center text-gray-500 dark:text-gray-400 text-sm">

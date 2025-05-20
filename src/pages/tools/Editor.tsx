@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Wrench, Edit, Trash2, Plus, Download } from 'lucide-react';
+import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Wrench, Edit, Trash2, Plus, Download, Loader2 } from 'lucide-react';
 import { SidebarBody, SidebarLink, Sidebar } from '../../components/ui/sidebar';
 import { useThemeStore } from '../../store/themeStore';
 import { useAuth } from '../../context/AuthContext';
@@ -31,7 +31,7 @@ const Logo = () => {
         animate={{ opacity: 1 }}
         className="font-medium text-black dark:text-white whitespace-pre"
       >
-        OfferTrack
+        Clonup
       </motion.span>
     </Link>
   );
@@ -63,6 +63,7 @@ export default function Editor() {
   const copyRef = useRef<HTMLInputElement>(null);
   const [actionLoading, setActionLoading] = useState<'editor' | 'zip' | null>(null);
   const [cloneUrlToProcess, setCloneUrlToProcess] = useState<string | null>(null);
+  const [deleteLoadingId, setDeleteLoadingId] = useState<string | null>(null);
 
   useEffect(() => {
     const loadClones = async () => {
@@ -181,6 +182,30 @@ export default function Editor() {
     } finally {
       setActionLoading(null);
       setCloneUrlToProcess(null);
+    }
+  }
+
+  // Função para excluir clone e mostrar modal de loading
+  async function handleDeleteClone(clone: CloneSite) {
+    const urlSite = clone.url;
+    const subdomain = getSubdomainFromUrl(urlSite);
+    if (!subdomain || subdomain.length === 0) {
+      alert('Não foi possível identificar o subdomínio do site clonado.');
+      return;
+    }
+    try {
+      if (!user) return;
+      setDeleteLoadingId(clone.id);
+      await removeCloneService(user.id, clone.id, subdomain);
+      // Atualizar lista de clones
+      const { data: clonesData, error: clonesError } = await fetchClonesService(user.id);
+      if (clonesError) console.error('Erro ao carregar clones:', clonesError);
+      if (clonesData) setClones(clonesData);
+    } catch (err) {
+      alert('Erro ao excluir clone: ' + (err instanceof Error ? err.message : String(err)));
+      console.error('Erro ao excluir clone:', err);
+    } finally {
+      setDeleteLoadingId(null);
     }
   }
 
@@ -374,27 +399,10 @@ export default function Editor() {
                         <Edit className="w-5 h-5" />
                       </button>
                       <button
-                        onClick={async () => {
-                          const urlSite = clone.url;
-                          const subdomain = getSubdomainFromUrl(urlSite);
-                          if (!subdomain || subdomain.length === 0) {
-                            alert('Não foi possível identificar o subdomínio do site clonado.');
-                            return;
-                          }
-                          try {
-                            if (!user) return;
-                            await removeCloneService(user.id, clone.id, subdomain);
-                            // Atualizar lista de clones
-                            const { data: clonesData, error: clonesError } = await fetchClonesService(user.id);
-                            if (clonesError) console.error('Erro ao carregar clones:', clonesError);
-                            if (clonesData) setClones(clonesData);
-                          } catch (err) {
-                            alert('Erro ao excluir clone: ' + (err instanceof Error ? err.message : String(err)));
-                            console.error('Erro ao excluir clone:', err);
-                          }
-                        }}
+                        onClick={() => handleDeleteClone(clone)}
                         className="p-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                         title="Excluir"
+                        disabled={!!deleteLoadingId}
                       >
                         <Trash2 className="w-5 h-5" />
                       </button>
@@ -403,6 +411,15 @@ export default function Editor() {
                 ))}
               </ul>
             </div>
+            {/* Modal de loading ao excluir clone */}
+            {deleteLoadingId && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 flex flex-col gap-4 items-center w-full max-w-xs">
+                  <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+                  <span className="text-lg text-gray-900 dark:text-white font-semibold">Excluindo site...</span>
+                </div>
+              </div>
+            )}
           </div>
         </main>
       </div>

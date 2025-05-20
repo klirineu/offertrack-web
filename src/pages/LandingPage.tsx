@@ -155,6 +155,7 @@ function FeatureCard({ icon, title, desc, theme }: { icon: React.ReactNode; titl
 export function LandingPage() {
   const { theme, toggleTheme } = useThemeStore();
   const logo = theme === 'dark' ? logoDark : logoLight;
+
   const [plans, setPlans] = useState<Plan[]>([]);
 
   useEffect(() => {
@@ -250,7 +251,7 @@ export function LandingPage() {
             {/* Análises de Ofertas Automáticas */}
             <div className={theme === 'dark' ? 'flex-1 min-w-0 w-full rounded-lg bg-[#111827] p-4 shadow-md' : 'flex-1 min-w-0 w-full rounded-lg bg-white p-4 shadow-md'}>
               <h2 className={theme === 'dark' ? 'text-2xl font-bold mb-2' : 'text-2xl font-bold mb-2 text-gray-900'}>Análises de Ofertas Automáticas</h2>
-              <p className={theme === 'dark' ? 'text-[#cbd5e1] mb-4' : 'text-gray-600 mb-4'}>Acompanhe o desempenho das suas ofertas sem precisar acessar todo dia. Veja cliques, conversões, CTR e ROI em tempo real.</p>
+              <p className={theme === 'dark' ? 'text-[#cbd5e1] mb-4' : 'text-gray-600 mb-4'}>Acompanhe o desempenho das suas ofertas sem precisar acessar todo dia.</p>
               <div className="w-full">
                 <Line data={chartData} options={{
                   plugins: {
@@ -345,27 +346,57 @@ export function LandingPage() {
           </ul>
         </div>
         <div className="max-w-5xl mx-auto grid md:grid-cols-3 gap-8">
-          {plans.map((plan, idx) => (
-            <div key={plan.id} className={theme === 'dark'
-              ? `bg-[#131a29] rounded-xl shadow-lg p-8 flex flex-col items-center border-2 ${idx === 1 ? 'border-4 border-yellow-400 scale-105' : idx === 2 ? 'border-2 border-red-500' : 'border-2 border-[#2563eb]'}`
-              : `bg-white rounded-xl shadow-lg p-8 flex flex-col items-center ${idx === 1 ? 'border-4 border-yellow-400 scale-105' : idx === 2 ? 'border-2 border-red-500' : 'border-2 border-blue-600'}`
-            }>
-              <h3 className="text-xl font-bold mb-2">{plan.name === 'starter' ? '🟢 Starter' : plan.name === 'intermediario' ? '🟡 Intermediário' : '🔴 Avançado'}{idx === 1 && <span className="ml-2 px-2 py-1 bg-yellow-400 text-black rounded text-xs font-bold">Recomendado</span>}</h3>
-              <div className="text-3xl font-extrabold mb-2">R$ {plan.price},00 <span className="text-base font-normal">/ mês</span></div>
-              <ul className={theme === 'dark' ? 'text-[#cbd5e1] mb-6 space-y-1 text-center' : 'text-gray-600 mb-6 space-y-1 text-center'}>
-                <li>📊 Monitoramento de até <b>{plan.max_libraries}</b> bibliotecas</li>
-                <li>🧬 Até <b>{plan.max_clones}</b> páginas clonadas + {plan.max_anticlone} com anticlone</li>
-                {plan.max_cloaker_requests && <li>🛡️ Cloaker incluso com até <b>{plan.max_cloaker_requests.toLocaleString('pt-BR')}</b> requisições/mês</li>}
-                {plan.name === 'intermediario' && <li>⚠️ Excedente: R$ 3,00 a cada 1.000 requisições extras</li>}
-                {plan.name === 'avancado' && <li>⚠️ Excedente: R$ 2,00 a cada 1.000 requisições extras</li>}
-                {Array.isArray(plan.features) && plan.features.map((f: string, i: number) => <li key={i}>{f}</li>)}
-              </ul>
-              <a href="/register" className={theme === 'dark'
-                ? `w-full py-3 ${idx === 1 ? 'bg-yellow-400 text-black' : idx === 2 ? 'bg-red-500 text-white' : 'bg-[#2563eb] text-white'} rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors text-center`
-                : `w-full py-3 ${idx === 1 ? 'bg-yellow-400 text-black' : idx === 2 ? 'bg-red-500 text-white' : 'bg-blue-600 text-white'} rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors text-center`
-              }>Assinar {plan.name.charAt(0).toUpperCase() + plan.name.slice(1)}</a>
-            </div>
-          ))}
+          {plans.map((plan, idx) => {
+            const isStarter = plan.name === 'starter';
+            const isPromo = isStarter && plan.price === 67;
+            return (
+              <div key={plan.id} className={theme === 'dark'
+                ? `min-w-[320px] max-w-full md:min-w-[340px] md:max-w-[400px] flex-1 bg-[#131a29] rounded-xl shadow-lg p-8 flex flex-col items-center border-2 ${idx === 1 ? 'border-4 border-yellow-400 scale-105' : idx === 2 ? 'border-2 border-red-500' : 'border-2 border-[#2563eb]'}`
+                : `min-w-[320px] max-w-full md:min-w-[340px] md:max-w-[400px] flex-1 bg-white rounded-xl shadow-lg p-8 flex flex-col items-center ${idx === 1 ? 'border-4 border-yellow-400 scale-105' : idx === 2 ? 'border-2 border-red-500' : 'border-2 border-blue-600'}`
+              }>
+                <h3 className="text-xl font-bold mb-2 text-center">
+                  {isStarter ? '🟢 Starter' : plan.name === 'intermediario' ? '🟡 Intermediário' : '🔴 Avançado'}
+                </h3>
+                {idx === 1 && (
+                  <div className="flex justify-center">
+                    <span className="inline-block mt-2 px-3 py-1 bg-yellow-400 text-black rounded-full text-xs font-bold shadow">Recomendado</span>
+                  </div>
+                )}
+                {isPromo ? (
+                  <>
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="text-lg line-through text-gray-400">R$ 67</span>
+                      <span className="text-4xl font-extrabold text-green-500">R$ 37</span>
+                      <span className="text-base font-normal text-gray-400">/ mês</span>
+                    </div>
+                    <span className="inline-block mb-2 px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-bold">Lançamento</span>
+                    <div className="mt-2 text-xs text-green-700 bg-green-50 rounded px-2 py-1 text-center">
+                      Para garantir o valor de R$37, use o cupom <b>lancamento</b> no checkout.
+                    </div>
+                  </>
+                ) : (
+                  <span className="text-3xl font-extrabold mb-2">R$ {plan.price},00 <span className="text-base font-normal">/ mês</span></span>
+                )}
+                <ul className={theme === 'dark' ? 'text-[#cbd5e1] mb-6 space-y-1 text-center' : 'text-gray-600 mb-6 space-y-1 text-center'}>
+                  <li>📊 Monitoramento de até <b>{plan.max_libraries}</b> bibliotecas</li>
+                  <li>🧬 Até <b>{plan.max_clones}</b> páginas clonadas + {plan.max_anticlone} com anticlone</li>
+                  {plan.max_cloaker_requests && <li>🛡️ Cloaker incluso com até <b>{plan.max_cloaker_requests.toLocaleString('pt-BR')}</b> requisições/mês</li>}
+                  {plan.name === 'intermediario' && <li>⚠️ Excedente: R$ 3,00 a cada 1.000 requisições extras</li>}
+                  {plan.name === 'avancado' && <li>⚠️ Excedente: R$ 2,00 a cada 1.000 requisições extras</li>}
+                  {Array.isArray(plan.features) && plan.features.map((f: string, i: number) => <li key={i}>{f}</li>)}
+                </ul>
+                <a
+                  href={`/register?plan=${plan.name}`}
+                  className={theme === 'dark'
+                    ? `w-full py-3 ${idx === 1 ? 'bg-yellow-400 text-black' : idx === 2 ? 'bg-red-500 text-white' : 'bg-[#2563eb] text-white'} rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors text-center`
+                    : `w-full py-3 ${idx === 1 ? 'bg-yellow-400 text-black' : idx === 2 ? 'bg-red-500 text-white' : 'bg-blue-600 text-white'} rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors text-center`
+                  }
+                >
+                  Assinar {plan.name.charAt(0).toUpperCase() + plan.name.slice(1)}
+                </a>
+              </div>
+            );
+          })}
         </div>
         <div className={theme === 'dark' ? 'text-[#cbd5e1] text-center mt-8' : 'text-gray-600 text-center mt-8'}>
           <p>Todos os planos contam com <b>garantia de 7 dias</b>. Cancele sem compromisso caso não ache que é para você.</p>
@@ -381,20 +412,24 @@ export function LandingPage() {
             {[
               {
                 q: 'Posso usar o Clonup gratuitamente?',
-                a: 'Sim, plano Starter com 7 dias de garantia.'
+                a: 'Sim, todos os planos oferecem 7 dias de garantia para todos os usuários.'
               },
               {
                 q: 'Como funciona o AntiClone?',
                 a: 'Detecta clonagens e redireciona todo o tráfego do clone para sua página.'
               },
               {
-                q: 'Quando o Cloaker estará disponível?',
-                a: 'Em breve! Plano Scale receberá gratuitamente.'
+                q: 'O que é o acompanhamento de ofertas?',
+                a: 'Você pode monitorar o desempenho das suas ofertas de forma automática.'
               },
               {
-                q: 'O sistema funciona em mobile?',
-                a: 'Sim, interface responsiva.'
-              }
+                q: 'Como funciona o Clone Inteligente?',
+                a: 'Com o Clone Inteligente, você pode clonar páginas de vendas com um clique, preservando design, scripts e funcionalidades.'
+              },
+              {
+                q: 'O Cloaker estará disponível para todos os planos?',
+                a: 'Sim! O Cloaker será liberado em breve para todos os planos, sem custo adicional.'
+              },
             ].map((faq, i) => (
               <div key={i} className={theme === 'dark' ? 'bg-[#111827] rounded-lg p-4' : 'bg-white rounded-lg p-4'}>
                 <button className="w-full flex justify-between items-center text-lg font-semibold">
@@ -419,77 +454,45 @@ export function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className={theme === 'dark' ? 'pt-12 pb-6 bg-[#131a29] border-t border-[#374151] text-center' : 'pt-12 pb-6 bg-gray-100 border-t border-gray-200 text-center'}>
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between gap-8 px-4">
-          <div className="flex flex-col items-center md:items-start mb-8 md:mb-0">
-            <img src={logo} alt="Clonup logo" className="w-8 h-8 mb-2" />
-            <span className="text-lg font-bold">Clonup</span>
-            <div className="flex gap-4 mt-2">
-            </div>
+      <footer className={theme === 'dark' ? 'pt-10 pb-4 bg-[#131a29] border-t border-[#374151]' : 'pt-10 pb-4 bg-gray-100 border-t border-gray-200'}>
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-start md:justify-between gap-8 px-4">
+          <div className="flex items-center gap-2">
+            <img src={logo} alt="Clonup logo" className="w-8 h-8" />
+            <span className="text-xl font-bold">Clonup</span>
           </div>
-          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 justify-items-center md:justify-items-start">
-            <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Produto</h3>
-              <ul className="space-y-2">
-                <li>
-                  <a href="#features" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Recursos</a>
-                </li>
-                <li>
-                  <a href="#planos" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Preços</a>
-                </li>
-                <li>
-                  <a href="#faq" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">FAQ</a>
-                </li>
+          <div className="w-full flex flex-col sm:flex-row justify-start md:justify-around gap-8">
+            <div className="mb-6 sm:mb-0">
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-3 text-base">Produto</h3>
+              <ul className="space-y-2 text-sm">
+                <li><a href="#features" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-white">Recursos</a></li>
+                <li><a href="#planos" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-white">Preços</a></li>
+                <li><a href="#faq" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-white">FAQ</a></li>
+              </ul>
+            </div>
+            <div className="mb-6 sm:mb-0">
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-3 text-base">Empresa</h3>
+              <ul className="space-y-2 text-sm">
+                <li><a href="/about" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-white">Sobre</a></li>
+                <li><a href="/privacy" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-white">Privacidade</a></li>
+                <li><a href="/terms" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-white">Termos de Uso</a></li>
               </ul>
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Empresa</h3>
-              <ul className="space-y-2">
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-3 text-base">Contato</h3>
+              <ul className="space-y-2 text-sm">
                 <li>
-                  <a href="/about" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Sobre</a>
-                </li>
-                <li>
-                  <a href="/privacy" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Privacidade</a>
-                </li>
-                <li>
-                  <a href="/terms" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Termos de Uso</a>
-                </li>
-                {/* <li>
-                  <a href="/blog" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Blog</a>
-                </li>
-                <li>
-                  <a href="/careers" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Carreiras</a>
-                </li> */}
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Contato</h3>
-              <ul className="space-y-2">
-                <li>
-                  <a href="mailto:contato@offertrack.com" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex items-center gap-2">
+                  <a href="mailto:contato@clonup.pro" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-white flex items-center gap-2">
                     <Mail className="w-4 h-4" />
-                    Contato
+                    contato@clonup.pro
                   </a>
                 </li>
-                {/* <li>
-                  <a href="https://twitter.com/offertrack" target="_blank" rel="noopener noreferrer" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex items-center gap-2">
-                    <ExternalLink className="w-4 h-4" />
-                    Twitter
-                  </a>
-                </li>
-                <li>
-                  <a href="https://linkedin.com/company/offertrack" target="_blank" rel="noopener noreferrer" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex items-center gap-2">
-                    <Globe className="w-4 h-4" />
-                    LinkedIn
-                  </a>
-                </li> */}
               </ul>
             </div>
           </div>
         </div>
-        <div className="max-w-7xl mx-auto mt-12 pt-8 border-t border-gray-200 dark:border-gray-800">
-          <p className="text-center text-gray-600 dark:text-gray-400">
-            © {new Date().getFullYear()} OfferTrack. Todos os direitos reservados.
+        <div className="max-w-7xl mx-auto mt-8 pt-6 border-t border-gray-200 dark:border-gray-800">
+          <p className="text-center text-xs text-gray-600 dark:text-gray-400">
+            © {new Date().getFullYear()} Clonup. Todos os direitos reservados.
           </p>
         </div>
       </footer>
@@ -508,9 +511,9 @@ export function LandingPageHeader() {
           <span className="text-xl font-bold">Clonup</span>
         </div>
         <div className="hidden md:flex items-center gap-8">
-          <a href="#features" className={theme === 'dark' ? 'hover:text-[#2563eb]' : 'hover:text-blue-600'}>Recursos</a>
-          <a href="#planos" className={theme === 'dark' ? 'hover:text-[#2563eb]' : 'hover:text-blue-600'}>Planos</a>
-          <a href="#faq" className={theme === 'dark' ? 'hover:text-[#2563eb]' : 'hover:text-blue-600'}>FAQ</a>
+          <a href="/#features" className={theme === 'dark' ? 'hover:text-[#2563eb]' : 'hover:text-blue-600'}>Recursos</a>
+          <a href="/#planos" className={theme === 'dark' ? 'hover:text-[#2563eb]' : 'hover:text-blue-600'}>Planos</a>
+          <a href="/#faq" className={theme === 'dark' ? 'hover:text-[#2563eb]' : 'hover:text-blue-600'}>FAQ</a>
           <a href="/login" className={theme === 'dark' ? 'hover:text-[#2563eb]' : 'hover:text-blue-600'}>Entrar</a>
           <button
             onClick={toggleTheme}
@@ -523,7 +526,7 @@ export function LandingPageHeader() {
             )}
           </button>
         </div>
-        <a href="#planos" className={theme === 'dark' ? 'ml-4 px-4 py-2 bg-[#2563eb] text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors' : 'ml-4 px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors'}>Começar</a>
+        <a href="/#planos" className={theme === 'dark' ? 'ml-4 px-4 py-2 bg-[#2563eb] text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors' : 'ml-4 px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors'}>Começar</a>
       </nav>
     </header>
   );
@@ -533,75 +536,45 @@ export function LandingPageFooter() {
   const { theme } = useThemeStore();
   const logo = theme === 'dark' ? logoDark : logoLight;
   return (
-    <footer className={theme === 'dark' ? 'pt-12 pb-6 bg-[#131a29] border-t border-[#374151] text-center' : 'pt-12 pb-6 bg-gray-100 border-t border-gray-200 text-center'}>
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between gap-8 px-4">
-        <div className="flex flex-row items-center md:items-start mb-8 md:mb-0 justify-center gap-2">
-          <img src={logo} alt="Clonup logo" className="w-8 h-8 mb-2" />
-          <span className="text-lg font-bold">Clonup</span>
+    <footer className={theme === 'dark' ? 'pt-10 bg-[#131a29] border-t border-[#374151]' : 'pt-10 bg-gray-100 border-t border-gray-200'}>
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-start md:justify-between gap-8 px-4">
+        <div className="flex items-center gap-2">
+          <img src={logo} alt="Clonup logo" className="w-8 h-8" />
+          <span className="text-xl font-bold">Clonup</span>
         </div>
-        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 justify-items-center md:justify-items-start">
-          <div>
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Produto</h3>
-            <ul className="space-y-2">
-              <li>
-                <a href="#features" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Recursos</a>
-              </li>
-              <li>
-                <a href="#planos" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Preços</a>
-              </li>
-              <li>
-                <a href="#faq" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">FAQ</a>
-              </li>
+        <div className="w-full flex flex-col sm:flex-row justify-start md:justify-around gap-8">
+          <div className="mb-6 sm:mb-0">
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-3 text-base">Produto</h3>
+            <ul className="space-y-2 text-sm">
+              <li><a href="#features" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-white">Recursos</a></li>
+              <li><a href="#planos" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-white">Preços</a></li>
+              <li><a href="#faq" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-white">FAQ</a></li>
+            </ul>
+          </div>
+          <div className="mb-6 sm:mb-0">
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-3 text-base">Empresa</h3>
+            <ul className="space-y-2 text-sm">
+              <li><a href="/about" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-white">Sobre</a></li>
+              <li><a href="/privacy" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-white">Privacidade</a></li>
+              <li><a href="/terms" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-white">Termos de Uso</a></li>
             </ul>
           </div>
           <div>
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Empresa</h3>
-            <ul className="space-y-2">
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-3 text-base">Contato</h3>
+            <ul className="space-y-2 text-sm">
               <li>
-                <a href="/about" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Sobre</a>
-              </li>
-              <li>
-                <a href="/privacy" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Privacidade</a>
-              </li>
-              <li>
-                <a href="/terms" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Termos de Uso</a>
-              </li>
-              {/* <li>
-                  <a href="/blog" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Blog</a>
-                </li>
-                <li>
-                  <a href="/careers" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Carreiras</a>
-                </li> */}
-            </ul>
-          </div>
-          <div>
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Contato</h3>
-            <ul className="space-y-2">
-              <li>
-                <a href="mailto:contato@offertrack.com" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex items-center gap-2">
+                <a href="mailto:contato@clonup.pro" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-white flex items-center gap-2">
                   <Mail className="w-4 h-4" />
-                  Contato
+                  contato@clonup.pro
                 </a>
               </li>
-              {/* <li>
-                  <a href="https://twitter.com/offertrack" target="_blank" rel="noopener noreferrer" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex items-center gap-2">
-                    <ExternalLink className="w-4 h-4" />
-                    Twitter
-                  </a>
-                </li>
-                <li>
-                  <a href="https://linkedin.com/company/offertrack" target="_blank" rel="noopener noreferrer" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex items-center gap-2">
-                    <Globe className="w-4 h-4" />
-                    LinkedIn
-                  </a>
-                </li> */}
             </ul>
           </div>
         </div>
       </div>
-      <div className="max-w-7xl mx-auto mt-12 pt-8 border-t border-gray-200 dark:border-gray-800">
-        <p className="text-center text-gray-600 dark:text-gray-400">
-          © {new Date().getFullYear()} OfferTrack. Todos os direitos reservados.
+      <div className="max-w-7xl mx-auto mt-8 pt-6 border-t border-gray-200 dark:border-gray-800">
+        <p className="text-center text-xs text-gray-600 dark:text-gray-400">
+          © {new Date().getFullYear()} Clonup. Todos os direitos reservados.
         </p>
       </div>
     </footer>

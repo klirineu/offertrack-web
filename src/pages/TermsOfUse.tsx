@@ -19,7 +19,7 @@ export default function TermsOfUse() {
             <p><span className="font-semibold">Propriedade Intelectual:</span> Todo o conteúdo, marca, design e código do Clonup são protegidos por direitos autorais. É proibida a reprodução ou uso não autorizado.</p>
             <p><span className="font-semibold">Limitação de Responsabilidade:</span> O Clonup não garante disponibilidade ininterrupta, isenção de erros ou resultados específicos. O uso é por sua conta e risco.</p>
             <p><span className="font-semibold">Alterações:</span> Os termos podem ser atualizados a qualquer momento. O uso contínuo da plataforma implica concordância com as alterações.</p>
-            <p>Em caso de dúvidas, entre em contato pelo email <a href="mailto:contato@clonup.com" className="text-blue-600">contato@clonup.com</a>.</p>
+            <p>Em caso de dúvidas, entre em contato pelo email <a href="mailto:contato@clonup.pro" className="text-blue-600">contato@clonup.pro</a>.</p>
           </div>
           <div className="mt-8 text-center text-gray-500 dark:text-gray-400 text-sm">
             <p>Clonup &copy; {new Date().getFullYear()} - Todos os direitos reservados.</p>

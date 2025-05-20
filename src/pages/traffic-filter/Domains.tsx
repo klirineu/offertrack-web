@@ -36,7 +36,7 @@ const Logo = () => {
         animate={{ opacity: 1 }}
         className="font-medium text-black dark:text-white whitespace-pre"
       >
-        OfferTrack
+        Clonup
       </motion.span>
     </Link>
   );
@@ -233,7 +233,7 @@ export function Domains() {
                   Adicione o seguinte registro TXT ao seu DNS para verificar a propriedade do domínio:
                 </p>
                 <code className="block mt-2 p-2 bg-white dark:bg-gray-700 rounded border border-blue-200 dark:border-blue-800 text-sm">
-                  offertrack-verify=123456
+                  clonup-verify=123456
                 </code>
               </div>
               <div className="flex justify-end gap-2 mt-6">

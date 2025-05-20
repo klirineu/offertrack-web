@@ -1,6 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ExternalLink, Tag, Clock, Edit2, TrendingUp, Copy, Trash2, Download } from 'lucide-react';
+import { ExternalLink, Tag, Clock, Edit2, TrendingUp, Copy, Trash2, Download, Loader2 } from 'lucide-react';
 import type { Offer } from '../types';
 import { useEditDialogStore } from '../store/editDialogStore';
 import api from '../services/api';
@@ -17,6 +17,7 @@ export function OfferCard({ offer, onDelete }: OfferCardProps) {
   const [metrics, setMetrics] = useState<{ count: number; checked_at: string }[]>([]);
   const [loadingMetrics, setLoadingMetrics] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [loadingDelete, setLoadingDelete] = useState(false);
 
   const {
     attributes,
@@ -54,9 +55,14 @@ export function OfferCard({ offer, onDelete }: OfferCardProps) {
   const firstMetric = metrics.at(0);
   const adsTrend = latestMetric && firstMetric ? latestMetric.count - firstMetric.count : 0;
 
-  function handleDeleteOffer() {
+  async function handleDeleteOffer() {
     if (window.confirm('Tem certeza que deseja excluir esta oferta?')) {
-      onDelete(offer.id);
+      setLoadingDelete(true);
+      try {
+        await onDelete(offer.id);
+      } finally {
+        setLoadingDelete(false);
+      }
     }
   }
 
@@ -119,10 +125,12 @@ export function OfferCard({ offer, onDelete }: OfferCardProps) {
             </button>
             <button
               onClick={handleDeleteOffer}
-              className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 z-50"
+              className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 z-50 flex items-center gap-1 disabled:opacity-60"
               title="Excluir Oferta"
+              disabled={loadingDelete}
             >
-              <Trash2 className="w-4 h-4" />
+              {loadingDelete ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              {loadingDelete && <span className="ml-1 text-xs">Excluindo...</span>}
             </button>
           </div>
         </div>
