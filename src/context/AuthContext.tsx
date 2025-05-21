@@ -17,6 +17,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>;
   refreshProfile: () => Promise<void>;
+  changePassword: (newPassword: string) => Promise<{ error: Error | AuthError | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -147,6 +148,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setProfile(profile);
   };
 
+  const changePassword = async (newPassword: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      setIsLoading(false);
+      return { error };
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to change password');
+      setIsLoading(false);
+      return { error: err instanceof Error ? err : new Error(String(err)) };
+    }
+  };
+
   const value: AuthContextType = {
     user,
     profile,
@@ -158,6 +173,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signOut,
     updateProfile,
     refreshProfile,
+    changePassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

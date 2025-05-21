@@ -47,11 +47,16 @@ const LogoIcon = () => {
 export function Profile() {
   const { theme } = useThemeStore();
   const [open, setOpen] = React.useState(false);
-  const { user, profile, updateProfile, isLoading } = useAuth();
+  const { user, profile, updateProfile, isLoading, changePassword } = useAuth();
   const [fullName, setFullName] = React.useState(profile?.full_name || '');
   const [success, setSuccess] = React.useState('');
   const [error, setError] = React.useState('');
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   // Calcular início e expiração da assinatura
   let inicioAssinatura = null;
@@ -104,6 +109,29 @@ export function Profile() {
     const { error } = await updateProfile({ full_name: fullName });
     if (error) setError('Erro ao atualizar nome.');
     else setSuccess('Nome atualizado com sucesso!');
+  };
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+    if (!password || password.length < 6) {
+      setPasswordError('A senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setPasswordError('As senhas não coincidem.');
+      return;
+    }
+    setPasswordLoading(true);
+    const { error } = await changePassword(password);
+    setPasswordLoading(false);
+    if (error) setPasswordError('Erro ao trocar senha.');
+    else {
+      setPasswordSuccess('Senha alterada com sucesso!');
+      setPassword('');
+      setConfirmPassword('');
+    }
   };
 
   const links = [
@@ -290,6 +318,43 @@ export function Profile() {
                   className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-60"
                 >
                   Salvar
+                </button>
+              </form>
+            </div>
+            {/* Formulário de troca de senha */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mt-6">
+              <h3 className="text-lg font-semibold mb-4 dark:text-white">Trocar Senha</h3>
+              {passwordSuccess && <div className="mb-2 p-2 bg-green-100 text-green-700 rounded">{passwordSuccess}</div>}
+              {passwordError && <div className="mb-2 p-2 bg-red-100 text-red-700 rounded">{passwordError}</div>}
+              <form className="space-y-4" onSubmit={handlePasswordChange}>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Nova Senha
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Confirmar Nova Senha
+                  </label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={passwordLoading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-60"
+                >
+                  {passwordLoading ? 'Salvando...' : 'Trocar Senha'}
                 </button>
               </form>
             </div>
