@@ -1,0 +1,136 @@
+#clonup-widget-root {
+  z-index: 2147483647;
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  pointer-events: none;
+}
+.clonup-float-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 2147483647;
+  background: #2563eb;
+  color: #fff;
+  border-radius: 50%;
+  width: 56px;
+  height: 56px;
+  font-size: 2rem;
+  border: none;
+  box-shadow: 0 2px 8px #0003;
+  cursor: pointer;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+.clonup-float-btn:hover {
+  background: #1d4ed8;
+}
+.clonup-popup {
+  position: fixed;
+  bottom: 90px;
+  right: 24px;
+  z-index: 2147483647;
+  background: #fff;
+  color: #222;
+  border-radius: 12px;
+  width: 350px;
+  max-width: 95vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 24px #0005;
+  padding: 16px;
+  pointer-events: auto;
+  border: 1px solid #e5e7eb;
+}
+.clonup-popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.clonup-popup-title {
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+.clonup-popup-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #888;
+  cursor: pointer;
+}
+.clonup-popup-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.clonup-tab {
+  background: #f3f4f6;
+  color: #222;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+.clonup-tab-active {
+  background: #2563eb;
+  color: #fff;
+}
+.clonup-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.clonup-list-btn {
+  width: 100%;
+  text-align: left;
+  background: #f3f4f6;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 8px;
+  cursor: pointer;
+  margin-bottom: 4px;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #222;
+  transition: background 0.2s;
+}
+.clonup-list-btn:hover {
+  background: #dbeafe;
+}
+.clonup-list-btn-copied {
+  background: #bbf7d0 !important;
+  color: #166534 !important;
+}
+.clonup-popup-options {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.clonup-label {
+  font-size: 0.95rem;
+  color: #222;
+}
+.clonup-input {
+  width: 60px;
+  padding: 2px 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+.clonup-label-switch {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.95rem;
+  color: #222;
+  cursor: pointer;
+}

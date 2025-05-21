@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext';
 
 import LogoBranco from '../assets/logo-branco.png';
 import IconBranco from '../assets/ico-branco.png';
+import ClonupFloatingWidget from '../components/ClonupFloatingWidget';
 
 
 
@@ -137,6 +138,7 @@ export function Dashboard() {
           <Board />
         </main>
       </div>
+      {/* <ClonupFloatingWidget /> */}
     </div>
   );
 }

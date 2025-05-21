@@ -173,11 +173,11 @@ export function LandingPage() {
             <img src={logo} alt="Clonup logo" className="w-8 h-8" />
             <span className="text-xl font-bold">Clonup</span>
           </div>
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden md:flex items-center gap-8 ml-16">
             <a href="#features" className={theme === 'dark' ? 'hover:text-[#2563eb]' : 'hover:text-blue-600'}>Recursos</a>
             <a href="#planos" className={theme === 'dark' ? 'hover:text-[#2563eb]' : 'hover:text-blue-600'}>Planos</a>
             <a href="#faq" className={theme === 'dark' ? 'hover:text-[#2563eb]' : 'hover:text-blue-600'}>FAQ</a>
-            <a href="/login" className={theme === 'dark' ? 'hover:text-[#2563eb]' : 'hover:text-blue-600'}>Entrar</a>
+            {/* <a href="/login" className={theme === 'dark' ? 'hover:text-[#2563eb]' : 'hover:text-blue-600'}>Entrar</a> */}
             <button
               onClick={toggleTheme}
               className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -189,7 +189,10 @@ export function LandingPage() {
               )}
             </button>
           </div>
-          <a href="#planos" className={theme === 'dark' ? 'ml-4 px-4 py-2 bg-[#2563eb] text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors' : 'ml-4 px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors'}>Começar</a>
+          <div>
+            <a href="#planos" className={theme === 'dark' ? 'px-4 py-2 bg-[#131a29] text-white rounded-lg font-semibold hover:bg-[#374151] border border-[#374151]' : 'px-4 py-2 bg-gray-100 text-gray-900 rounded-lg font-semibold hover:bg-gray-200 border border-gray-200'}>Comece Grátis</a>
+            <a href="/login" className={theme === 'dark' ? 'ml-4 px-4 py-2 bg-[#2563eb] text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors' : 'ml-4 px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors'}>Entrar</a>
+          </div>
         </nav>
       </header>
 
@@ -199,18 +202,18 @@ export function LandingPage() {
           <h1 className={theme === 'dark' ? 'text-4xl md:text-6xl font-bold mb-6 leading-tight' : 'text-4xl md:text-6xl font-bold mb-6 leading-tight text-gray-900'}>Clone, Analise e Proteja suas Ofertas com Clonup</h1>
           <p className={theme === 'dark' ? 'text-xl text-[#cbd5e1] max-w-2xl mx-auto mb-8' : 'text-xl text-gray-600 max-w-2xl mx-auto mb-8'}>Tudo o que afiliados, produtores e media buyers precisam numa só plataforma.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            <a href="#preview" className={theme === 'dark' ? 'px-8 py-3 bg-[#2563eb] text-white rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors' : 'px-8 py-3 bg-blue-600 text-white rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors'}>Ver Demo</a>
-            <a href="#planos" className={theme === 'dark' ? 'px-8 py-3 bg-[#131a29] text-white rounded-lg text-lg font-semibold hover:bg-[#374151] border border-[#374151]' : 'px-8 py-3 bg-gray-100 text-gray-900 rounded-lg text-lg font-semibold hover:bg-gray-200 border border-gray-200'}>Comece Grátis</a>
+            <a href="#planos" className={theme === 'dark' ? 'px-8 py-3 bg-[#2563eb] text-white rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors' : 'px-8 py-3 bg-blue-600 text-white rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors'}>Liberar acesso ao Clonup</a>
+            {/* <a href="#planos" className={theme === 'dark' ? 'px-8 py-3 bg-[#131a29] text-white rounded-lg text-lg font-semibold hover:bg-[#374151] border border-[#374151]' : 'px-8 py-3 bg-gray-100 text-gray-900 rounded-lg text-lg font-semibold hover:bg-gray-200 border border-gray-200'}>Comece Grátis</a> */}
           </div>
-          <div id="preview" className={theme === 'dark' ? 'rounded-xl shadow-lg bg-[#131a29] p-4 max-w-2xl mx-auto my-6' : 'rounded-xl shadow-lg bg-gray-100 p-4 max-w-2xl mx-auto my-6'}>
-            <div className="w-full aspect-video rounded-lg overflow-hidden shadow-lg">
-              <video
+          <div id="preview" className={theme === 'dark' ? 'rounded-xl  p-4 max-w-2xl mx-auto my-6' : 'rounded-xl p-4 max-w-2xl mx-auto my-6'}>
+            <div className="w-full aspect-video rounded-lg">
+              {/* <video
                 src="/assets/editor-demo.mp4"
                 poster="/assets/editor-demo-poster.png"
                 controls
                 className="w-full h-full object-cover rounded-lg"
                 style={{ maxHeight: 320 }}
-              />
+              /> */}
             </div>
           </div>
         </div>
