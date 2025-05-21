@@ -47,7 +47,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
           const { data: plan } = await supabase.from('plans').select('checkout_url').eq('id', profile.plan_id).single();
           if (isMounted) {
             if (plan?.checkout_url) {
-              setRedirectUrl(plan.checkout_url);
+              window.location.href = plan.checkout_url;
             } else {
               setRedirectUrl('/escolher-plano');
             }
