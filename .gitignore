@@ -12,6 +12,7 @@ dist
 dist-ssr
 .cursor
 *.local
+clonup-extensions
 
 # Environment variables
 .env
