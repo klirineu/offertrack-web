@@ -137,6 +137,7 @@ export default function OfferMetrics() {
         { label: "Remover Metadados", href: "/tools/removemetadados", icon: <Circle className="h-4 w-4" /> },
         { label: "Anticlone", href: "/tools/anticlone", icon: <Circle className="h-4 w-4" /> },
         { label: "Clonar Sites", href: "/tools/clonesites", icon: <Circle className="h-4 w-4" /> },
+        { label: "Clonar Quiz", href: "/tools/clonequiz", icon: <Circle className="h-4 w-4" /> },
       ],
     },
     {

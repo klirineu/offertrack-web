@@ -23,6 +23,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfUse from './pages/TermsOfUse';
 import EscolherPlano from './pages/EscolherPlano';
 import StripMeta from './pages/tools/StripMeta';
+import EditorQuiz from './pages/tools/EditorQuiz';
 
 function App() {
   const { initialize } = useAuth();
@@ -53,6 +54,7 @@ function App() {
         <Route path="/tools/removemetadados" element={<ProtectedRoute><StripMeta /></ProtectedRoute>} />
         <Route path="/tools/clonesites" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
         <Route path="/tools/editor-studio" element={<ProtectedRoute><EditorStudio /></ProtectedRoute>} />
+        <Route path="/tools/clonequiz" element={<ProtectedRoute><EditorQuiz /></ProtectedRoute>} />
         <Route path="/offers/:offerId/metrics" element={<ProtectedRoute><OfferMetrics /></ProtectedRoute>} />
         <Route path="/about" element={<About />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />

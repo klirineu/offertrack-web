@@ -90,6 +90,8 @@ type Plan = {
   max_anticlone: number;
   max_cloaker_requests: number | null;
   features: string[];
+  max_quizzes?: number | null;
+  quiz_extra_price?: number | null;
 };
 
 // Seção de funcionalidades poderosas
@@ -245,6 +247,7 @@ export function LandingPage() {
                       <Column
                         column={column}
                         offers={mockOffers.filter((offer) => offer.status === column.id)}
+                        onDeleteOffer={() => { }}
                       />
                     </div>
                   ))}
@@ -383,6 +386,12 @@ export function LandingPage() {
                 <ul className={theme === 'dark' ? 'text-[#cbd5e1] mb-6 space-y-1 text-center' : 'text-gray-600 mb-6 space-y-1 text-center'}>
                   <li>📊 Monitoramento de até <b>{plan.max_libraries}</b> bibliotecas</li>
                   <li>🧬 Até <b>{plan.max_clones}</b> páginas clonadas + {plan.max_anticlone} com anticlone</li>
+                  {plan.max_quizzes !== undefined && plan.max_quizzes !== null && (
+                    <li>📝 Até <b>{plan.max_quizzes === -1 ? 'ilimitados' : plan.max_quizzes}</b> quizzes clonados</li>
+                  )}
+                  {plan.quiz_extra_price !== undefined && plan.quiz_extra_price !== null && plan.max_quizzes !== null && plan.max_quizzes !== -1 && (
+                    <li>➕ Quiz adicional: <b>R$ {plan.quiz_extra_price},00</b></li>
+                  )}
                   {plan.max_cloaker_requests && <li>🛡️ Cloaker incluso com até <b>{plan.max_cloaker_requests.toLocaleString('pt-BR')}</b> requisições/mês</li>}
                   {plan.name === 'intermediario' && <li>⚠️ Excedente: R$ 3,00 a cada 1.000 requisições extras</li>}
                   {plan.name === 'avancado' && <li>⚠️ Excedente: R$ 2,00 a cada 1.000 requisições extras</li>}

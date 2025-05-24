@@ -7,7 +7,7 @@ import { SidebarBody, SidebarLink, Sidebar } from '../../components/ui/sidebar';
 import { useThemeStore } from '../../store/themeStore';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
-import { fetchClonesService, addCloneService, removeCloneService, CloneSite } from '../../services/clonesService';
+import { fetchClonesService, addCloneService, removeCloneService, checkCloneLimit, CloneSite } from '../../services/clonesService';
 
 // Permitir tipagem global para o editor
 declare global {
@@ -64,6 +64,7 @@ export default function Editor() {
   const [actionLoading, setActionLoading] = useState<'editor' | 'zip' | null>(null);
   const [cloneUrlToProcess, setCloneUrlToProcess] = useState<string | null>(null);
   const [deleteLoadingId, setDeleteLoadingId] = useState<string | null>(null);
+  const [errorModal, setErrorModal] = useState<string | null>(null);
 
   useEffect(() => {
     const loadClones = async () => {
@@ -115,6 +116,7 @@ export default function Editor() {
         { label: "Remover Metadados", href: "/tools/removemetadados", icon: <Circle className="h-4 w-4" /> },
         { label: "Anticlone", href: "/tools/anticlone", icon: <Circle className="h-4 w-4" /> },
         { label: "Clonar Sites", href: "/tools/clonesites", icon: <Circle className="h-4 w-4" /> },
+        { label: "Clonar Quiz", href: "/tools/clonequiz", icon: <Circle className="h-4 w-4" /> },
       ],
     },
     {
@@ -165,6 +167,13 @@ export default function Editor() {
     if (!user) return;
     setActionLoading('editor');
     try {
+      // Verificar limite antes de chamar o backend
+      const limit = await checkCloneLimit(user.id);
+      if (!limit.allowed) {
+        setErrorModal(limit.error?.message || 'Limite de clones atingido.');
+        setActionLoading(null);
+        return;
+      }
       const res = await api.post('/api/clone/folder', { url });
       const data = res.data;
       const urlSite = data.url;
@@ -177,7 +186,7 @@ export default function Editor() {
       if (clonesError) console.error('Erro ao carregar clones:', clonesError);
       if (clonesData) setClones(clonesData);
     } catch (err) {
-      alert('Erro inesperado ao clonar: ' + (err instanceof Error ? err.message : String(err)));
+      setErrorModal('Erro inesperado ao clonar: ' + (err instanceof Error ? err.message : String(err)));
       console.error('Erro inesperado no handleCloneToEditor:', err);
     } finally {
       setActionLoading(null);
@@ -190,7 +199,7 @@ export default function Editor() {
     const urlSite = clone.url;
     const subdomain = getSubdomainFromUrl(urlSite);
     if (!subdomain || subdomain.length === 0) {
-      alert('Não foi possível identificar o subdomínio do site clonado.');
+      setErrorModal('Não foi possível identificar o subdomínio do site clonado.');
       return;
     }
     try {
@@ -202,7 +211,7 @@ export default function Editor() {
       if (clonesError) console.error('Erro ao carregar clones:', clonesError);
       if (clonesData) setClones(clonesData);
     } catch (err) {
-      alert('Erro ao excluir clone: ' + (err instanceof Error ? err.message : String(err)));
+      setErrorModal('Erro ao excluir clone: ' + (err instanceof Error ? err.message : String(err)));
       console.error('Erro ao excluir clone:', err);
     } finally {
       setDeleteLoadingId(null);
@@ -246,12 +255,20 @@ export default function Editor() {
         </header>
         <main className="flex-1 flex flex-col items-center justify-center p-0">
           <div className="w-full max-w-3xl mx-auto mt-8">
-            <button
-              onClick={() => setCloneUrlToProcess('')}
-              className="mb-4 flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-            >
-              <Plus className="w-4 h-4" /> Clonar Site
-            </button>
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => setCloneUrlToProcess('')}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              >
+                <Plus className="w-4 h-4" /> Clonar Site
+              </button>
+              <button
+                onClick={() => navigate('/tools/clonequiz')}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+              >
+                <Plus className="w-4 h-4" /> Clonar Quiz
+              </button>
+            </div>
             {/* Modal de escolha ao clonar site */}
             {cloneUrlToProcess !== null && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
@@ -283,7 +300,10 @@ export default function Editor() {
                         setActionLoading('zip');
                         const res = await api.post('/api/clone/zip', { url: cloneUrlToProcess }, { responseType: 'blob' });
                         setActionLoading(null);
-                        if (res.status < 200 || res.status >= 300) return alert('Erro ao baixar ZIP');
+                        if (res.status < 200 || res.status >= 300) {
+                          setErrorModal('Erro ao baixar ZIP');
+                          return;
+                        }
                         const blob = res.data;
                         const a = document.createElement('a');
                         a.href = window.URL.createObjectURL(blob);
@@ -342,7 +362,7 @@ export default function Editor() {
                         if (subdomain && subdomain.length > 0) {
                           navigate(`/tools/editor-studio?id=${subdomain}`);
                         } else {
-                          alert('Não foi possível identificar o subdomínio do site clonado.');
+                          setErrorModal('Não foi possível identificar o subdomínio do site clonado.');
                         }
                       }}
                     >
@@ -390,7 +410,7 @@ export default function Editor() {
                           if (subdomain && subdomain.length > 0) {
                             navigate(`/tools/editor-studio?id=${subdomain}`);
                           } else {
-                            alert('Não foi possível identificar o subdomínio do site clonado.');
+                            setErrorModal('Não foi possível identificar o subdomínio do site clonado.');
                           }
                         }}
                         className="p-2 text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400"
@@ -417,6 +437,21 @@ export default function Editor() {
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 flex flex-col gap-4 items-center w-full max-w-xs">
                   <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
                   <span className="text-lg text-gray-900 dark:text-white font-semibold">Excluindo site...</span>
+                </div>
+              </div>
+            )}
+            {/* Modal de erro */}
+            {errorModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 flex flex-col gap-6 items-center w-full max-w-md">
+                  <h2 className="text-2xl font-bold text-center text-red-600 dark:text-red-400 mb-2">Erro</h2>
+                  <div className="text-center text-gray-800 dark:text-gray-200 text-lg">{errorModal}</div>
+                  <button
+                    className="mt-2 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                    onClick={() => setErrorModal(null)}
+                  >
+                    Fechar
+                  </button>
                 </div>
               </div>
             )}

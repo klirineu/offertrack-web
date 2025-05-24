@@ -51,6 +51,7 @@ export async function addCloneService(
       data: null,
     };
   }
+  // Só chama o backend se não atingiu o limite
   const { data, error } = await supabase
     .from("cloned_sites")
     .insert({ user_id: userId, original_url: originalUrl, url: clonedUrl })
@@ -78,4 +79,56 @@ export async function removeCloneService(
     // Não bloqueia a exclusão do banco se a API falhar
   }
   return { error: null };
+}
+
+export async function checkCloneLimit(userId: string) {
+  // Buscar perfil do usuário
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("plan_id")
+    .eq("id", userId)
+    .single();
+  if (!profile || !profile.plan_id)
+    return {
+      allowed: false,
+      max: null,
+      count: null,
+      error: new Error("Plano não encontrado."),
+    };
+  // Buscar limites do plano
+  const { data: plan } = await supabase
+    .from("plans")
+    .select("max_clones")
+    .eq("id", profile.plan_id)
+    .single();
+  if (!plan)
+    return {
+      allowed: false,
+      max: null,
+      count: null,
+      error: new Error("Limite do plano não encontrado."),
+    };
+  // Contar clones existentes
+  const { count } = await supabase
+    .from("cloned_sites")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId);
+  if (typeof count !== "number")
+    return {
+      allowed: false,
+      max: plan.max_clones,
+      count: null,
+      error: new Error("Erro ao contar clones."),
+    };
+  if (count >= plan.max_clones) {
+    return {
+      allowed: false,
+      max: plan.max_clones,
+      count,
+      error: new Error(
+        `Limite de páginas clonadas atingido para seu plano. (${plan.max_clones})`
+      ),
+    };
+  }
+  return { allowed: true, max: plan.max_clones, count, error: null };
 }

@@ -150,6 +150,76 @@ export interface Database {
           action_data?: string;
         };
       };
+      plans: {
+        Row: {
+          id: string;
+          name: string;
+          price: number;
+          max_libraries: number;
+          max_clones: number;
+          max_anticlone: number;
+          max_cloaker_requests: number | null;
+          features: string[];
+          checkout_url: string;
+          max_quizzes: number | null;
+          quiz_extra_price: number | null;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          price: number;
+          max_libraries: number;
+          max_clones: number;
+          max_anticlone: number;
+          max_cloaker_requests?: number | null;
+          features?: string[];
+          checkout_url?: string;
+          max_quizzes?: number | null;
+          quiz_extra_price?: number | null;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          price?: number;
+          max_libraries?: number;
+          max_clones?: number;
+          max_anticlone?: number;
+          max_cloaker_requests?: number | null;
+          features?: string[];
+          checkout_url?: string;
+          max_quizzes?: number | null;
+          quiz_extra_price?: number | null;
+        };
+      };
+      cloned_quiz: {
+        Row: {
+          id: string;
+          user_id: string;
+          original_url: string;
+          checkout_url: string;
+          subdomain: string | null;
+          url: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          original_url: string;
+          checkout_url: string;
+          subdomain?: string | null;
+          url?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          original_url?: string;
+          checkout_url?: string;
+          subdomain?: string | null;
+          url?: string | null;
+          created_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
