@@ -251,6 +251,17 @@ export default function EditorQuiz() {
         </header>
         <main className="flex-1 flex flex-col items-center justify-center p-0">
           <div className="w-full max-w-3xl mx-auto mt-8">
+            {/* Aviso de BETA e clone de quiz inlead */}
+            <div className="mb-6 flex flex-col gap-2">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-100 border border-yellow-300 text-yellow-900 font-semibold text-sm shadow">
+                <span className="inline-flex items-center"><Wrench className="w-4 h-4 mr-2 text-yellow-700" /> Ferramenta em BETA</span>
+                <span className="ml-2 text-xs font-normal text-yellow-800">Pode conter bugs ou instabilidades.</span>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-100 border border-blue-300 text-blue-900 font-semibold text-sm shadow">
+                <span className="inline-flex items-center"><Circle className="w-3 h-3 mr-2 text-blue-700" /> Clone de Quiz Inlead</span>
+                <span className="ml-2 text-xs font-normal text-blue-800">Esta ferramenta é inspirada e compatível com quizzes do Inlead.</span>
+              </div>
+            </div>
             <button
               onClick={() => setModalOpen(true)}
               className="mb-4 flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
