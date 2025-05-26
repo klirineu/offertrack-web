@@ -116,6 +116,7 @@ if (!window.__clonupWidgetInjected) {
   let autoLoad = false;
   let autoLoadInterval = null;
   let autoLoadActive = false;
+  let foundLinks = [];
 
   // --- SUPABASE CONFIG ---
   // ATENÇÃO: Para evitar erro de CSP, inclua @supabase/supabase-js no bundle da extensão e use import local!
@@ -222,84 +223,7 @@ if (!window.__clonupWidgetInjected) {
   }
 
   // --- UI principal extra ---
-  function renderClonupExtra() {
-    if (!window.location.href.includes('view_all_page_id=')) return;
-    let extra = document.getElementById('clonup-extra-block');
-    if (extra) extra.remove();
-    extra = document.createElement('div');
-    extra.id = 'clonup-extra-block';
-    extra.style.position = 'fixed';
-    extra.style.top = '24px';
-    extra.style.right = '24px';
-    extra.style.zIndex = '99999';
-    extra.style.background = '#fff';
-    extra.style.boxShadow = '0 2px 16px #0002';
-    extra.style.borderRadius = '12px';
-    extra.style.padding = '18px 22px';
-    extra.style.display = 'flex';
-    extra.style.flexDirection = 'column';
-    extra.style.gap = '16px';
-    extra.style.flexWrap = 'wrap';
-    extra.style.alignItems = 'stretch';
-    extra.innerHTML = `
-      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
-        <label class="clonup-label">Qtd. anúncios:</label>
-        <input type="number" min="1" max="100" value="${qtdAnuncios}" class="clonup-input" id="clonup-qtd-input">
-        <button class="clonup-tab" id="clonup-filtrar-btn">Filtrar por quantidade</button>
-        <label class="clonup-label-switch">
-          <span style="margin-right:4px;">Load automático</span>
-          <label class="clonup-switch">
-            <input type="checkbox" id="clonup-autoload-input" ${autoLoad ? 'checked' : ''}>
-            <span class="clonup-slider"></span>
-          </label>
-          <span>${autoLoadActive ? 'Carregando...' : ''}</span>
-        </label>
-      </div>
-      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-        <button class="clonup-btn-importar">Exportar para o Clonup</button>
-        <button class="clonup-btn-criativos">Baixar criativos</button>
-        <button class="clonup-btn-clonar">Clonar site</button>
-      </div>
-    `;
-    document.body.appendChild(extra);
-
-    // Controles de filtro e auto-load
-    extra.querySelector('#clonup-qtd-input').onchange = e => {
-      qtdAnuncios = Number(e.target.value);
-      filtrarCardsPorQuantidade();
-    };
-    extra.querySelector('#clonup-filtrar-btn').onclick = filtrarCardsPorQuantidade;
-    extra.querySelector('#clonup-autoload-input').onchange = e => {
-      autoLoad = e.target.checked;
-      if (autoLoad) {
-        tryAutoLoadFacebook();
-      } else if (autoLoadInterval) {
-        clearTimeout(autoLoadInterval);
-        autoLoadActive = false;
-      }
-    };
-
-    // Exportar para o Clonup
-    extra.querySelector('.clonup-btn-importar').onclick = () => {
-      if (!isLoggedIn()) {
-        showLoginModal(() => renderClonupExtra());
-        return;
-      }
-      showExportModal();
-    };
-    // Baixar criativos
-    extra.querySelector('.clonup-btn-criativos').onclick = () => {
-      showDownloadCreativesModal();
-    };
-    // Clonar site
-    extra.querySelector('.clonup-btn-clonar').onclick = () => {
-      if (!isLoggedIn()) {
-        showLoginModal(() => renderClonupExtra());
-        return;
-      }
-      showCloneModal();
-    };
-  }
+  // Removido: renderClonupExtra e setInterval(renderClonupExtra, 1000);
 
   // --- Modal de login ---
   function showLoginModal(onSuccess) {
@@ -413,9 +337,6 @@ if (!window.__clonupWidgetInjected) {
     };
   }
 
-  // --- Hook para renderizar bloco extra ao abrir popup ---
-  setInterval(renderClonupExtra, 1000);
-
   // Helper para pegar todos os cards
   function getCards() {
     const container = document.querySelector('.xrvj5dj.x18m771g.x1p5oq8j.xbxaen2.x18d9i69.x1u72gb5.xtqikln.x1na6gtj.x1jr1mh3.xm39877.x7sq92a.xxy4fzi');
@@ -477,6 +398,8 @@ if (!window.__clonupWidgetInjected) {
     setTimeout(() => {
       destacarQtdAnuncios();
       filtrarCardsPorQuantidade();
+      addVerAnunciosButtons();
+
       autoLoadInterval = setTimeout(tryAutoLoadFacebook, 1500);
     }, 1200);
   }
@@ -486,42 +409,47 @@ if (!window.__clonupWidgetInjected) {
     if (!/facebook\.com\/ads\/library/.test(window.location.href)) return;
     const container = document.querySelector('.xrvj5dj.x18m771g.x1p5oq8j.xbxaen2.x18d9i69.x1u72gb5.xtqikln.x1na6gtj.x1jr1mh3.xm39877.x7sq92a.xxy4fzi');
     if (!container) return;
+    // Remove mensagem anterior
+    const oldMsg = container.querySelector('.clonup-no-cards-msg');
+    if (oldMsg) oldMsg.remove();
     const cards = Array.from(container.querySelectorAll(':scope > .xh8yej3'));
     const minQtd = qtdAnuncios > 1 ? qtdAnuncios : 1;
     let count = 0;
-    // Armazena cards que devem ser exibidos
+    // Armazena cards que atendem e não atendem ao filtro
     const cardsFiltrados = [];
+    const cardsRestantes = [];
     cards.forEach(card => {
       const strong = Array.from(card.querySelectorAll('strong')).find(s => /\d+\s+anúncios?/.test(s.textContent));
       if (!strong) {
-        card.style.display = 'none';
+        card.style.opacity = 0.5;
+        cardsRestantes.push({ card, qtd: 0 });
         return;
       }
       const match = strong.textContent.match(/(\d+)/);
       const qtd = match ? parseInt(match[1], 10) : 0;
       if (qtd >= minQtd) {
-        card.style.display = 'block';
-        // Destaca
-        strong.style.background = '#2563eb';
-        strong.style.color = '#fff';
-        strong.style.padding = '2px 10px';
-        strong.style.marginLeft = '8px';
-        strong.style.marginRight = '8px';
-        strong.style.borderRadius = '12px';
-        strong.style.fontWeight = 'bold';
-        strong.style.fontSize = '1.1em';
-        strong.style.boxShadow = '0 1px 4px #0002';
-        strong.style.display = 'inline-block';
+        card.style.opacity = 1;
         cardsFiltrados.push({ card, qtd });
         count++;
       } else {
-        card.style.display = 'none';
+        card.style.opacity = 0.5;
+        cardsRestantes.push({ card, qtd });
       }
     });
     // Ordena os cards visíveis do maior para o menor
     cardsFiltrados.sort((a, b) => b.qtd - a.qtd);
-    cardsFiltrados.forEach(({ card }) => container.appendChild(card));
-    showToast(`Exibindo ${count} cards com ${minQtd} anúncios ou mais.`);
+    cardsRestantes.sort((a, b) => b.qtd - a.qtd);
+    // Reanexa todos os cards: primeiro os que atendem, depois os restantes
+    [...cardsFiltrados, ...cardsRestantes].forEach(({ card }) => container.appendChild(card));
+    // Se nenhum card atende ao filtro, mostra mensagem
+    if (cardsFiltrados.length === 0) {
+      const msg = document.createElement('div');
+      msg.className = 'clonup-no-cards-msg';
+      msg.style.cssText = 'background:#fef3c7;color:#92400e;padding:10px 16px;border-radius:8px;margin-bottom:12px;font-weight:500;text-align:center;';
+      msg.textContent = `Nenhum card com ${minQtd} anúncios encontrado.`;
+      container.insertBefore(msg, container.firstChild);
+    }
+    showToast(`Exibindo ${cardsFiltrados.length} cards com ${minQtd} anúncios ou mais.`);
   }
 
   // Clique na palavra: insere entre aspas duplas, dá Enter e feedback
@@ -564,13 +492,135 @@ if (!window.__clonupWidgetInjected) {
     setTimeout(() => { toast.style.display = 'none'; }, 2000);
   }
 
+  function addVerAnunciosButtons() {
+    // Só roda na biblioteca do Facebook Ads
+    if (!/facebook\.com\/ads\/library/.test(window.location.href)) return;
+
+    // 1. Pega todos os scripts JSON do body e mapeia page_profile_uri => page_id
+    const scripts = Array.from(document.querySelectorAll('script[type="application/json"]'));
+    const profileUriToId = {};
+    scripts.forEach(script => {
+      try {
+        const data = JSON.parse(script.textContent);
+        function findProfile(obj) {
+          if (!obj || typeof obj !== 'object') return;
+          if (obj.page_profile_uri && obj.page_id) {
+            // Normaliza para remover barra final e salvar com/sem www
+            let uri = obj.page_profile_uri.replace(/\/$/, '');
+            profileUriToId[uri] = obj.page_id;
+            if (uri.includes('www.facebook.com/')) {
+              profileUriToId[uri.replace('www.facebook.com/', 'facebook.com/')] = obj.page_id;
+            } else if (uri.includes('facebook.com/')) {
+              profileUriToId[uri.replace('facebook.com/', 'www.facebook.com/')] = obj.page_id;
+            }
+          }
+          Object.values(obj).forEach(findProfile);
+        }
+        findProfile(data);
+      } catch (e) { }
+    });
+
+    // Para cada card
+    document.querySelectorAll('.xh8yej3').forEach(card => {
+      // Já existe o botão? Não duplica
+      if (card.querySelector('.clonup-ver-anuncios-btn')) return;
+      // Busca o link da página
+      const pageLink = card.querySelector('a[href*="facebook.com/"]');
+      if (!pageLink) return;
+      // Normaliza o link para buscar no mapa
+      const normalizedLink = pageLink.href.replace(/\/$/, '');
+      let pageId = profileUriToId[normalizedLink];
+      let tried = [normalizedLink];
+      // Tenta também sem www ou com www
+      if (!pageId && normalizedLink.includes('www.facebook.com/')) {
+        const altLink = normalizedLink.replace('www.facebook.com/', 'facebook.com/');
+        pageId = profileUriToId[altLink];
+        tried.push(altLink);
+      }
+      if (!pageId && normalizedLink.includes('facebook.com/')) {
+        const altLink = normalizedLink.replace('facebook.com/', 'www.facebook.com/');
+        pageId = profileUriToId[altLink];
+        tried.push(altLink);
+      }
+      let idSource = 'script';
+      if (!pageId) {
+        // Tenta pegar do texto "Identificação da biblioteca: NNNNNNNNNNNNNNN"
+        const spanId = Array.from(card.querySelectorAll('span')).find(
+          s => /Identificação da biblioteca: (\d{10,})/.test(s.textContent)
+        );
+        if (spanId) {
+          const match = spanId.textContent.match(/Identificação da biblioteca: (\d{10,})/);
+          if (match) {
+            pageId = match[1];
+            idSource = 'span';
+          }
+        }
+      }
+      console.log('Card link:', pageLink.href, '| Tentativas:', tried, '| page_id encontrado:', pageId, '| Fonte:', idSource);
+      if (!pageId) return;
+      // Procura o bloco do botão "Ver detalhes do anúncio" ou "Ver resumo" de forma flexível
+      let detalhesBtnBlock = Array.from(card.querySelectorAll('div[role="none"]')).find(div => {
+        const classes = div.className.split(' ');
+        return ["x193iq5w", "xxymvpz", "xeuugli", "x78zum5", "x1iyjqo2", "xs83m0k"].every(c => classes.includes(c));
+      });
+      if (!detalhesBtnBlock) {
+        // Procura por texto "Ver detalhes do anúncio" ou "Ver resumo"
+        detalhesBtnBlock = Array.from(card.querySelectorAll('div')).find(div => {
+          return /Ver detalhes do anúncio|Ver resumo|Watch More/i.test(div.textContent);
+        });
+      }
+      if (!detalhesBtnBlock) return;
+      // Cria o botão
+      let verAnunciosUrl;
+      if (idSource === 'span') {
+        verAnunciosUrl = `https://www.facebook.com/ads/library/?id=${pageId}`;
+      } else {
+        verAnunciosUrl = `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=ALL&is_targeted_country=false&media_type=all&search_type=page&view_all_page_id=${pageId}`;
+      }
+      const verAnunciosBtn = document.createElement('a');
+      verAnunciosBtn.textContent = 'Ver anúncios';
+      verAnunciosBtn.href = verAnunciosUrl;
+      verAnunciosBtn.target = '_blank';
+      verAnunciosBtn.className = 'clonup-ver-anuncios-btn';
+      verAnunciosBtn.style.cssText = 'display:block;background:#2563eb;color:#fff;padding:12px 0;border-radius:8px;margin:0px auto;margin-top:10px;font-weight:600;text-align:center;text-decoration:none;width:92%;font-size:1.1em;';
+      // Adiciona logo abaixo do bloco de detalhes
+      detalhesBtnBlock.parentNode.insertBefore(verAnunciosBtn, detalhesBtnBlock.nextSibling);
+      // Busca o link da página de vendas
+      const vendaLinkA = Array.from(card.querySelectorAll('a')).find(a => a.href.includes('l.facebook.com/l.php?u='));
+      if (vendaLinkA) {
+        const vendaLink = vendaLinkA.href;
+        // Cria container para os dois botões
+        const vendasBtns = document.createElement('div');
+        vendasBtns.style.cssText = 'display:flex;margin:0px auto;gap:8px;margin-top:8px;justify-content:center;width:92%;';
+        // Botão abrir
+        const btnAbrir = document.createElement('a');
+        btnAbrir.textContent = 'Abrir link PV';
+        btnAbrir.href = vendaLink;
+        btnAbrir.target = '_blank';
+        btnAbrir.style.cssText = 'flex:1 1 0;width:46%;background:#10b981;color:#fff;padding:10px 0;border-radius:8px;font-weight:600;text-align:center;text-decoration:none;font-size:1em;';
+        // Botão copiar
+        const btnCopiar = document.createElement('button');
+        btnCopiar.textContent = 'Copiar link PV';
+        btnCopiar.style.cssText = 'flex:1 1 0;width:46%;background:#2563eb;color:#fff;padding:10px 0;border-radius:8px;font-weight:600;text-align:center;font-size:1em;border:none;cursor:pointer;';
+        btnCopiar.onclick = () => {
+          navigator.clipboard.writeText(vendaLink);
+          showToast('Link copiado!');
+        };
+        vendasBtns.appendChild(btnAbrir);
+        vendasBtns.appendChild(btnCopiar);
+        // Adiciona logo abaixo do botão de ver anúncios
+        verAnunciosBtn.parentNode.insertBefore(vendasBtns, verAnunciosBtn.nextSibling);
+      }
+    });
+  }
+
   // Render
   function render() {
-    // Se for página de view_all_page_id, só renderiza o bloco extra
-    if (window.location.href.includes('view_all_page_id=')) {
-      renderClonupExtra();
-      return;
-    }
+    // Remover o layout extra de view_all_page_id
+    // if (window.location.href.includes('view_all_page_id=')) {
+    //   renderClonupExtra();
+    //   return;
+    // }
     root.innerHTML = '';
     // Botão flutuante
     root.appendChild(createEl('button', {
@@ -583,124 +633,216 @@ if (!window.__clonupWidgetInjected) {
 
     // Destaca quantidade de anúncios sempre
     setTimeout(destacarQtdAnuncios, 100);
-
-    // Sempre renderiza bloco extra se for página de anúncios
-    renderClonupExtra();
+    setTimeout(addVerAnunciosButtons, 100);
 
     // Popup
     if (open) {
-      const popup = createEl('div', { class: 'clonup-popup' },
+      const isFacebookLibrary = /facebook\.com\/ads\/library/.test(window.location.href);
+      const popupChildren = [
         createEl('div', { class: 'clonup-popup-header' },
-          createEl('span', { class: 'clonup-popup-title' }, 'Palavras-chave Clonup'),
+          createEl('span', { class: 'clonup-popup-title' }, 'Clonup'),
           createEl('button', {
             class: 'clonup-popup-close',
             onclick: () => { open = false; render(); }
           }, '×')
-        ),
-        // Opções extras
-        createEl('div', { class: 'clonup-popup-options' },
-          createEl('label', { class: 'clonup-label' }, 'Qtd. anúncios:'),
-          createEl('input', {
-            type: 'number',
-            min: 1,
-            max: 100,
-            value: qtdAnuncios,
-            class: 'clonup-input',
-            onchange: e => { qtdAnuncios = Number(e.target.value); render(); }
-          }),
-          createEl('button', {
-            class: 'clonup-tab',
-            onclick: filtrarCardsPorQuantidade
-          }, 'Filtrar por quantidade'),
-          createEl('label', { class: 'clonup-label-switch' },
-            (() => {
-              const label = document.createElement('label');
-              label.className = 'clonup-switch';
-              const input = document.createElement('input');
-              input.type = 'checkbox';
-              input.checked = autoLoad;
-              input.onchange = e => {
-                autoLoad = e.target.checked;
-                render();
-                if (autoLoad) {
-                  tryAutoLoadFacebook();
-                } else if (autoLoadInterval) {
-                  clearTimeout(autoLoadInterval);
-                  autoLoadActive = false;
-                  render();
-                }
-              };
-              const slider = document.createElement('span');
-              slider.className = 'clonup-slider';
-              label.appendChild(input);
-              label.appendChild(slider);
-              return label;
-            })(),
-            autoLoadActive ? 'Carregando...' : 'Load automático'
-          )
-        ),
-        // Botões de ação Clonup
-        createEl('div', { class: 'clonup-popup-actions', style: 'display:flex;gap:10px;margin:16px 0 8px 0;flex-wrap:wrap;' },
-          createEl('button', {
-            class: 'clonup-btn-importar',
-            onclick: () => {
-              if (!isLoggedIn()) {
-                showLoginModal(() => render());
-                return;
-              }
-              showExportModal();
-            }
-          }, 'Exportar para o Clonup'),
-          createEl('button', {
-            class: 'clonup-btn-criativos',
-            onclick: showDownloadCreativesModal
-          }, 'Baixar criativos'),
-          createEl('button', {
-            class: 'clonup-btn-clonar',
-            onclick: () => {
-              if (!isLoggedIn()) {
-                showLoginModal(() => render());
-                return;
-              }
-              showCloneModal();
-            }
-          }, 'Clonar site')
-        ),
-        // Tabs categoria
-        createEl('div', { class: 'clonup-popup-tabs' },
-          ...Object.keys(palavrasChave).map(cat =>
-            createEl('button', {
-              class: 'clonup-tab' + (cat === categoria ? ' clonup-tab-active' : ''),
-              onclick: () => { categoria = cat; idioma = Object.keys(palavrasChave[cat])[0]; render(); }
-            }, cat)
-          )
-        ),
-        // Tabs idioma
-        createEl('div', { class: 'clonup-popup-tabs' },
-          ...Object.keys(palavrasChave[categoria]).map(lang =>
-            createEl('button', {
-              class: 'clonup-tab' + (lang === idioma ? ' clonup-tab-active' : ''),
-              onclick: () => { idioma = lang; render(); }
-            }, lang)
-          )
-        ),
-        // Lista de palavras
-        createEl('ul', { class: 'clonup-list' },
-          ...palavrasChave[categoria][idioma].map(palavra =>
-            createEl('li', {},
-              createEl('button', {
-                class: 'clonup-list-btn' + (copied === palavra ? ' clonup-list-btn-copied' : ''),
-                style: 'font-size:1.1em;padding:10px 12px;margin-bottom:6px;border:1px solid #e5e7eb;background:#f9fafb;',
-                onclick: () => handlePalavraClick(palavra)
-              }, palavra, copied === palavra ? ' ✔️' : ''))
-          )
         )
-      );
+      ];
+
+      if (isFacebookLibrary) {
+        // Facebook Ads Library: mostrar filtros, auto-load, exportar
+        popupChildren.push(
+          createEl('div', { class: 'clonup-popup-options' },
+            createEl('label', { class: 'clonup-label' }, 'Qtd. anúncios:'),
+            createEl('input', {
+              type: 'number',
+              min: 1,
+              max: 100,
+              value: qtdAnuncios,
+              class: 'clonup-input',
+              onchange: e => { qtdAnuncios = Number(e.target.value); render(); }
+            }),
+            createEl('button', {
+              class: 'clonup-tab',
+              onclick: filtrarCardsPorQuantidade
+            }, 'Filtrar por quantidade'),
+            createEl('label', { class: 'clonup-label-switch' },
+              (() => {
+                const label = document.createElement('label');
+                label.className = 'clonup-switch';
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.checked = autoLoad;
+                input.onchange = e => {
+                  autoLoad = e.target.checked;
+                  render();
+                  if (autoLoad) {
+                    tryAutoLoadFacebook();
+                  } else if (autoLoadInterval) {
+                    destacarQtdAnuncios();
+                    addVerAnunciosButtons();
+
+                    filtrarCardsPorQuantidade();
+                    clearTimeout(autoLoadInterval);
+                    autoLoadActive = false;
+                    render();
+                  }
+                };
+                const slider = document.createElement('span');
+                slider.className = 'clonup-slider';
+                label.appendChild(input);
+                label.appendChild(slider);
+                return label;
+              })(),
+              autoLoadActive ? 'Carregando...' : 'Load automático'
+            )
+          ),
+          // createEl('div', { class: 'clonup-popup-actions', style: 'display:flex;gap:10px;margin:16px 0 8px 0;flex-wrap:wrap;' },
+          //   createEl('button', {
+          //     class: 'clonup-btn-importar',
+          //     onclick: () => {
+          //       if (!isLoggedIn()) {
+          //         showLoginModal(() => render());
+          //         return;
+          //       }
+          //       showExportModal();
+          //     }
+          //   }, 'Exportar para o Clonup')
+          // )
+        );
+        // Tabs categoria e idioma e lista de palavras SEMPRE aparecem
+        popupChildren.push(
+          createEl('div', { class: 'clonup-popup-tabs' },
+            ...Object.keys(palavrasChave).map(cat =>
+              createEl('button', {
+                class: 'clonup-tab' + (cat === categoria ? ' clonup-tab-active' : ''),
+                onclick: () => { categoria = cat; idioma = Object.keys(palavrasChave[cat])[0]; render(); }
+              }, cat)
+            )
+          ),
+          createEl('div', { class: 'clonup-popup-tabs' },
+            ...Object.keys(palavrasChave[categoria]).map(lang =>
+              createEl('button', {
+                class: 'clonup-tab' + (lang === idioma ? ' clonup-tab-active' : ''),
+                onclick: () => { idioma = lang; render(); }
+              }, lang)
+            )
+          ),
+          createEl('ul', { class: 'clonup-list' },
+            ...palavrasChave[categoria][idioma].map(palavra =>
+              createEl('li', {},
+                createEl('button', {
+                  class: 'clonup-list-btn' + (copied === palavra ? ' clonup-list-btn-copied' : ''),
+                  style: 'font-size:1.1em;padding:10px 12px;margin-bottom:6px;border:1px solid #e5e7eb;background:#f9fafb;',
+                  onclick: () => handlePalavraClick(palavra)
+                }, palavra, copied === palavra ? ' ✔️' : '')
+              )
+            )
+          )
+        );
+      } else {
+        // Fora do Facebook Ads Library: mostrar só extrair links e lista de links extraídos
+        const actionsBlock = createEl('div', { class: 'clonup-popup-actions', style: 'display:flex;flex-direction:column;gap:10px;margin:16px 0 8px 0;flex-wrap:wrap;' },
+          createEl('button', {
+            class: 'clonup-btn-links',
+            onclick: () => {
+              // Revela elementos antes de buscar links
+              let reveladosCount = 0;
+              const elementosPotencialmenteEscondidos = document.querySelectorAll('*');
+              elementosPotencialmenteEscondidos.forEach(el => {
+                const style = window.getComputedStyle(el);
+                let mudou = false;
+                if (style.display === 'none') {
+                  el.style.setProperty('display', 'block', 'important');
+                  mudou = true;
+                }
+                if (style.visibility === 'hidden') {
+                  el.style.setProperty('visibility', 'visible', 'important');
+                  mudou = true;
+                }
+                if (style.opacity === '0') {
+                  el.style.setProperty('opacity', '1', 'important');
+                  mudou = true;
+                }
+                const commonHideClasses = ['hidden', 'hide', 'd-none', 'invisible', 'sr-only', 'elementor-hidden'];
+                commonHideClasses.forEach(className => {
+                  if (el.classList.contains(className)) {
+                    el.classList.remove(className);
+                    el.style.setProperty('display', el.style.display || 'block', 'important');
+                    el.style.setProperty('visibility', el.style.visibility || 'visible', 'important');
+                    mudou = true;
+                  }
+                });
+                if (mudou) reveladosCount++;
+              });
+              // Buscar links
+              const links = [];
+              document.querySelectorAll('a,form').forEach(el => {
+                let url = '';
+                if (el.tagName === 'A') url = el.href;
+                if (el.tagName === 'FORM') url = el.action;
+                if (url) {
+                  links.push(url);
+                }
+              });
+              foundLinks = links;
+              render();
+              setTimeout(() => {
+                if (links.length > 0) {
+                  showToast(`${links.length} links encontrados!`);
+                } else {
+                  showToast('Nenhum link encontrado.');
+                }
+              }, 100);
+            }
+          }, 'Extrair links da página')
+        );
+        // Exibir links encontrados em lista igual à de palavras-chave, logo abaixo do botão
+        console.log(foundLinks)
+        if (foundLinks && foundLinks.length > 0) {
+          actionsBlock.appendChild(
+            createEl('ul', { class: 'clonup-list', style: 'margin: 10px 0 0 0; padding: 0; background: #f3f4f6; border-radius: 8px;' },
+              ...foundLinks.map(url =>
+                createEl('li', { style: 'display:flex;align-items:center;gap:8px;margin-bottom:6px;' },
+                  createEl('button', {
+                    style: 'font-size:1em;padding:6px 10px;border:1px solid #e5e7eb;background:#2563eb;color:#fff;border-radius:6px;cursor:pointer;margin-top:5px;margin-left:5px;',
+                    onclick: () => { navigator.clipboard.writeText(url); showToast('Link copiado!'); }
+                  }, 'Copiar'),
+                  createEl('span', { style: 'word-break:break-all;font-size:1em;' }, url)
+                )
+              )
+            )
+          );
+        }
+        popupChildren.push(actionsBlock);
+      }
+
+      const popup = createEl('div', { class: 'clonup-popup' }, ...popupChildren);
       root.appendChild(popup);
     }
+
+    // Adiciona botões "Ver anúncios" nos cards se for Facebook Ads Library
   }
 
   // Destaca quantidade ao abrir o site
-  setTimeout(destacarQtdAnuncios, 500);
+  setTimeout(addVerAnunciosButtons, 100);
+  setTimeout(destacarQtdAnuncios, 100);
   render();
+
+  // --- OBSERVADOR DE CARDS ---
+  // Observa o container de cards e aplica botões/destaques automaticamente
+  function setupCardsObserver() {
+    const cardsContainer = document.querySelector('.xrvj5dj.x18m771g.x1p5oq8j.xbxaen2.x18d9i69.x1u72gb5.xtqikln.x1na6gtj.x1jr1mh3.xm39877.x7sq92a.xxy4fzi');
+    if (cardsContainer && !cardsContainer.__clonupObserved) {
+      cardsContainer.__clonupObserved = true;
+      const observer = new MutationObserver(() => {
+        destacarQtdAnuncios();
+        addVerAnunciosButtons();
+      });
+      observer.observe(cardsContainer, { childList: true, subtree: true });
+    }
+  }
+  // Roda ao carregar
+  setupCardsObserver();
+  // E sempre que renderizar
+  setInterval(setupCardsObserver, 2000);
 }
