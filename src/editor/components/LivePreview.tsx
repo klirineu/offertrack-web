@@ -67,6 +67,9 @@ const LivePreview = ({ previewMode, content, onSelectElement, dragType, style, s
             <body>
               ${userBody}
               <script>
+                // Bloqueia document.write/writeln para evitar erros de scripts de terceiros
+                document.write = function() { console.warn('document.write bloqueado no editor visual'); };
+                document.writeln = function() { console.warn('document.writeln bloqueado no editor visual'); };
                 document.body.addEventListener('click', function(e) {
                   e.preventDefault();
                   e.stopPropagation();
