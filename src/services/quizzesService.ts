@@ -78,7 +78,7 @@ export async function removeQuizService(
 ) {
   // Primeiro remove no backend
   try {
-    await api.delete("/api/clone", { data: { subdomain } });
+    await api.delete("/api/clone/quiz", { data: { subdomain } });
   } catch (error) {
     return { error };
   }
