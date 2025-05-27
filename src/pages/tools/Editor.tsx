@@ -66,7 +66,7 @@ export default function Editor() {
   const [cloneUrlToProcess, setCloneUrlToProcess] = useState<string | null>(null);
   const [deleteLoadingId, setDeleteLoadingId] = useState<string | null>(null);
   const [errorModal, setErrorModal] = useState<string | null>(null);
-  const [subdomain, setSubdomain] = useState("");
+  const [subdomainInput, setSubdomainInput] = useState("");
   const [subdomainError, setSubdomainError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -214,8 +214,7 @@ export default function Editor() {
   // Função para excluir clone e mostrar modal de loading
   async function handleDeleteClone(clone: CloneSite) {
     const urlSite = clone.subdomain;
-    const subdomain = getSubdomainFromUrl(urlSite);
-    if (!subdomain || subdomain.length === 0) {
+    if (!urlSite || urlSite.length === 0) {
       setErrorModal('Não foi possível identificar o subdomínio do site clonado.');
       return;
     }
@@ -301,10 +300,10 @@ export default function Editor() {
                   <input
                     type="text"
                     placeholder="Nome do site (subdomínio)"
-                    value={subdomain}
+                    value={subdomainInput}
                     maxLength={10}
                     onChange={e => {
-                      setSubdomain(e.target.value);
+                      setSubdomainInput(e.target.value);
                       setSubdomainError(validateSubdomain(e.target.value));
                     }}
                     className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white mb-2"
@@ -315,12 +314,12 @@ export default function Editor() {
                       className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 text-lg disabled:opacity-60"
                       disabled={actionLoading !== null || !cloneUrlToProcess}
                       onClick={async () => {
-                        const err = validateSubdomain(subdomain.toLowerCase());
+                        const err = validateSubdomain(subdomainInput.toLowerCase());
                         if (err) { setSubdomainError(err); return; }
                         setSubdomainError(null);
-                        const unique = await checkSubdomainUnique(subdomain.toLowerCase());
+                        const unique = await checkSubdomainUnique(subdomainInput.toLowerCase());
                         if (!unique) { setSubdomainError("Este nome já está em uso."); return; }
-                        await handleCloneToEditor(cloneUrlToProcess!, subdomain.toLowerCase());
+                        await handleCloneToEditor(cloneUrlToProcess!, subdomainInput.toLowerCase());
                       }}
                     >
                       {actionLoading === 'editor' ? (
