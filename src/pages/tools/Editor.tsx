@@ -446,7 +446,7 @@ export default function Editor() {
                         {clone.url}
                       </a>
                       {clone.original_url && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-xs truncate" title={clone.original_url}>
                           <span className="font-semibold">Original:</span> {clone.original_url}
                         </div>
                       )}

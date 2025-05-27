@@ -367,9 +367,11 @@ export default function EditorQuiz() {
                       ) : (
                         <span className="text-gray-500 dark:text-gray-400">(Sem URL hospedada)</span>
                       )}
-                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        <span className="font-semibold">Original:</span> {quiz.original_url}
-                      </div>
+                      {quiz.original_url && (
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-xs truncate" title={quiz.original_url}>
+                          <span className="font-semibold">Original:</span> {quiz.original_url}
+                        </div>
+                      )}
                       <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                         <span className="font-semibold">Checkout:</span> {quiz.checkout_url}
                       </div>
