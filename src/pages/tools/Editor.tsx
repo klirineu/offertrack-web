@@ -175,8 +175,8 @@ export default function Editor() {
 
   // Função para checar unicidade
   async function checkSubdomainUnique(sub: string) {
-    const { data: site } = await supabase.from("cloned_sites_subdomains").select("id").eq("subdomain", sub).single();
-    const { data: quiz } = await supabase.from("cloned_quiz_subdomains").select("id").eq("subdomain", sub).single();
+    const { data: site } = await supabase.from("cloned_sites_subdomains").select("subdomain").eq("subdomain", sub).single();
+    const { data: quiz } = await supabase.from("cloned_quiz_subdomains").select("subdomain").eq("subdomain", sub).single();
     return !site && !quiz;
   }
 
@@ -203,7 +203,21 @@ export default function Editor() {
       if (clonesError) console.error('Erro ao carregar clones:', clonesError);
       if (clonesData) setClones(clonesData);
     } catch (err) {
-      setErrorModal('Erro inesperado ao clonar: ' + (err instanceof Error ? err.message : String(err)));
+      let msg = 'Erro inesperado ao clonar.';
+      if (err && typeof err === 'object') {
+        if (err instanceof Error && err.message) {
+          if (err.message.includes('duplicate key value')) {
+            msg = 'Este subdomínio já está em uso. Escolha outro.';
+          } else {
+            msg = err.message;
+          }
+        } else if ('error' in err && err.error && typeof err.error === 'object' && 'message' in err.error && typeof err.error.message === 'string') {
+          msg = err.error.message;
+        } else if ('message' in err && typeof (err as any).message === 'string') {
+          msg = (err as any).message;
+        }
+      }
+      setErrorModal(msg);
       console.error('Erro inesperado no handleCloneToEditor:', err);
     } finally {
       setActionLoading(null);
