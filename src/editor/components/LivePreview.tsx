@@ -30,6 +30,16 @@ function absolutizeAssetPaths(html: string, siteId: string) {
   return html.replace(/(href|src)=(['"])(css|js|img|assets|static)\//g, `$1=$2${base}$3/`);
 }
 
+// Função para remover scripts problemáticos do HTML antes de injetar no iframe
+function sanitizeHtmlForEditor(html: string) {
+  // Remove scripts do WP Rocket e outros conhecidos
+  return html
+    .replace(/<script[^>]*wp-rocket[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<script[^>]*data-rocket[^>]*>[\s\S]*?<\/script>/gi, '');
+  // Se quiser, remova todos os scripts do head:
+  // .replace(/<script[\s\S]*?<\/script>/gi, '');
+}
+
 const LivePreview = ({ previewMode, content, onSelectElement, dragType, style, siteId }: LivePreviewProps) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { setNodeRef } = useDroppable({ id: 'preview-drop' });
@@ -44,16 +54,21 @@ const LivePreview = ({ previewMode, content, onSelectElement, dragType, style, s
     if (iframeRef.current) {
       const doc = iframeRef.current.contentDocument;
       if (doc) {
-        // Usa o HTML com paths absolutos
-        const { userHead, userBody } = extractHeadAndBody(htmlComPathsAbsolutos);
+        // Usa o HTML sanitizado
+        const sanitizedHtml = sanitizeHtmlForEditor(htmlComPathsAbsolutos);
+        const { userHead, userBody } = extractHeadAndBody(sanitizedHtml);
         doc.open();
         doc.write(`
           <html>
             <head>
+              <meta charset="UTF-8">
+              <script>
+                document.write = function() { console.warn('document.write bloqueado no editor visual'); };
+                document.writeln = function() { console.warn('document.writeln bloqueado no editor visual'); };
+              </script>
               ${userHead}
               <style>
                 ${content.css}
-                /* Se quiser highlight de seleção, use apenas outline temporário via CSS */
                 .ot-preview-selected { outline: 2px solid #2563eb !important; outline-offset: 2px !important; }
                 html {
                   scroll-behavior: smooth;
@@ -67,21 +82,14 @@ const LivePreview = ({ previewMode, content, onSelectElement, dragType, style, s
             <body>
               ${userBody}
               <script>
-                // Bloqueia document.write/writeln para evitar erros de scripts de terceiros
-                document.write = function() { console.warn('document.write bloqueado no editor visual'); };
-                document.writeln = function() { console.warn('document.writeln bloqueado no editor visual'); };
                 document.body.addEventListener('click', function(e) {
                   e.preventDefault();
                   e.stopPropagation();
                   let el = e.target;
                   if (!el || el === document.body) return;
-                  // Gera otId se não existir
                   if (!el.dataset.otId) el.dataset.otId = Date.now().toString() + Math.random().toString(36).slice(2);
-                  // Remove highlight anterior
                   document.querySelectorAll('.ot-preview-selected').forEach(x => x.classList.remove('ot-preview-selected'));
-                  // Adiciona highlight visual temporário
                   el.classList.add('ot-preview-selected');
-                  // Monta seletor simples
                   let selector = el.tagName.toLowerCase();
                   if (el.id) selector += '#' + el.id;
                   if (el.className) selector += '.' + [...el.classList].join('.');
