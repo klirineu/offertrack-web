@@ -845,4 +845,37 @@ if (!window.__clonupWidgetInjected) {
   setupCardsObserver();
   // E sempre que renderizar
   setInterval(setupCardsObserver, 2000);
+
+  // Adicionar controle de exibição do widget via mensagem da extensão
+  let widgetVisible = false;
+
+  function showWidget() {
+    if (!widgetVisible) {
+      root.style.display = 'block';
+      widgetVisible = true;
+    }
+  }
+
+  function hideWidget() {
+    if (widgetVisible) {
+      root.style.display = 'none';
+      widgetVisible = false;
+    }
+  }
+
+  // Inicialmente, o widget fica oculto
+  root.style.display = 'none';
+
+  // Escuta mensagens da extensão para mostrar/ocultar
+  if (window.chrome && chrome.runtime && chrome.runtime.onMessage) {
+    chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+      if (msg && msg.type === 'toggle_clonup_widget') {
+        if (widgetVisible) {
+          hideWidget();
+        } else {
+          showWidget();
+        }
+      }
+    });
+  }
 }
