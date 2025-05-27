@@ -1,8 +1,8 @@
 import axios from "axios";
-// https://production-web.up.railway.app
+// https://fastspeed.site
 // http://192.168.100.6:3001
 const api = axios.create({
-  baseURL: "https://production-web.up.railway.app",
+  baseURL: "https://fastspeed.site",
 });
 
 export default api;

@@ -863,17 +863,25 @@ if (!window.__clonupWidgetInjected) {
     }
   }
 
-  // Inicialmente, o widget fica oculto
-  root.style.display = 'none';
+  // Inicialmente, o widget fica oculto, exceto no Facebook Ads Library
+  if (/facebook\.com\/ads\/library/.test(window.location.href)) {
+    root.style.display = 'block';
+    widgetVisible = true;
+  } else {
+    root.style.display = 'none';
+    widgetVisible = false;
+  }
+  // Permitir interação do widget quando visível
+  root.style.pointerEvents = 'auto';
 
   // Escuta mensagens da extensão para mostrar/ocultar
   if (window.chrome && chrome.runtime && chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       if (msg && msg.type === 'toggle_clonup_widget') {
-        if (widgetVisible) {
-          hideWidget();
-        } else {
+        if (root.style.display === 'none' || !widgetVisible) {
           showWidget();
+        } else {
+          hideWidget();
         }
       }
     });

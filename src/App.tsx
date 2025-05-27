@@ -24,6 +24,7 @@ import TermsOfUse from './pages/TermsOfUse';
 import EscolherPlano from './pages/EscolherPlano';
 import StripMeta from './pages/tools/StripMeta';
 import EditorQuiz from './pages/tools/EditorQuiz';
+import ResetPassword from './pages/ResetPassword';
 
 function App() {
   const { initialize } = useAuth();
@@ -39,7 +40,7 @@ function App() {
         <Route path="/login" element={<LoginForm />} />
         <Route path="/register" element={<RegisterForm />} />
         <Route path="/escolher-plano" element={<EscolherPlano />} />
-
+        <Route path="/reset-password" element={<ResetPassword />} />
         {/* Protected Routes */}
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
