@@ -20,7 +20,8 @@ export async function fetchClonesService(userId: string) {
 export async function addCloneService(
   userId: string,
   originalUrl: string,
-  clonedUrl: string
+  clonedUrl: string,
+  subdomain: string
 ) {
   // Buscar perfil do usuário
   const { data: profile } = await supabase
@@ -54,8 +55,13 @@ export async function addCloneService(
   // Só chama o backend se não atingiu o limite
   const { data, error } = await supabase
     .from("cloned_sites")
-    .insert({ user_id: userId, original_url: originalUrl, url: clonedUrl })
-    .select("id, url, original_url")
+    .insert({
+      user_id: userId,
+      original_url: originalUrl,
+      url: clonedUrl,
+      subdomain,
+    })
+    .select("id, url, original_url, subdomain")
     .single();
   if (error) return { error, data: null };
   return { data, error: null };

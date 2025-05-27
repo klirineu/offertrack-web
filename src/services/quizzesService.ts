@@ -25,7 +25,7 @@ export async function addQuizService(
   userId: string,
   originalUrl: string,
   checkoutUrl: string,
-  subdomain?: string | null,
+  subdomain: string,
   url?: string | null
 ) {
   const { data, error } = await supabase

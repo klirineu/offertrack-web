@@ -7,6 +7,7 @@ import { useThemeStore } from '../../store/themeStore';
 import { useAuth } from '../../context/AuthContext';
 import { fetchQuizzesService, getQuizLimitForUser, addQuizService, removeQuizService, ClonedQuiz } from '../../services/quizzesService';
 import api from '../../services/api';
+import { supabase } from '../../lib/supabase';
 
 import LogoBranco from '../../assets/logo-branco.png';
 import IconBranco from '../../assets/ico-branco.png';
@@ -53,6 +54,8 @@ export default function EditorQuiz() {
   const [limitInfo, setLimitInfo] = useState<{ limit: number | null, price: number | null }>({ limit: null, price: null });
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [deleteLoadingId, setDeleteLoadingId] = useState<string | null>(null);
+  const [subdomain, setSubdomain] = useState("");
+  const [subdomainError, setSubdomainError] = useState<string | null>(null);
 
   const links = [
     {
@@ -132,7 +135,20 @@ export default function EditorQuiz() {
     fetchLimit();
   }, [user]);
 
-  const handleCloneQuiz = async (type: 'zip' | 'save') => {
+  function validateSubdomain(value: string) {
+    if (!/^[a-zA-Z0-9-]{1,10}$/.test(value)) {
+      return "Use até 10 letras, números ou hífen (-)";
+    }
+    return null;
+  }
+
+  async function checkSubdomainUnique(sub: string) {
+    const { data: site } = await supabase.from("cloned_sites_subdomains").select("subdomain").eq("subdomain", sub).single();
+    const { data: quiz } = await supabase.from("cloned_quiz_subdomains").select("subdomain").eq("subdomain", sub).single();
+    return !site && !quiz;
+  }
+
+  const handleCloneQuiz = async (type: 'zip' | 'save', subdomainAtualizado: string) => {
     if (!user) return;
     setErrorMsg(null);
     setActionLoading(type);
@@ -163,7 +179,7 @@ export default function EditorQuiz() {
       } else {
         // Chamada para clonar e hospedar quiz
 
-        const res = await api.post('/api/clone/quiz/save', { url: originalUrl, checkoutUrl });
+        const res = await api.post('/api/clone/quiz/save', { url: originalUrl, checkoutUrl, subdomain: subdomainAtualizado });
         if (res.status < 200 || res.status >= 300) {
           setErrorMsg('Erro ao clonar quiz para hospedagem');
           setActionLoading(null);
@@ -287,23 +303,31 @@ export default function EditorQuiz() {
                     onChange={e => setCheckoutUrl(e.target.value)}
                     className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white mb-2"
                   />
+                  <input
+                    type="text"
+                    placeholder="Nome do quiz (subdomínio)"
+                    value={subdomain}
+                    maxLength={10}
+                    onChange={e => {
+                      setSubdomain(e.target.value);
+                      setSubdomainError(validateSubdomain(e.target.value));
+                    }}
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white mb-2"
+                  />
+                  {subdomainError && <div className="text-red-500 text-sm">{subdomainError}</div>}
                   {errorMsg && <div className="text-red-500 text-sm">{errorMsg}</div>}
                   <div className="flex flex-col gap-4 w-full">
                     <button
                       className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 text-lg disabled:opacity-60"
-                      disabled={actionLoading === 'zip' || actionLoading === 'save' || !originalUrl || !checkoutUrl}
-                      onClick={() => handleCloneQuiz('zip')}
-                    >
-                      {actionLoading === 'zip' ? (
-                        <span className="flex items-center gap-2"><Loader2 className="animate-spin h-5 w-5 text-white" /> Processando...</span>
-                      ) : (
-                        <><Download className="w-5 h-5" /> Baixar ZIP</>
-                      )}
-                    </button>
-                    <button
-                      className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-2 text-lg disabled:opacity-60"
-                      disabled={actionLoading === 'zip' || actionLoading === 'save' || !originalUrl || !checkoutUrl}
-                      onClick={() => handleCloneQuiz('save')}
+                      disabled={actionLoading === 'zip' || actionLoading === 'save' || !originalUrl || !checkoutUrl || !!subdomainError}
+                      onClick={async () => {
+                        const err = validateSubdomain(subdomain);
+                        if (err) { setSubdomainError(err); return; }
+                        setSubdomainError(null);
+                        const unique = await checkSubdomainUnique(subdomain);
+                        if (!unique) { setSubdomainError("Este nome já está em uso."); return; }
+                        await handleCloneQuiz('save', subdomain);
+                      }}
                     >
                       {actionLoading === 'save' ? (
                         <span className="flex items-center gap-2"><Loader2 className="animate-spin h-5 w-5 text-white" /> Processando...</span>
