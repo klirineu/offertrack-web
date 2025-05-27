@@ -222,7 +222,7 @@ export default function Editor() {
     try {
       if (!user) return;
       setDeleteLoadingId(clone.id);
-      await removeCloneService(user.id, clone.id, subdomain);
+      await removeCloneService(user.id, clone.id, urlSite);
       // Atualizar lista de clones
       const { data: clonesData, error: clonesError } = await fetchClonesService(user.id);
       if (clonesError) console.error('Erro ao carregar clones:', clonesError);
@@ -315,12 +315,12 @@ export default function Editor() {
                       className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 text-lg disabled:opacity-60"
                       disabled={actionLoading !== null || !cloneUrlToProcess}
                       onClick={async () => {
-                        const err = validateSubdomain(subdomain);
+                        const err = validateSubdomain(subdomain.toLowerCase());
                         if (err) { setSubdomainError(err); return; }
                         setSubdomainError(null);
-                        const unique = await checkSubdomainUnique(subdomain);
+                        const unique = await checkSubdomainUnique(subdomain.toLowerCase());
                         if (!unique) { setSubdomainError("Este nome já está em uso."); return; }
-                        await handleCloneToEditor(cloneUrlToProcess!, subdomain);
+                        await handleCloneToEditor(cloneUrlToProcess!, subdomain.toLowerCase());
                       }}
                     >
                       {actionLoading === 'editor' ? (

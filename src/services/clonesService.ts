@@ -4,14 +4,14 @@ import api from "../services/api";
 export interface CloneSite {
   id: string;
   url: string;
-  subdomain: string;
   original_url?: string;
+  subdomain: string;
 }
 
 export async function fetchClonesService(userId: string) {
   const { data, error } = await supabase
     .from("cloned_sites")
-    .select("id, url, original_url")
+    .select("id, url, original_url, subdomain")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
   if (error) return { data: null, error };

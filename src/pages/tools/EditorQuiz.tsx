@@ -321,12 +321,12 @@ export default function EditorQuiz() {
                       className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 text-lg disabled:opacity-60"
                       disabled={actionLoading === 'zip' || actionLoading === 'save' || !originalUrl || !checkoutUrl || !!subdomainError}
                       onClick={async () => {
-                        const err = validateSubdomain(subdomain);
+                        const err = validateSubdomain(subdomain.toLowerCase());
                         if (err) { setSubdomainError(err); return; }
                         setSubdomainError(null);
-                        const unique = await checkSubdomainUnique(subdomain);
+                        const unique = await checkSubdomainUnique(subdomain.toLowerCase());
                         if (!unique) { setSubdomainError("Este nome já está em uso."); return; }
-                        await handleCloneQuiz('save', subdomain);
+                        await handleCloneQuiz('save', subdomain.toLowerCase());
                       }}
                     >
                       {actionLoading === 'save' ? (
