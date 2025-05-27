@@ -4,6 +4,7 @@ import api from "../services/api";
 export interface CloneSite {
   id: string;
   url: string;
+  subdomain: string;
   original_url?: string;
 }
 

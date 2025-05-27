@@ -175,13 +175,13 @@ export default function Editor() {
 
   // Função para checar unicidade
   async function checkSubdomainUnique(sub: string) {
-    const { data: site } = await supabase.from("cloned_sites").select("id").eq("subdomain", sub).single();
-    const { data: quiz } = await supabase.from("cloned_quiz").select("id").eq("subdomain", sub).single();
+    const { data: site } = await supabase.from("cloned_sites_subdomains").select("id").eq("subdomain", sub).single();
+    const { data: quiz } = await supabase.from("cloned_quiz_subdomains").select("id").eq("subdomain", sub).single();
     return !site && !quiz;
   }
 
   // Adicionar função para clonar para o editor
-  async function handleCloneToEditor(url: string, subdomain: string) {
+  async function handleCloneToEditor(url: string, subdomainCorreto: string) {
     if (!user) return;
     setActionLoading('editor');
     try {
@@ -192,12 +192,12 @@ export default function Editor() {
         setActionLoading(null);
         return;
       }
-      const res = await api.post('/api/clone/folder', { url });
+      const res = await api.post('/api/clone/folder', { url, subdomain: subdomainCorreto });
       const data = res.data;
       const urlSite = data.url;
-      const { error } = await addCloneService(user.id, url, urlSite, subdomain);
+      const { error } = await addCloneService(user.id, url, urlSite, subdomainCorreto);
       if (error) throw error;
-      setEditorResult({ url: urlSite, id: subdomain || '' });
+      setEditorResult({ url: urlSite, id: subdomainCorreto || '' });
       // Atualizar lista de clones
       const { data: clonesData, error: clonesError } = await fetchClonesService(user.id);
       if (clonesError) console.error('Erro ao carregar clones:', clonesError);
@@ -213,7 +213,7 @@ export default function Editor() {
 
   // Função para excluir clone e mostrar modal de loading
   async function handleDeleteClone(clone: CloneSite) {
-    const urlSite = clone.url;
+    const urlSite = clone.subdomain;
     const subdomain = getSubdomainFromUrl(urlSite);
     if (!subdomain || subdomain.length === 0) {
       setErrorModal('Não foi possível identificar o subdomínio do site clonado.');
