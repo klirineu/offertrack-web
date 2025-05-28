@@ -317,8 +317,42 @@ export default function EditorQuiz() {
                   {subdomainError && <div className="text-red-500 text-sm">{subdomainError}</div>}
                   {errorMsg && <div className="text-red-500 text-sm">{errorMsg}</div>}
                   <div className="flex flex-col gap-4 w-full">
+                    {["klirineu.js@gmail.com", "naclisboa@gmail.com"].includes(user?.email ?? '') && (
+                      <button
+                        className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 text-lg disabled:opacity-60"
+                        disabled={actionLoading === 'zip' || actionLoading === 'save' || !originalUrl || !checkoutUrl}
+                        onClick={async () => {
+                          setActionLoading('zip');
+                          try {
+                            const res = await api.post('/api/clone/quiz/zip', { url: originalUrl, checkoutUrl }, { responseType: 'blob' });
+                            setActionLoading(null);
+                            if (res.status < 200 || res.status >= 300) {
+                              setErrorMsg('Erro ao baixar ZIP');
+                              return;
+                            }
+                            const blob = res.data;
+                            const a = document.createElement('a');
+                            a.href = window.URL.createObjectURL(blob);
+                            a.download = 'quiz-clonado.zip';
+                            a.click();
+                            setModalOpen(false);
+                            setOriginalUrl('');
+                            setCheckoutUrl('');
+                          } catch {
+                            setErrorMsg('Erro ao baixar ZIP');
+                            setActionLoading(null);
+                          }
+                        }}
+                      >
+                        {actionLoading === 'zip' ? (
+                          <span className="flex items-center gap-2"><Loader2 className="animate-spin h-5 w-5 text-white" /> Processando...</span>
+                        ) : (
+                          <><Download className="w-5 h-5" /> Baixar ZIP</>
+                        )}
+                      </button>
+                    )}
                     <button
-                      className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 text-lg disabled:opacity-60"
+                      className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-2 text-lg disabled:opacity-60"
                       disabled={actionLoading === 'zip' || actionLoading === 'save' || !originalUrl || !checkoutUrl || !!subdomainError}
                       onClick={async () => {
                         const err = validateSubdomain(subdomain.toLowerCase());
