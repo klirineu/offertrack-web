@@ -180,6 +180,7 @@ const LivePreview = ({ previewMode, content, onSelectElement, dragType, style, s
           padding: 0,
         }}>
           <iframe
+            key={previewMode}
             ref={iframeRef}
             title='previewMobile'
             style={{
@@ -200,6 +201,7 @@ const LivePreview = ({ previewMode, content, onSelectElement, dragType, style, s
       ) : (
         <div className="w-full h-full flex items-center justify-center min-w-0">
           <iframe
+            key={previewMode}
             ref={iframeRef}
             title='preview'
             style={{
