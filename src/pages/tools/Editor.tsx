@@ -167,8 +167,8 @@ export default function Editor() {
 
   // Função para validar subdomínio
   function validateSubdomain(value: string) {
-    if (!/^[a-zA-Z0-9-]{1,10}$/.test(value)) {
-      return "Use até 10 letras, números ou hífen (-)";
+    if (!/^[a-zA-Z0-9-]{1,20}$/.test(value)) {
+      return "Use até 20 letras, números ou hífen (-)";
     }
     return null;
   }
@@ -315,7 +315,7 @@ export default function Editor() {
                     type="text"
                     placeholder="Nome do site (subdomínio)"
                     value={subdomainInput}
-                    maxLength={10}
+                    maxLength={20}
                     onChange={e => {
                       setSubdomainInput(e.target.value);
                       setSubdomainError(validateSubdomain(e.target.value));

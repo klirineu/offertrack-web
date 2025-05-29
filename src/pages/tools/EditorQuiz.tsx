@@ -136,8 +136,8 @@ export default function EditorQuiz() {
   }, [user]);
 
   function validateSubdomain(value: string) {
-    if (!/^[a-zA-Z0-9-]{1,10}$/.test(value)) {
-      return "Use até 10 letras, números ou hífen (-)";
+    if (!/^[a-zA-Z0-9-]{1,20}$/.test(value)) {
+      return "Use até 20 letras, números ou hífen (-)";
     }
     return null;
   }
@@ -307,7 +307,7 @@ export default function EditorQuiz() {
                     type="text"
                     placeholder="Nome do quiz (subdomínio)"
                     value={subdomain}
-                    maxLength={10}
+                    maxLength={20}
                     onChange={e => {
                       setSubdomain(e.target.value);
                       setSubdomainError(validateSubdomain(e.target.value));
