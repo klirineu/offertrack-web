@@ -24,30 +24,37 @@ function insertScriptInHtml(html: string, script: string, position: 'head' | 'bo
   }
 }
 
-function isRelevantScript(s: HTMLScriptElement) {
-  // Externo
-  if (s.src) {
-    if (
-      s.src.includes('localhost') ||
-      s.src.includes('127.0.0.1') ||
-      s.src.includes('5173') ||
-      s.src.match(/\/(assets|main|static|js|vite|@vite|sockjs-node|__vite_ping|@react-refresh|@vite\/client|local|dev|webpack|node_modules|esbuild|hmr|hot-update)\//)
-    ) {
-      return false;
-    }
-    return true;
+function isRelevantScript(s: Element) {
+  const terms = [
+    'facebook.com/tr',
+    '/tr?id=',
+    '/pixel',
+    '/analytics',
+    '/gtag',
+    '/utm',
+    '/clarity',
+    '/fixbug',
+    '/hotjar',
+    '/google-analytics',
+    '/utmify',
+    '/connect.facebook.net',
+    '/googletagmanager.com',
+    '/clarity.ms',
+  ];
+  if ((s as HTMLScriptElement).src) {
+    return terms.some(term => (s as HTMLScriptElement).src.includes(term));
   }
-  // Inline
   if (s.innerHTML) {
-    const sysWords = ['vite', 'react', 'hmr', 'webpack', 'editor', 'dnd', 'ot-', 'hot-update'];
-    if (sysWords.some(w => s.innerHTML.toLowerCase().includes(w))) return false;
-    if (s.innerHTML.trim().length < 10) return false;
-    return true;
+    return terms.some(term => s.innerHTML.includes(term));
   }
   return false;
 }
 
-const ControlPanel = () => {
+interface ControlPanelProps {
+  onAfterSave?: () => void | Promise<void>;
+}
+
+const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
   const selectedElement = useEditorStore((s) => s.selectedElement);
   const selectedOtId = useEditorStore((s) => s.selectedOtId);
   const setSelectedElement = useEditorStore((s) => s.setSelectedElement);
@@ -223,6 +230,7 @@ const ControlPanel = () => {
       setSaveMsg('Erro ao salvar o site.');
     }
     setSaving(false);
+    if (onAfterSave) await onAfterSave();
   }
 
   function handleRemoveElement() {
@@ -283,8 +291,17 @@ const ControlPanel = () => {
       .filter(isRelevantScript)
       .map(s => s.outerHTML)
       .join('\n');
-    setHeadScriptsText(headScripts);
-    setBodyScriptsText(bodyScripts);
+    // Extrai noscripts relevantes
+    const headNoScripts = Array.from(doc.head.querySelectorAll('noscript'))
+      .filter(isRelevantScript)
+      .map(s => s.outerHTML)
+      .join('\n');
+    const bodyNoScripts = Array.from(doc.body.querySelectorAll('noscript'))
+      .filter(isRelevantScript)
+      .map(s => s.outerHTML)
+      .join('\n');
+    setHeadScriptsText([headScripts, headNoScripts].filter(Boolean).join('\n'));
+    setBodyScriptsText([bodyScripts, bodyNoScripts].filter(Boolean).join('\n'));
     setShowScriptManager(true);
   }
 

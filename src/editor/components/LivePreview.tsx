@@ -41,59 +41,69 @@ const LivePreview = ({ previewMode, content, onSelectElement, dragType, style, s
 
   // Só atualiza o conteúdo do iframe quando o HTML base muda
   useEffect(() => {
-    if (iframeRef.current) {
-      const doc = iframeRef.current.contentDocument;
-      if (doc) {
-        // Usa o HTML com paths absolutos
-        const { userHead, userBody } = extractHeadAndBody(htmlComPathsAbsolutos);
-        doc.open();
-        doc.write(`
-          <html>
-            <head>
-              ${userHead}
-              <style>
-                ${content.css}
-                /* Se quiser highlight de seleção, use apenas outline temporário via CSS */
-                .ot-preview-selected { outline: 2px solid #2563eb !important; outline-offset: 2px !important; }
-                html {
-                  scroll-behavior: smooth;
-                  overflow-y: scroll;
-                  -ms-overflow-style: none;
-                  scrollbar-width: none;
-                }
-                html::-webkit-scrollbar { display: none; }
-              </style>
-            </head>
-            <body>
-              ${userBody}
-              <script>
-                // Bloqueia document.write/writeln para evitar erros de scripts de terceiros
-                document.write = function() { console.warn('document.write bloqueado no editor visual'); };
-                document.writeln = function() { console.warn('document.writeln bloqueado no editor visual'); };
-                document.body.addEventListener('click', function(e) {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  let el = e.target;
-                  if (!el || el === document.body) return;
-                  // Gera otId se não existir
-                  if (!el.dataset.otId) el.dataset.otId = Date.now().toString() + Math.random().toString(36).slice(2);
-                  // Remove highlight anterior
-                  document.querySelectorAll('.ot-preview-selected').forEach(x => x.classList.remove('ot-preview-selected'));
-                  // Adiciona highlight visual temporário
-                  el.classList.add('ot-preview-selected');
-                  // Monta seletor simples
-                  let selector = el.tagName.toLowerCase();
-                  if (el.id) selector += '#' + el.id;
-                  if (el.className) selector += '.' + [...el.classList].join('.');
-                  window.parent.postMessage({ type: 'element-selected', selector, otId: el.dataset.otId }, '*');
-                }, true);
-              </script>
-            </body>
-          </html>
-        `);
-        doc.close();
-      }
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    const doc = iframe.contentDocument;
+    if (doc) {
+      // Usa o HTML com paths absolutos
+      const { userHead, userBody } = extractHeadAndBody(htmlComPathsAbsolutos);
+      doc.open();
+      doc.write(`
+        <html>
+          <head>
+            ${userHead}
+            <style>
+              ${content.css}
+              /* Se quiser highlight de seleção, use apenas outline temporário via CSS */
+              .ot-preview-selected { outline: 2px solid #2563eb !important; outline-offset: 2px !important; }
+              html {
+                scroll-behavior: smooth;
+                overflow-y: scroll;
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+              }
+              html::-webkit-scrollbar { display: none; }
+            </style>
+          </head>
+          <body>
+            ${userBody}
+            <script>
+              // // Bloqueia document.write/writeln para evitar erros de scripts de terceiros
+              // document.write = function() { console.warn('document.write bloqueado no editor visual'); };
+              // document.writeln = function() { console.warn('document.writeln bloqueado no editor visual'); };
+              document.body.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                let el = e.target;
+                if (!el || el === document.body) return;
+                // Gera otId se não existir
+                if (!el.dataset.otId) el.dataset.otId = Date.now().toString() + Math.random().toString(36).slice(2);
+                // Remove highlight anterior
+                document.querySelectorAll('.ot-preview-selected').forEach(x => x.classList.remove('ot-preview-selected'));
+                // Adiciona highlight visual temporário
+                el.classList.add('ot-preview-selected');
+                // Monta seletor simples
+                let selector = el.tagName.toLowerCase();
+                if (el.id) selector += '#' + el.id;
+                if (el.className) selector += '.' + [...el.classList].join('.');
+                window.parent.postMessage({ type: 'element-selected', selector, otId: el.dataset.otId }, '*');
+              }, true);
+            </script>
+          </body>
+        </html>
+      `);
+      doc.close();
     }
+
+    // Cleanup: limpa o iframe ao desmontar
+    return () => {
+      if (iframe && iframe.contentDocument) {
+        iframe.contentDocument.open();
+        iframe.contentDocument.write('');
+        iframe.contentDocument.close();
+      }
+    };
   }, [content, htmlComPathsAbsolutos]);
 
   useEffect(() => {

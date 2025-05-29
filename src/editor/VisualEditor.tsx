@@ -1,6 +1,5 @@
 import LivePreview from './components/LivePreview';
 import ControlPanel from './components/ControlPanel';
-import Breadcrumb from './components/Breadcrumb';
 import ComponentLibrary from './components/ComponentLibrary';
 import { useEditorStore } from './editorStore';
 import { useState } from 'react';
@@ -12,6 +11,7 @@ interface EditorProps {
     css: string;
     assets: Record<string, string>;
   };
+  onAfterSave?: () => void | Promise<void>;
 }
 
 declare global {
@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-const VisualEditor = ({ clonedData }: EditorProps) => {
+const VisualEditor = ({ clonedData, onAfterSave }: EditorProps) => {
   const setSelectedElement = useEditorStore((s) => s.setSelectedElement);
   const setSelectedOtId = useEditorStore((s) => s.setSelectedOtId);
   const [dragType] = useState<string | null>(null);
@@ -37,7 +37,7 @@ const VisualEditor = ({ clonedData }: EditorProps) => {
   }
 
   const params = new URLSearchParams(location.search);
-  const siteId = params.get('id');
+  const siteId = params.get('id') ?? '';
 
   return (
     <div className="flex h-full">
@@ -83,7 +83,7 @@ const VisualEditor = ({ clonedData }: EditorProps) => {
           </div>
         </div>
       </div>
-      <ControlPanel />
+      <ControlPanel onAfterSave={onAfterSave} />
     </div>
   );
 };
