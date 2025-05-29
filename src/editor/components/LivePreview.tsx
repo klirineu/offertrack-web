@@ -46,16 +46,36 @@ const LivePreview = ({ previewMode, content, onSelectElement, dragType, style, s
 
     const doc = iframe.contentDocument;
     if (doc) {
-      // Usa o HTML com paths absolutos
       const { userHead, userBody } = extractHeadAndBody(htmlComPathsAbsolutos);
+
+      // CSS e script para mobile
+      const mobileCss = `
+        html, body {
+          width: 390px !important;
+          min-width: 390px !important;
+          max-width: 390px !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          overflow-x: hidden !important;
+        }
+      `;
+      const mobileScript = `
+        try {
+          Object.defineProperty(window, 'innerWidth', { get: () => 390 });
+          Object.defineProperty(window, 'outerWidth', { get: () => 390 });
+          Object.defineProperty(window.screen, 'width', { get: () => 390 });
+          Object.defineProperty(window, 'devicePixelRatio', { get: () => 2 });
+        } catch(e) {}
+      `;
+
       doc.open();
       doc.write(`
         <html>
           <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
             ${userHead}
             <style>
               ${content.css}
-              /* Se quiser highlight de seleção, use apenas outline temporário via CSS */
               .ot-preview-selected { outline: 2px solid #2563eb !important; outline-offset: 2px !important; }
               html {
                 scroll-behavior: smooth;
@@ -64,26 +84,21 @@ const LivePreview = ({ previewMode, content, onSelectElement, dragType, style, s
                 scrollbar-width: none;
               }
               html::-webkit-scrollbar { display: none; }
+              ${previewMode === 'mobile' ? mobileCss : ''}
             </style>
           </head>
           <body>
             ${userBody}
             <script>
-              // // Bloqueia document.write/writeln para evitar erros de scripts de terceiros
-              // document.write = function() { console.warn('document.write bloqueado no editor visual'); };
-              // document.writeln = function() { console.warn('document.writeln bloqueado no editor visual'); };
+              ${previewMode === 'mobile' ? mobileScript : ''}
               document.body.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
                 let el = e.target;
                 if (!el || el === document.body) return;
-                // Gera otId se não existir
                 if (!el.dataset.otId) el.dataset.otId = Date.now().toString() + Math.random().toString(36).slice(2);
-                // Remove highlight anterior
                 document.querySelectorAll('.ot-preview-selected').forEach(x => x.classList.remove('ot-preview-selected'));
-                // Adiciona highlight visual temporário
                 el.classList.add('ot-preview-selected');
-                // Monta seletor simples
                 let selector = el.tagName.toLowerCase();
                 if (el.id) selector += '#' + el.id;
                 if (el.className) selector += '.' + [...el.classList].join('.');
@@ -104,7 +119,7 @@ const LivePreview = ({ previewMode, content, onSelectElement, dragType, style, s
         iframe.contentDocument.close();
       }
     };
-  }, [content, htmlComPathsAbsolutos]);
+  }, [content, htmlComPathsAbsolutos, previewMode]);
 
   useEffect(() => {
     function handler(event: MessageEvent) {
@@ -151,19 +166,32 @@ const LivePreview = ({ previewMode, content, onSelectElement, dragType, style, s
     <div ref={setNodeRef} className="relative flex-1 h-full flex items-center justify-center min-w-0 bg-gray-900">
       {overlay}
       {previewMode === 'mobile' ? (
-        <div style={{ width: 390, height: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 24, boxShadow: '0 0 0 4px #222', background: '#222', margin: '0 auto' }}>
+        <div style={{
+          width: 390,
+          height: 844,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: 24,
+          boxShadow: '0 0 0 4px #222',
+          background: '#222',
+          margin: '0 auto',
+          overflow: 'hidden',
+          padding: 0,
+        }}>
           <iframe
             ref={iframeRef}
-            title='preview'
+            title='previewMobile'
             style={{
-              width: '100%',
-              height: '100%',
+              width: 390,
+              height: 844,
               border: 'none',
               borderRadius: 20,
-              background: '#fff',
-              boxShadow: '0 0 0 1px #222',
-              transition: 'width 0.2s, height 0.2s',
+              background: 'transparent',
               display: 'block',
+              overflow: 'auto',
+              margin: 0,
+              padding: 0,
               ...style,
             }}
             sandbox="allow-scripts allow-same-origin"

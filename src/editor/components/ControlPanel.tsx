@@ -90,6 +90,7 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
   const [showScriptManager, setShowScriptManager] = useState(false);
   const [headScriptsText, setHeadScriptsText] = useState('');
   const [bodyScriptsText, setBodyScriptsText] = useState('');
+  const [customLink, setCustomLink] = useState('');
 
   // Sincroniza atributos do elemento selecionado
   useEffect(() => {
@@ -330,6 +331,28 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
     setTimeout(() => setSaveMsg(''), 3000);
   }
 
+  // Função para envolver o elemento selecionado com <a href="...">
+  function wrapSelectedWithLink(href: string) {
+    const iframe = document.querySelector('iframe');
+    if (!iframe) return;
+    const doc = iframe.contentDocument;
+    if (!doc) return;
+    const el = getElementByOtId(doc, selectedOtId);
+    if (!el) return;
+
+    // Se já está dentro de um <a>, só atualiza o href
+    if (el.parentElement && el.parentElement.tagName === 'A') {
+      el.parentElement.setAttribute('href', href);
+      return;
+    }
+
+    // Cria o <a> e move o elemento para dentro
+    const a = doc.createElement('a');
+    a.setAttribute('href', href);
+    el.parentElement?.replaceChild(a, el);
+    a.appendChild(el);
+  }
+
   if (!selectedElement) {
     return (
       <aside className="w-96 bg-gray-900 text-gray-100 p-6 rounded-lg shadow-lg h-full flex flex-col min-w-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900 pt-4">
@@ -382,6 +405,28 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
             <label className="block text-sm mb-1">Link (href):</label>
             <input type="text" className="w-full border border-gray-700 bg-gray-800 text-gray-100 rounded px-2 py-1 mb-2" value={href} onChange={e => { setHref(e.target.value); updateAttr('href', e.target.value); }} />
           </>
+        )}
+        {/* Campo para adicionar link customizado em qualquer elemento que não seja <a> */}
+        {selectedElement && !selectedElement.startsWith('a') && (
+          <div className="mb-2">
+            <label className="block text-sm mb-1">Adicionar link (envolver com &lt;a&gt;):</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                className="flex-1 border border-gray-700 bg-gray-800 text-gray-100 rounded px-2 py-1"
+                placeholder="https://..."
+                value={customLink}
+                onChange={e => setCustomLink(e.target.value)}
+              />
+              <button
+                className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold"
+                onClick={() => {
+                  if (customLink.trim()) wrapSelectedWithLink(customLink.trim());
+                }}
+                type="button"
+              >Aplicar link</button>
+            </div>
+          </div>
         )}
         {selectedElement.startsWith('img') && (
           <>
@@ -474,6 +519,7 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
               <option value="oblique">Oblíquo</option>
             </select>
           </>}
+
       </div>
       {selectedElement && (
         <button
