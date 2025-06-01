@@ -227,7 +227,7 @@ export default function Editor() {
 
   // Função para excluir clone e mostrar modal de loading
   async function handleDeleteClone(clone: CloneSite) {
-    const urlSite = clone.subdomain;
+    const urlSite = clone.subdomain || getSubdomainFromUrl(clone.url);
     if (!urlSite || urlSite.length === 0) {
       setErrorModal('Não foi possível identificar o subdomínio do site clonado.');
       return;
@@ -247,6 +247,8 @@ export default function Editor() {
       setDeleteLoadingId(null);
     }
   }
+
+  console.log(clones);
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
