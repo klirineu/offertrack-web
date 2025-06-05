@@ -15,15 +15,6 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
       if (!profile) return;
       if (isMounted) setChecking(true);
 
-      // Se não tiver as datas de trial definidas, redirecionar para escolher plano
-      if (!profile.trial_started_at || !profile.trial_expires_at) {
-        if (isMounted) {
-          setRedirectUrl('/escolher-plano?message=choose');
-          setChecking(false);
-        }
-        return;
-      }
-
       // Bloquear se status for refused, refunded ou chargeback
       const blockedStatus = ['refused', 'refunded', 'chargeback'];
       if (blockedStatus.includes(profile.subscription_status ?? '')) {
@@ -35,7 +26,16 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
       }
 
       // Se estiver em trial, verificar se expirou
-      if (profile.subscription_status === 'trialing' && profile.trial_started_at) {
+      if (profile.subscription_status === 'trialing') {
+        // Se não tiver data de início do trial, precisa escolher plano
+        if (!profile.trial_started_at) {
+          if (isMounted) {
+            setRedirectUrl('/escolher-plano?message=choose');
+            setChecking(false);
+          }
+          return;
+        }
+
         const trialStarted = new Date(profile.trial_started_at);
         const now = new Date();
         const diffDays = (now.getTime() - trialStarted.getTime()) / (1000 * 60 * 60 * 24);
@@ -50,7 +50,16 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
       }
 
       // Se tiver plano ativo, verificar se expirou
-      if (profile.subscription_status === 'active' && profile.subscription_renewed_at) {
+      if (profile.subscription_status === 'active') {
+        // Se não tiver data de renovação, está ok (primeira ativação)
+        if (!profile.subscription_renewed_at) {
+          if (isMounted) {
+            setRedirectUrl(null);
+            setChecking(false);
+          }
+          return;
+        }
+
         const renewedAt = new Date(profile.subscription_renewed_at);
         const now = new Date();
         const diffDays = (now.getTime() - renewedAt.getTime()) / (1000 * 60 * 60 * 24);
