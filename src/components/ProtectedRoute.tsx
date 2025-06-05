@@ -14,53 +14,66 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     async function checkPlan() {
       if (!profile) return;
       if (isMounted) setChecking(true);
-      if (!profile.plan_id) {
-        if (isMounted) setRedirectUrl('/escolher-plano');
-        if (isMounted) setChecking(false);
+
+      // Se não tiver as datas de trial definidas, redirecionar para escolher plano
+      if (!profile.trial_started_at || !profile.trial_expires_at) {
+        if (isMounted) {
+          setRedirectUrl('/escolher-plano?message=choose');
+          setChecking(false);
+        }
         return;
       }
+
       // Bloquear se status for refused, refunded ou chargeback
       const blockedStatus = ['refused', 'refunded', 'chargeback'];
       if (blockedStatus.includes(profile.subscription_status ?? '')) {
-        if (isMounted) setRedirectUrl('/escolher-plano');
-        if (isMounted) setChecking(false);
+        if (isMounted) {
+          setRedirectUrl('/escolher-plano?message=blocked');
+          setChecking(false);
+        }
         return;
       }
-      // Verificar expiração do plano mensal
+
+      // Se estiver em trial, verificar se expirou
+      if (profile.subscription_status === 'trialing' && profile.trial_started_at) {
+        const trialStarted = new Date(profile.trial_started_at);
+        const now = new Date();
+        const diffDays = (now.getTime() - trialStarted.getTime()) / (1000 * 60 * 60 * 24);
+
+        if (diffDays >= 7) {
+          if (isMounted) {
+            setRedirectUrl('/escolher-plano?message=trial_expired');
+            setChecking(false);
+          }
+          return;
+        }
+      }
+
+      // Se tiver plano ativo, verificar se expirou
       if (profile.subscription_status === 'active' && profile.subscription_renewed_at) {
         const renewedAt = new Date(profile.subscription_renewed_at);
         const now = new Date();
         const diffDays = (now.getTime() - renewedAt.getTime()) / (1000 * 60 * 60 * 24);
+
         if (diffDays >= 30) {
-          // Atualizar status para expired
-          if (profile.id) {
-            await supabase.from('profiles').update({ subscription_status: 'expired' }).eq('id', profile.id);
+          if (isMounted) {
+            setRedirectUrl('/escolher-plano?message=plan_expired');
+            setChecking(false);
           }
-          if (isMounted) setRedirectUrl('/escolher-plano');
-          if (isMounted) setChecking(false);
           return;
         }
       }
-      if (profile.subscription_status !== 'active') {
-        // Buscar checkout_url do plano
-        if (profile.plan_id) {
-          const { data: plan } = await supabase.from('plans').select('checkout_url').eq('id', profile.plan_id).single();
-          if (isMounted) {
-            if (plan?.checkout_url) {
-              window.location.href = plan.checkout_url;
-            } else {
-              setRedirectUrl('/escolher-plano');
-            }
-            setChecking(false);
-          }
-        } else {
-          if (isMounted) {
-            setRedirectUrl('/escolher-plano');
-            setChecking(false);
-          }
+
+      // Se não estiver em trial nem com plano ativo, redirecionar
+      if (profile.subscription_status !== 'active' && profile.subscription_status !== 'trialing') {
+        if (isMounted) {
+          setRedirectUrl('/escolher-plano?message=no_plan');
+          setChecking(false);
         }
         return;
       }
+
+      // Se chegou aqui, está tudo ok
       if (isMounted) {
         setRedirectUrl(null);
         setChecking(false);

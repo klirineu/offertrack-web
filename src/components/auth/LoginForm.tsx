@@ -86,10 +86,20 @@ export function LoginForm() {
               {submitting ? 'Loading...' : 'Entrar'}
             </button>
           </form>
-          <div className="mt-6 text-center">
-            <Link to="/register" className="text-sm text-blue-400 hover:text-blue-300">
-              Não tem uma conta? Cadastre-se
+          <div className="mt-6 text-center space-y-4">
+            <Link to="/register" className="text-sm text-blue-400 hover:text-blue-300 block">
+              Não tem uma conta? Criar conta
             </Link>
+            <div className="text-sm text-gray-400">
+              Ao entrar, você concorda com nossos{' '}
+              <Link to="/terms" className="text-blue-400 hover:text-blue-300">
+                termos de uso
+              </Link>{' '}
+              e{' '}
+              <Link to="/privacy" className="text-blue-400 hover:text-blue-300">
+                política de privacidade
+              </Link>
+            </div>
           </div>
         </div>
       </div>

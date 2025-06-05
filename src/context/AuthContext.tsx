@@ -13,7 +13,7 @@ interface AuthContextType {
   error: string | null;
   initialize: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
-  signUp: (email: string, password: string, extra?: { full_name?: string; plan_id?: string }) => Promise<{ error: AuthError | PostgrestError | null }>;
+  signUp: (email: string, password: string, extra?: { full_name?: string }) => Promise<{ error: AuthError | PostgrestError | null }>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>;
   refreshProfile: () => Promise<void>;
@@ -78,7 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signUp = async (email: string, password: string, extra?: { full_name?: string; plan_id?: string }) => {
+  const signUp = async (email: string, password: string, extra?: { full_name?: string }) => {
     setIsLoading(true);
     setError(null);
     try {
@@ -87,16 +87,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsLoading(false);
         return { error };
       }
-      const now = new Date();
-      const trialExpires = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
           full_name: extra?.full_name ?? null,
-          plan_id: extra?.plan_id ?? null,
-          trial_started_at: now.toISOString(),
-          trial_expires_at: trialExpires.toISOString(),
-          subscription_status: 'trialing',
         })
         .eq('id', data.user.id);
       setIsLoading(false);

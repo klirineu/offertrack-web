@@ -1,58 +1,33 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext'
 
 export function RegisterForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
   const [fullName, setFullName] = useState('');
-  const [plans, setPlans] = useState<{ id: string; name: string; price: string }[]>([]);
-  const [selectedPlan, setSelectedPlan] = useState<string>('');
-
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const navigate = useNavigate();
   const { signUp } = useAuth();
-  const [searchParams] = useSearchParams();
-
-  useEffect(() => {
-    supabase.from('plans').select('id, name, price').order('price', { ascending: true }).then(({ data }) => {
-      if (data) setPlans(data);
-    });
-    // Pré-selecionar plano se vier na URL
-    const planParam = searchParams.get('plan');
-    if (planParam) setSelectedPlan(planParam);
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedPlan) {
-      setError('Selecione um plano para continuar.');
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError('As senhas não coincidem');
+    if (!acceptTerms) {
+      setError('Você precisa aceitar os termos de uso e política de privacidade para continuar.');
       return;
     }
     try {
       setError('');
       setLoading(true);
-      const { error: signUpError } = await signUp(email, password, { full_name: fullName, plan_id: selectedPlan });
+      const { error: signUpError } = await signUp(email, password, { full_name: fullName });
       if (signUpError) {
         setError('Falha ao criar conta. O email já está em uso ou é inválido.');
         setLoading(false);
         return;
       }
-      // Buscar checkout_url do plano escolhido
-      const { data: plan, error: planError } = await supabase.from('plans').select('checkout_url').eq('id', selectedPlan).single();
-      if (planError || !plan?.checkout_url) {
-        setError('Erro ao buscar URL de pagamento do plano.');
-        setLoading(false);
-        return;
-      }
-      window.location.href = plan.checkout_url;
+      navigate('/dashboard');
     } catch (err) {
       setError('Ocorreu um erro inesperado. Tente novamente.');
     } finally {
@@ -115,46 +90,28 @@ export function RegisterForm() {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-            <div>
-              <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-300">
-                Confirmar Senha
-              </label>
-              <input
-                id="confirm-password"
-                type="password"
-                required
-                className="mt-1 block w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="••••••••"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
-            </div>
-            <div>
-              <label htmlFor="plan" className="block text-sm font-medium text-gray-300">Plano</label>
-              <select
-                id="plan"
-                required
-                className="mt-1 block w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={selectedPlan}
-                onChange={e => setSelectedPlan(e.target.value)}
-              >
-                <option value="">Selecione um plano</option>
-                {plans.map(plan => (
-                  <option key={plan.id} value={plan.id}>
-                    {plan.name.charAt(0).toUpperCase() + plan.name.slice(1)}
-                    {plan.name === 'starter' ? ' (de R$67 por R$37/mês - Lançamento)' : ` (R$ ${plan.price},00)`}
-                  </option>
-                ))}
-              </select>
-              {/* Aviso do cupom e valor promocional */}
-              {selectedPlan === 'd4d9823e-d0a0-4aba-94e0-a20842908351' && (
-                <>
-                  <div className="mt-2 text-xs text-green-700 bg-green-50 rounded px-2 py-1 text-center">
-                    Para garantir o valor de R$37, use o cupom <b>lancamento</b> no checkout.
-                  </div>
-                </>
-              )
-              }
+            <div className="flex items-start">
+              <div className="flex items-center h-5">
+                <input
+                  id="terms"
+                  type="checkbox"
+                  checked={acceptTerms}
+                  onChange={(e) => setAcceptTerms(e.target.checked)}
+                  className="w-4 h-4 border border-gray-600 rounded bg-gray-700 focus:ring-3 focus:ring-blue-600"
+                />
+              </div>
+              <div className="ml-3 text-sm">
+                <label htmlFor="terms" className="font-medium text-gray-300">
+                  Aceito os{' '}
+                  <Link to="/terms" className="text-blue-400 hover:text-blue-300">
+                    termos de uso
+                  </Link>{' '}
+                  e a{' '}
+                  <Link to="/privacy" className="text-blue-400 hover:text-blue-300">
+                    política de privacidade
+                  </Link>
+                </label>
+              </div>
             </div>
             <button
               type="submit"
