@@ -200,22 +200,33 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
     const doc = iframe.contentDocument;
     if (!doc) return;
 
-    // Remove qualquer classe de seleção visual do DOM antes de serializar
-    doc.querySelectorAll('.__ot-selected, .ot-preview-selected').forEach(el => el.classList.remove('__ot-selected', 'ot-preview-selected'));
+    // Remove elementos do editor antes de salvar
+    doc.querySelectorAll('[data-editor-selected]').forEach(el => {
+      el.removeAttribute('data-editor-selected');
+    });
+    doc.querySelectorAll('[data-ot-id]').forEach(el => {
+      el.removeAttribute('data-ot-id');
+    });
 
-    // Serializa o HTML do iframe
+    // Remove scripts e estilos do editor
+    const editorScript = doc.getElementById('editor-script');
+    if (editorScript) editorScript.remove();
+    const editorStyles = doc.getElementById('editor-styles');
+    if (editorStyles) editorStyles.remove();
+
+    // Serializa o HTML mantendo a estrutura original
     let html = doc.documentElement.outerHTML;
 
-    // Remove o script de seleção do editor (iframe)
-    html = html.replace(/<script[^>]*>[^<]*document\.body\.addEventListener[\s\S]*?<\/script>/g, '');
+    // Remove quaisquer atributos residuais do editor
+    html = html.replace(/\s+data-editor-selected="true"/g, '');
+    html = html.replace(/\s+data-ot-id="[^"]*"/g, '');
 
-    // Remove classes do editor via regex
-    html = html.replace(/\s(__ot-draggable|__ot-selected)\b/g, '');
+    // Remove classes do editor
+    html = html.replace(/\s+(__ot-draggable|__ot-selected|ot-preview-selected)\b/g, '');
 
-    // Remove drag handles e overlays
+    // Remove elementos do editor
     html = html.replace(/<div[^>]*class="[^"]*__ot-drag-handle[^"]*"[^>]*>.*?<\/div>/gs, '');
     html = html.replace(/<div[^>]*title="Arrastar para mover"[^>]*>.*?<\/div>/gs, '');
-    html = html.replace(/<div[^>]*>↕<\/div>/gs, '');
 
     // Obter subdomínio
     const params = new URLSearchParams(location.search);

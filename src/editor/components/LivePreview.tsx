@@ -12,22 +12,67 @@ interface LivePreviewProps {
 
 // Função utilitária para extrair <head> e <body> do HTML do usuário
 function extractHeadAndBody(html: string) {
+  // Preserva a estrutura original do HTML
+  const htmlMatch = html.match(/<html[^>]*>([\s\S]*?)<\/html>/i);
   const headMatch = html.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
   const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+
+  // Extrai os atributos originais das tags
+  const htmlAttrs = (html.match(/<html([^>]*)>/i) || ['', ''])[1];
+  const headAttrs = (html.match(/<head([^>]*)>/i) || ['', ''])[1];
+  const bodyAttrs = (html.match(/<body([^>]*)>/i) || ['', ''])[1];
+
+  // Se não encontrar as tags, tenta extrair o conteúdo
+  const userHtml = htmlMatch ? htmlMatch[1] : html;
   const userHead = headMatch ? headMatch[1] : '';
-  let userBody = bodyMatch ? bodyMatch[1] : html;
-  // Se não houver <body>, remove <html> e <head> para evitar duplicidade
-  if (!bodyMatch) {
-    userBody = userBody.replace(/<head[\s\S]*?<\/head>/i, '').replace(/<html[^>]*>|<\/html>/gi, '');
+  let userBody = bodyMatch ? bodyMatch[1] : userHtml;
+
+  // Se não houver body/head, assume todo o conteúdo como body
+  if (!bodyMatch && !headMatch) {
+    userBody = userHtml.replace(/<html[^>]*>|<\/html>/gi, '')
+      .replace(/<head[\s\S]*?<\/head>/i, '');
   }
-  return { userHead, userBody };
+
+  return {
+    htmlAttrs,
+    headAttrs,
+    bodyAttrs,
+    userHead,
+    userBody
+  };
 }
 
 // Função utilitária para tornar caminhos de assets absolutos
 function absolutizeAssetPaths(html: string, siteId: string) {
-  const base = `https://${siteId}.clonup.site/`;
-  // Substitui href/src que começam com css/, js/, img/, assets/, static/
-  return html.replace(/(href|src)=(['"])(css|js|img|assets|static)\//g, `$1=$2${base}$3/`);
+  const base = `https://${siteId}.clonup.site`;
+
+  // Função auxiliar para normalizar caminhos
+  function normalizePath(path: string) {
+    // Remove ./ e ../ do início
+    path = path.replace(/^\.\.?\//, '');
+    // Remove / do início
+    path = path.replace(/^\//, '');
+    return path;
+  }
+
+  // Substitui todos os caminhos relativos por absolutos
+  html = html.replace(
+    /(href|src)=(['"])((?!https?:\/\/|\/\/|data:|#|mailto:|tel:)[^"']+)(['"])/g,
+    (match, attr, quote1, path, quote2) => {
+      // Ignora URLs que já são absolutas ou especiais
+      if (path.match(/^(https?:\/\/|\/\/|data:|#|mailto:|tel:)/)) {
+        return match;
+      }
+
+      // Normaliza o caminho
+      const normalizedPath = normalizePath(path);
+
+      // Retorna o caminho completo
+      return `${attr}=${quote1}${base}/${normalizedPath}${quote2}`;
+    }
+  );
+
+  return html;
 }
 
 const LivePreview = ({ previewMode, content, onSelectElement, dragType, style, siteId }: LivePreviewProps) => {
@@ -46,65 +91,59 @@ const LivePreview = ({ previewMode, content, onSelectElement, dragType, style, s
 
     const doc = iframe.contentDocument;
     if (doc) {
-      const { userHead, userBody } = extractHeadAndBody(htmlComPathsAbsolutos);
+      const { htmlAttrs, headAttrs, bodyAttrs, userHead, userBody } = extractHeadAndBody(htmlComPathsAbsolutos);
 
-      // CSS e script para mobile
-      const mobileCss = `
-        html, body {
-          width: 390px !important;
-          min-width: 390px !important;
-          max-width: 390px !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          overflow-x: hidden !important;
+      // CSS mínimo para mobile sem afetar cores
+      const mobileCss = previewMode === 'mobile' ? `
+        @media screen {
+          html, body {
+            width: 390px !important;
+            min-width: 390px !important;
+            max-width: 390px !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow-x: hidden !important;
+          }
         }
+      ` : '';
+
+      // Script mínimo do editor
+      const editorScript = `
+        document.body.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          let el = e.target;
+          if (!el || el === document.body) return;
+          if (!el.dataset.otId) el.dataset.otId = Date.now().toString() + Math.random().toString(36).slice(2);
+          document.querySelectorAll('[data-editor-selected]').forEach(x => x.removeAttribute('data-editor-selected'));
+          el.setAttribute('data-editor-selected', 'true');
+          let selector = el.tagName.toLowerCase();
+          if (el.id) selector += '#' + el.id;
+          if (el.className) selector += '.' + [...el.classList].join('.');
+          window.parent.postMessage({ type: 'element-selected', selector, otId: el.dataset.otId }, '*');
+        }, true);
       `;
-      const mobileScript = `
-        try {
-          Object.defineProperty(window, 'innerWidth', { get: () => 390 });
-          Object.defineProperty(window, 'outerWidth', { get: () => 390 });
-          Object.defineProperty(window.screen, 'width', { get: () => 390 });
-          Object.defineProperty(window, 'devicePixelRatio', { get: () => 2 });
-        } catch(e) {}
+
+      // Estilos mínimos do editor usando atributos em vez de classes
+      const editorStyles = `
+        [data-editor-selected] {
+          outline: 2px solid #2563eb !important;
+          outline-offset: 2px !important;
+        }
+        ${mobileCss}
       `;
 
       doc.open();
       doc.write(`
-        <html>
-          <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <!DOCTYPE html>
+        <html${htmlAttrs}>
+          <head${headAttrs}>
             ${userHead}
-            <style>
-              ${content.css}
-              .ot-preview-selected { outline: 2px solid #2563eb !important; outline-offset: 2px !important; }
-              html {
-                scroll-behavior: smooth;
-                overflow-y: scroll;
-                -ms-overflow-style: none;
-                scrollbar-width: none;
-              }
-              html::-webkit-scrollbar { display: none; }
-              ${previewMode === 'mobile' ? mobileCss : ''}
-            </style>
+            <style id="editor-styles">${editorStyles}</style>
           </head>
-          <body>
+          <body${bodyAttrs}>
             ${userBody}
-            <script>
-              ${previewMode === 'mobile' ? mobileScript : ''}
-              document.body.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                let el = e.target;
-                if (!el || el === document.body) return;
-                if (!el.dataset.otId) el.dataset.otId = Date.now().toString() + Math.random().toString(36).slice(2);
-                document.querySelectorAll('.ot-preview-selected').forEach(x => x.classList.remove('ot-preview-selected'));
-                el.classList.add('ot-preview-selected');
-                let selector = el.tagName.toLowerCase();
-                if (el.id) selector += '#' + el.id;
-                if (el.className) selector += '.' + [...el.classList].join('.');
-                window.parent.postMessage({ type: 'element-selected', selector, otId: el.dataset.otId }, '*');
-              }, true);
-            </script>
+            <script id="editor-script">${editorScript}</script>
           </body>
         </html>
       `);

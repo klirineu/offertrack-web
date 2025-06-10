@@ -27,8 +27,8 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
       // Se estiver em trial, verificar se expirou
       if (profile.subscription_status === 'trialing') {
-        // Se não tiver data de início do trial, precisa escolher plano
-        if (!profile.trial_started_at) {
+        // Se não tiver data de expiração do trial, precisa escolher plano
+        if (!profile.trial_expires_at) {
           if (isMounted) {
             setRedirectUrl('/escolher-plano?message=choose');
             setChecking(false);
@@ -36,11 +36,17 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        const trialStarted = new Date(profile.trial_started_at);
+        const trialExpires = new Date(profile.trial_expires_at);
         const now = new Date();
-        const diffDays = (now.getTime() - trialStarted.getTime()) / (1000 * 60 * 60 * 24);
 
-        if (diffDays >= 7) {
+        // Se a data de expiração já passou
+        if (now > trialExpires) {
+          // Atualizar status para expired
+          if (profile.id) {
+            await supabase.from('profiles')
+              .update({ subscription_status: 'expired' })
+              .eq('id', profile.id);
+          }
           if (isMounted) {
             setRedirectUrl('/escolher-plano?message=trial_expired');
             setChecking(false);
@@ -65,6 +71,12 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
         const diffDays = (now.getTime() - renewedAt.getTime()) / (1000 * 60 * 60 * 24);
 
         if (diffDays >= 30) {
+          // Atualizar status para expired
+          if (profile.id) {
+            await supabase.from('profiles')
+              .update({ subscription_status: 'expired' })
+              .eq('id', profile.id);
+          }
           if (isMounted) {
             setRedirectUrl('/escolher-plano?message=plan_expired');
             setChecking(false);
