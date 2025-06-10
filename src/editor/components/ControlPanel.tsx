@@ -200,37 +200,94 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
     const doc = iframe.contentDocument;
     if (!doc) return;
 
-    // Remove elementos do editor antes de salvar
-    doc.querySelectorAll('[data-editor-selected]').forEach(el => {
+    // Obter subdomínio para converter URLs
+    const params = new URLSearchParams(location.search);
+    const subdomain = params.get('id');
+    const domain = `https://${subdomain}.clonup.com`;
+
+    // Preserva o HTML original
+    const originalHtml = doc.documentElement.outerHTML;
+
+    // Função para decodificar entidades HTML
+    const decodeHtmlEntities = (html: string) => {
+      const textarea = document.createElement('textarea');
+      textarea.innerHTML = html;
+      return textarea.value;
+    };
+
+    // Decodifica o HTML antes de parsear
+    const decodedHtml = decodeHtmlEntities(originalHtml);
+
+    // Cria um parser temporário para manipular o HTML sem afetar a estrutura
+    const parser = new DOMParser();
+    const tempDoc = parser.parseFromString(decodedHtml, 'text/html');
+
+    // Remove atributos do editor mas mantém os elementos
+    tempDoc.querySelectorAll('[data-editor-selected]').forEach(el => {
       el.removeAttribute('data-editor-selected');
     });
-    doc.querySelectorAll('[data-ot-id]').forEach(el => {
+    tempDoc.querySelectorAll('[data-ot-id]').forEach(el => {
       el.removeAttribute('data-ot-id');
+    });
+    tempDoc.querySelectorAll('.__ot-draggable').forEach(el => {
+      el.classList.remove('__ot-draggable');
+    });
+    tempDoc.querySelectorAll('.__ot-selected').forEach(el => {
+      el.classList.remove('__ot-selected');
+    });
+    tempDoc.querySelectorAll('.ot-preview-selected').forEach(el => {
+      el.classList.remove('ot-preview-selected');
     });
 
     // Remove scripts e estilos do editor
-    const editorScript = doc.getElementById('editor-script');
-    if (editorScript) editorScript.remove();
-    const editorStyles = doc.getElementById('editor-styles');
-    if (editorStyles) editorStyles.remove();
+    tempDoc.getElementById('editor-script')?.remove();
+    tempDoc.getElementById('editor-styles')?.remove();
 
-    // Serializa o HTML mantendo a estrutura original
-    let html = doc.documentElement.outerHTML;
+    // Remove apenas os elementos de drag handle
+    tempDoc.querySelectorAll('[title="Arrastar para mover"]').forEach(el => el.remove());
+    tempDoc.querySelectorAll('.__ot-drag-handle').forEach(el => el.remove());
 
-    // Remove quaisquer atributos residuais do editor
-    html = html.replace(/\s+data-editor-selected="true"/g, '');
+    // Converte URLs absolutas de volta para relativas
+    const convertUrlsToRelative = (element: Element) => {
+      // Converte src e href
+      ['src', 'href'].forEach(attr => {
+        const value = element.getAttribute(attr);
+        if (value && value.startsWith(domain)) {
+          element.setAttribute(attr, value.replace(domain, ''));
+        }
+      });
+
+      // Converte background-image em style
+      const style = element.getAttribute('style');
+      if (style && style.includes(domain)) {
+        element.setAttribute('style', style.replace(new RegExp(domain, 'g'), ''));
+      }
+    };
+
+    // Aplica conversão em todos elementos
+    tempDoc.querySelectorAll('*').forEach(convertUrlsToRelative);
+
+    // Preserva DOCTYPE se existir
+    const doctype = doc.doctype;
+    let html = '';
+
+    if (doctype) {
+      const doctypeString = new XMLSerializer().serializeToString(doctype);
+      html = doctypeString + '\n';
+    }
+
+    // Adiciona o HTML decodificado
+    html += tempDoc.documentElement.outerHTML;
+
+    // Remove atributos residuais do editor usando regex que preserva quebras de linha
+    html = html.replace(/\s+data-editor-selected="[^"]*"/g, '');
     html = html.replace(/\s+data-ot-id="[^"]*"/g, '');
+    html = html.replace(/\s+class="\s*"/g, '');
+    html = html.replace(/\s+style="\s*"/g, '');
 
-    // Remove classes do editor
-    html = html.replace(/\s+(__ot-draggable|__ot-selected|ot-preview-selected)\b/g, '');
+    // Garante que o HTML não está escapado
+    html = decodeHtmlEntities(html);
 
-    // Remove elementos do editor
-    html = html.replace(/<div[^>]*class="[^"]*__ot-drag-handle[^"]*"[^>]*>.*?<\/div>/gs, '');
-    html = html.replace(/<div[^>]*title="Arrastar para mover"[^>]*>.*?<\/div>/gs, '');
-
-    // Obter subdomínio
-    const params = new URLSearchParams(location.search);
-    const subdomain = params.get('id');
     try {
       const res = await api.post('/api/clone/save', { html, subdomain });
       if (res.status === 200) {
@@ -270,22 +327,32 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
     if (!iframe) return;
     const doc = iframe.contentDocument;
     if (!doc) return;
-    let html = doc.documentElement.outerHTML;
-    if (scriptHead.trim()) {
-      html = insertScriptInHtml(html, scriptHead, 'head');
+
+    try {
+      // Adiciona script no head exatamente como foi digitado
+      if (scriptHead.trim()) {
+        const range = doc.createRange();
+        const headFragment = range.createContextualFragment(scriptHead.trim());
+        doc.head.appendChild(headFragment);
+      }
+
+      // Adiciona script no body exatamente como foi digitado
+      if (scriptBody.trim()) {
+        const range = doc.createRange();
+        const bodyFragment = range.createContextualFragment(scriptBody.trim());
+        doc.body.appendChild(bodyFragment);
+      }
+
+      setShowScriptModal(false);
+      setScriptHead('');
+      setScriptBody('');
+      setSaveMsg('Script inserido com sucesso!');
+      setTimeout(() => setSaveMsg(''), 3000);
+    } catch (error) {
+      console.error('Erro ao adicionar script:', error);
+      setSaveMsg('Erro ao inserir script');
+      setTimeout(() => setSaveMsg(''), 3000);
     }
-    if (scriptBody.trim()) {
-      html = insertScriptInHtml(html, scriptBody, 'body');
-    }
-    // Atualiza o iframe em tempo real
-    doc.open();
-    doc.write(html);
-    doc.close();
-    setShowScriptModal(false);
-    setScriptHead('');
-    setScriptBody('');
-    setSaveMsg('Script inserido com sucesso!');
-    setTimeout(() => setSaveMsg(''), 3000);
   }
 
   function openScriptManager() {
