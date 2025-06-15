@@ -8,7 +8,7 @@ import { Layout, UserCog, Settings as SettingsIcon, LogOut } from 'lucide-react'
 import { useAuth } from '../context/AuthContext';
 import { format, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { differenceInCalendarDays } from 'date-fns';
 
@@ -48,15 +48,26 @@ export function Profile() {
   const { theme } = useThemeStore();
   const [open, setOpen] = React.useState(false);
   const { user, profile, updateProfile, isLoading, changePassword } = useAuth();
-  const [fullName, setFullName] = React.useState(profile?.full_name || '');
-  const [success, setSuccess] = React.useState('');
-  const [error, setError] = React.useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [fullName, setFullName] = useState(profile?.full_name || '');
+  const [phone, setPhone] = useState(profile?.phone || '');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
+
+  useEffect(() => {
+    if (profile) {
+      setFullName(profile.full_name || '');
+      setPhone(profile.phone || '');
+    }
+  }, [profile]);
 
   // Calcular início e expiração da assinatura
   let inicioAssinatura = null;
@@ -102,13 +113,52 @@ export function Profile() {
     setCancelLoading(false);
   };
 
-  const handleSave = async (e: React.FormEvent) => {
+  const formatPhone = (value: string) => {
+    // Remove tudo que não for número
+    const numbers = value.replace(/\D/g, '');
+
+    // Aplica a máscara (99) 99999-9999
+    if (numbers.length <= 11) {
+      if (numbers.length <= 2) {
+        return numbers.length === 0 ? '' : `(${numbers}`;
+      }
+      if (numbers.length <= 7) {
+        return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+      }
+      return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`;
+    }
+
+    // Se tiver mais que 11 dígitos, corta
+    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhone(e.target.value);
+    setPhone(formatted);
+  };
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
-    const { error } = await updateProfile({ full_name: fullName });
-    if (error) setError('Erro ao atualizar nome.');
-    else setSuccess('Nome atualizado com sucesso!');
+    try {
+      setError(null);
+      setSuccess(null);
+
+      // Remove formatação do telefone antes de salvar
+      const phoneNumbers = phone.replace(/\D/g, '');
+
+      const { error } = await updateProfile({
+        full_name: fullName,
+        phone: phoneNumbers
+      });
+
+      if (error) throw error;
+
+      setSuccess('Perfil atualizado com sucesso!');
+      setIsEditing(false);
+    } catch (err) {
+      console.error('Erro ao atualizar perfil:', err);
+      setError('Erro ao atualizar perfil. Tente novamente.');
+    }
   };
 
   const handlePasswordChange = async (e: React.FormEvent) => {
@@ -286,44 +336,98 @@ export function Profile() {
               </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-semibold mb-4 dark:text-white">Atualizar Perfil</h3>
-              {success && <div className="mb-2 p-2 bg-green-100 text-green-700 rounded">{success}</div>}
-              {error && <div className="mb-2 p-2 bg-red-100 text-red-700 rounded">{error}</div>}
-              <form className="space-y-4" onSubmit={handleSave}>
+            <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                  Informações do Perfil
+                </h2>
+                {!isEditing ? (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                  >
+                    Editar
+                  </button>
+                ) : (
+                  <div className="space-x-2">
+                    <button
+                      onClick={handleSaveProfile}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                    >
+                      Salvar
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsEditing(false);
+                        setFullName(profile?.full_name || '');
+                        setPhone(profile?.phone || '');
+                      }}
+                      className="text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {error && (
+                <div className="mb-4 p-4 bg-red-500/10 border border-red-500 rounded text-red-500">
+                  {error}
+                </div>
+              )}
+
+              {success && (
+                <div className="mb-4 p-4 bg-green-500/10 border border-green-500 rounded text-green-500">
+                  {success}
+                </div>
+              )}
+
+              <form onSubmit={handleSaveProfile} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Nome
+                    Nome Completo
                   </label>
-                  <input
-                    type="text"
-                    value={fullName}
-                    onChange={e => setFullName(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  />
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    />
+                  ) : (
+                    <p className="text-gray-900 dark:text-white">{profile?.full_name || 'Não informado'}</p>
+                  )}
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Telefone/WhatsApp
+                  </label>
+                  {isEditing ? (
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={handlePhoneChange}
+                      placeholder="(99) 99999-9999"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    />
+                  ) : (
+                    <p className="text-gray-900 dark:text-white">
+                      {profile?.phone ? formatPhone(profile.phone) : 'Não informado'}
+                    </p>
+                  )}
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Email
                   </label>
-                  <input
-                    type="email"
-                    value={user?.email || ''}
-                    disabled
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white bg-gray-100 cursor-not-allowed"
-                  />
+                  <p className="text-gray-900 dark:text-white">{profile?.email}</p>
                 </div>
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-60"
-                >
-                  Salvar
-                </button>
               </form>
             </div>
-            {/* Formulário de troca de senha */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mt-6">
+
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
               <h3 className="text-lg font-semibold mb-4 dark:text-white">Trocar Senha</h3>
               {passwordSuccess && <div className="mb-2 p-2 bg-green-100 text-green-700 rounded">{passwordSuccess}</div>}
               {passwordError && <div className="mb-2 p-2 bg-red-100 text-red-700 rounded">{passwordError}</div>}

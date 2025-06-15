@@ -13,7 +13,7 @@ interface AuthContextType {
   error: string | null;
   initialize: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
-  signUp: (email: string, password: string, extra?: { full_name?: string }) => Promise<{ error: AuthError | PostgrestError | null }>;
+  signUp: (email: string, password: string, extra?: { full_name?: string; phone?: string }) => Promise<{ error: AuthError | PostgrestError | null }>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>;
   refreshProfile: () => Promise<void>;
@@ -78,7 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signUp = async (email: string, password: string, extra?: { full_name?: string }) => {
+  const signUp = async (email: string, password: string, extra?: { full_name?: string; phone?: string }) => {
     setIsLoading(true);
     setError(null);
     try {
@@ -91,6 +91,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .from('profiles')
         .update({
           full_name: extra?.full_name ?? null,
+          phone: extra?.phone ?? null,
         })
         .eq('id', data.user.id);
       setIsLoading(false);

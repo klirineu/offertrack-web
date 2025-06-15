@@ -8,9 +8,34 @@ export function RegisterForm() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
   const [acceptTerms, setAcceptTerms] = useState(false);
   const navigate = useNavigate();
   const { signUp } = useAuth();
+
+  const formatPhone = (value: string) => {
+    // Remove tudo que não for número
+    const numbers = value.replace(/\D/g, '');
+
+    // Aplica a máscara (99) 99999-9999
+    if (numbers.length <= 11) {
+      if (numbers.length <= 2) {
+        return numbers.length === 0 ? '' : `(${numbers}`;
+      }
+      if (numbers.length <= 7) {
+        return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+      }
+      return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`;
+    }
+
+    // Se tiver mais que 11 dígitos, corta
+    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhone(e.target.value);
+    setPhone(formatted);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,7 +46,10 @@ export function RegisterForm() {
     try {
       setError('');
       setLoading(true);
-      const { error: signUpError } = await signUp(email, password, { full_name: fullName });
+      const { error: signUpError } = await signUp(email, password, {
+        full_name: fullName,
+        phone: phone.replace(/\D/g, '') // Salva apenas os números
+      });
       if (signUpError) {
         setError('Falha ao criar conta. O email já está em uso ou é inválido.');
         setLoading(false);
@@ -60,6 +88,20 @@ export function RegisterForm() {
                 placeholder="Seu nome completo"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
+              />
+            </div>
+            <div>
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-300">
+                Telefone/WhatsApp
+              </label>
+              <input
+                id="phone"
+                type="tel"
+                required
+                className="mt-1 block w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="(99) 99999-9999"
+                value={phone}
+                onChange={handlePhoneChange}
               />
             </div>
             <div>

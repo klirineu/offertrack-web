@@ -14,12 +14,14 @@ export default function PrivacyPolicy() {
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Política de Privacidade</h1>
           <div className="space-y-4 text-gray-700 dark:text-gray-300 text-base">
             <p>O Clonup valoriza a sua privacidade. Esta política explica como coletamos, usamos, protegemos e compartilhamos suas informações.</p>
-            <p><span className="font-semibold">Coleta de Dados:</span> Coletamos informações fornecidas por você ao criar uma conta, utilizar nossos serviços ou entrar em contato conosco. Também coletamos dados de uso para melhorar a experiência da plataforma.</p>
+            <p><span className="font-semibold">Coleta de Dados:</span> Coletamos informações fornecidas por você ao criar uma conta (nome, e-mail, telefone/WhatsApp), utilizar nossos serviços ou entrar em contato conosco. Também coletamos dados de uso para melhorar a experiência da plataforma.</p>
+            <p><span className="font-semibold">Uso do Telefone/WhatsApp:</span> Seu número será utilizado para autenticação, comunicações importantes sobre sua conta, notificações de segurança e suporte técnico. Você pode gerenciar suas preferências de comunicação a qualquer momento.</p>
             <p><span className="font-semibold">Uso das Informações:</span> Utilizamos seus dados para fornecer, operar e melhorar nossos serviços, personalizar sua experiência, enviar comunicações importantes e garantir a segurança da plataforma.</p>
-            <p><span className="font-semibold">Compartilhamento:</span> Não vendemos ou compartilhamos suas informações pessoais com terceiros, exceto quando necessário para cumprir obrigações legais ou proteger nossos direitos.</p>
+            <p><span className="font-semibold">Proteção de Dados:</span> Seus dados pessoais são armazenados de forma segura e criptografada. Implementamos medidas técnicas e organizacionais para proteger suas informações contra acesso não autorizado ou uso indevido.</p>
+            <p><span className="font-semibold">Compartilhamento:</span> Não vendemos ou compartilhamos suas informações pessoais (incluindo seu número de telefone/WhatsApp) com terceiros, exceto quando necessário para cumprir obrigações legais ou proteger nossos direitos.</p>
             <p><span className="font-semibold">Segurança:</span> Adotamos medidas técnicas e organizacionais para proteger seus dados contra acesso não autorizado, alteração, divulgação ou destruição.</p>
-            <p><span className="font-semibold">Seus Direitos:</span> Você pode acessar, corrigir ou excluir suas informações pessoais a qualquer momento. Para isso, entre em contato conosco pelo email <a href="mailto:contato@clonup.pro" className="text-blue-600">contato@clonup.pro</a>.</p>
-            <p>Ao utilizar o Clonup, você concorda com esta política. Podemos atualizá-la periodicamente, então recomendamos revisá-la regularmente.</p>
+            <p><span className="font-semibold">Seus Direitos:</span> Você pode acessar, corrigir ou excluir suas informações pessoais a qualquer momento. Para isso, entre em contato conosco pelo email <a href="mailto:contato@clonup.pro" className="text-blue-600">contato@clonup.pro</a> ou através do nosso WhatsApp de suporte.</p>
+            <p>Ao utilizar o Clonup, você concorda com esta política. Podemos atualizá-la periodicamente, e as alterações significativas serão comunicadas por e-mail e/ou WhatsApp.</p>
           </div>
           <div className="mt-8 text-center text-gray-500 dark:text-gray-400 text-sm">
             <p>Clonup &copy; {new Date().getFullYear()} - Todos os direitos reservados.</p>

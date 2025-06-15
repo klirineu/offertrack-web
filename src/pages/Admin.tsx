@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Users, Wrench, CreditCard, BarChart2, Home, X } from 'lucide-react';
+import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Users, Wrench, CreditCard, BarChart2, Home, X, Search } from 'lucide-react';
 import { SidebarBody, SidebarLink, Sidebar } from '../components/ui/sidebar';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -40,6 +40,7 @@ interface Profile {
   created_at: string;
   full_name: string | null;
   role: string | null;
+  phone: string | null;
   subscription_status: 'active' | 'trialing' | 'past_due' | 'canceled' | 'unpaid' | null;
   plan_id: string | null;
   subscription_renewed_at: string | null;
@@ -52,10 +53,24 @@ interface DatabaseProfile {
   email: string;
   full_name: string | null;
   avatar_url: string | null;
+  phone: string | null;
   subscription_status: 'active' | 'trialing' | 'past_due' | 'canceled' | 'unpaid' | null;
   plan_id: string | null;
   role: string | null;
   subscription_renewed_at: string | null;
+}
+
+interface Transaction {
+  id: string;
+  created_at: string;
+  user_id: string;
+  plan_id: string;
+  amount: number;
+  is_free: boolean;
+  status: string;
+  payment_method: string;
+  payment_date: string | null;
+  next_billing_date: string | null;
 }
 
 interface MonthlyStats {
@@ -168,13 +183,55 @@ interface Plan {
   quiz_extra_price: number | null;
 }
 
-// Add this interface after the other interfaces
 interface DashboardFilters {
   status: string;
   plan: string;
   dateRange: string;
   search: string;
 }
+
+// Initial filters state
+const initialFilters: DashboardFilters = {
+  status: '',
+  plan: '',
+  dateRange: 'total', // Set default to 'total' to show all data
+  search: ''
+};
+
+// Helper functions for subscription status
+const getStatusColor = (status: Profile['subscription_status']) => {
+  switch (status) {
+    case 'active':
+      return 'bg-green-500/10 text-green-500 ring-1 ring-green-500/20';
+    case 'trialing':
+      return 'bg-blue-500/10 text-blue-500 ring-1 ring-blue-500/20';
+    case 'past_due':
+      return 'bg-yellow-500/10 text-yellow-500 ring-1 ring-yellow-500/20';
+    case 'canceled':
+      return 'bg-red-500/10 text-red-500 ring-1 ring-red-500/20';
+    case 'unpaid':
+      return 'bg-gray-500/10 text-gray-500 ring-1 ring-gray-500/20';
+    default:
+      return 'bg-gray-500/10 text-gray-500 ring-1 ring-gray-500/20';
+  }
+};
+
+const getStatusText = (status: Profile['subscription_status']) => {
+  switch (status) {
+    case 'active':
+      return 'Ativa';
+    case 'trialing':
+      return 'Em avaliação';
+    case 'past_due':
+      return 'Em atraso';
+    case 'canceled':
+      return 'Cancelada';
+    case 'unpaid':
+      return 'Não paga';
+    default:
+      return 'Sem plano';
+  }
+};
 
 export function Admin() {
   const [open, setOpen] = useState(false);
@@ -223,14 +280,269 @@ export function Admin() {
     monthlyStats: [],
   });
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [filters, setFilters] = useState<DashboardFilters>(initialFilters);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
 
-  // Update filters state with proper type
-  const [filters, setFilters] = useState<DashboardFilters>({
-    status: '',
-    plan: '',
-    dateRange: '30',
-    search: '',
-  });
+  // Setup debounce effect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Load data on mount
+  useEffect(() => {
+    loadData();
+    // Check if dark mode is enabled
+    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    setIsDarkMode(isDark);
+  }, []); // This will run once on mount
+
+  // Update filtered users when search term changes
+  useEffect(() => {
+    if (!loading && users.length > 0) {
+      const filteredUsers = getFilteredUsers();
+      updateStats(filteredUsers);
+    }
+  }, [debouncedSearchTerm, loading, users]);
+
+  // Load user resources when modal opens
+  useEffect(() => {
+    if (editModalOpen && selectedUser) {
+      loadUserResources(selectedUser.id);
+    }
+  }, [editModalOpen, selectedUser]);
+
+  // Use debounced search term for filtering
+  const getFilteredUsers = useCallback(() => {
+    return users.filter(user => {
+      // Status filter
+      if (filters.status && user.subscription_status !== filters.status) return false;
+
+      // Plan filter
+      if (filters.plan && user.plan_id !== filters.plan) return false;
+
+      // Date range filter
+      if (filters.dateRange && filters.dateRange !== 'total') {
+        const daysAgo = new Date();
+        daysAgo.setDate(daysAgo.getDate() - parseInt(filters.dateRange));
+        if (new Date(user.created_at) < daysAgo) return false;
+      }
+
+      // Search filter (includes name, email and phone)
+      if (debouncedSearchTerm) {
+        const searchLower = debouncedSearchTerm.toLowerCase();
+        return (
+          user.email.toLowerCase().includes(searchLower) ||
+          (user.full_name?.toLowerCase() || '').includes(searchLower) ||
+          (user.phone?.toLowerCase() || '').includes(searchLower)
+        );
+      }
+
+      return true;
+    });
+  }, [users, filters, debouncedSearchTerm]);
+
+  // Function to update stats based on filtered users
+  const updateStats = (filteredUsers: Profile[]) => {
+    // Calculate dashboard stats with filtered users
+    const totalUsers = filteredUsers.length;
+    const activeUsers = filteredUsers.filter((user) => user.subscription_status === 'active').length;
+    const inactiveUsers = totalUsers - activeUsers;
+
+    // Calculate expiring users (within next 7 days)
+    const now = new Date();
+    const sevenDaysFromNow = new Date();
+    sevenDaysFromNow.setDate(now.getDate() + 7);
+
+    const expiringUsers = filteredUsers.filter((user) => {
+      if (!user.subscription_renewed_at) return false;
+      const renewalDate = new Date(user.subscription_renewed_at);
+      renewalDate.setMonth(renewalDate.getMonth() + 1); // Assuming monthly renewals
+      return renewalDate <= sevenDaysFromNow && renewalDate >= now;
+    }).length;
+
+    // Initialize plan stats with all plans
+    const planStats = plans.reduce((acc: DashboardStats['planStats'], plan) => {
+      acc[plan.id] = {
+        total: 0,
+        active: 0,
+        name: plan.name,
+        price: plan.price,
+        activeRevenue: 0,
+        potentialRevenue: 0,
+        cost: 0,
+        profit: 0,
+        margin: 0,
+      };
+      return acc;
+    }, {});
+
+    // Calculate plan stats and revenue using filtered users
+    filteredUsers.forEach((user) => {
+      if (user.plan_id) {
+        const plan = plans.find(p => p.id === user.plan_id);
+        if (plan) {
+          planStats[user.plan_id].total += 1;
+
+          if (user.subscription_status === 'active') {
+            planStats[user.plan_id].active += 1;
+            planStats[user.plan_id].activeRevenue += plan.price;
+
+            // Calculate cost and profit for this plan
+            const userCost = plan.price * 0.08;
+            planStats[user.plan_id].cost += userCost;
+            planStats[user.plan_id].profit += (plan.price - userCost);
+          }
+
+          planStats[user.plan_id].potentialRevenue += plan.price;
+        }
+      }
+    });
+
+    // Calculate margins for each plan
+    Object.values(planStats).forEach(plan => {
+      plan.margin = plan.activeRevenue > 0 ? ((plan.profit / plan.activeRevenue) * 100) : 0;
+    });
+
+    // Calculate total revenue and costs
+    const revenue = {
+      monthly: {
+        active: Object.values(planStats).reduce((total, plan) => total + plan.activeRevenue, 0),
+        potential: Object.values(planStats).reduce((total, plan) => total + plan.potentialRevenue, 0),
+        cost: Object.values(planStats).reduce((total, plan) => total + plan.cost, 0),
+        profit: Object.values(planStats).reduce((total, plan) => total + plan.profit, 0),
+        margin: 0,
+      },
+      total: {
+        active: 0,
+        potential: 0,
+        cost: 0,
+        profit: 0,
+        margin: 0,
+      },
+    };
+
+    // Calculate monthly margin
+    revenue.monthly.margin = revenue.monthly.active > 0
+      ? ((revenue.monthly.profit / revenue.monthly.active) * 100)
+      : 0;
+
+    // Calculate annual projections
+    revenue.total.active = revenue.monthly.active * 12;
+    revenue.total.potential = revenue.monthly.potential * 12;
+    revenue.total.cost = revenue.monthly.cost * 12;
+    revenue.total.profit = revenue.monthly.profit * 12;
+    revenue.total.margin = revenue.monthly.margin;
+
+    // Calculate additional KPIs with filtered data
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const recentUsers = filteredUsers.filter(user => new Date(user.created_at) >= thirtyDaysAgo);
+    const recentCancellations = filteredUsers.filter(
+      user => user.subscription_status === 'canceled' &&
+        user.subscription_renewed_at &&
+        new Date(user.subscription_renewed_at) >= thirtyDaysAgo
+    );
+
+    const kpis = {
+      churnRate: activeUsers > 0 ? (recentCancellations.length / activeUsers) * 100 : 0,
+      activeRate: totalUsers > 0 ? (activeUsers / totalUsers) * 100 : 0,
+      avgRevenuePerUser: activeUsers > 0 ? revenue.monthly.active / activeUsers : 0,
+      avgProfitPerUser: activeUsers > 0 ? revenue.monthly.profit / activeUsers : 0,
+      conversionRate: recentUsers.length > 0
+        ? (recentUsers.filter(u => u.subscription_status === 'active').length / recentUsers.length) * 100
+        : 0,
+    };
+
+    // Calculate monthly stats for the last 12 months
+    const last12Months = Array.from({ length: 12 }, (_, i) => {
+      const date = new Date();
+      date.setMonth(date.getMonth() - i);
+      return date.toISOString().slice(0, 7); // Format: YYYY-MM
+    }).reverse();
+
+    // First step: Calculate basic monthly stats
+    const basicMonthlyStats = last12Months.map(monthStr => {
+      const [year, month] = monthStr.split('-');
+      const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+      const endDate = new Date(parseInt(year), parseInt(month), 0);
+
+      const monthUsers = filteredUsers.filter(user => {
+        const createdAt = new Date(user.created_at);
+        return createdAt >= startDate && createdAt <= endDate;
+      });
+
+      const activeInMonth = filteredUsers.filter(user => {
+        const createdAt = new Date(user.created_at);
+        return createdAt <= endDate && user.subscription_status === 'active';
+      });
+
+      const canceledInMonth = filteredUsers.filter(user => {
+        if (!user.subscription_renewed_at) return false;
+        const renewalDate = new Date(user.subscription_renewed_at);
+        return renewalDate >= startDate &&
+          renewalDate <= endDate &&
+          user.subscription_status === 'canceled';
+      });
+
+      const monthRevenue = activeInMonth.reduce((total, user) => {
+        const userPlan = plans.find(p => p.id === user.plan_id);
+        return total + (userPlan?.price || 0);
+      }, 0);
+
+      return {
+        month: new Date(startDate).toLocaleString('pt-BR', { month: 'short', year: 'numeric' }),
+        newUsers: monthUsers.length,
+        activeSubscriptions: activeInMonth.length,
+        revenue: monthRevenue,
+        churnRate: activeInMonth.length > 0 ? (canceledInMonth.length / activeInMonth.length) * 100 : 0,
+        userGrowth: 0,
+        subscriptionGrowth: 0,
+        revenueGrowth: 0,
+      };
+    });
+
+    // Second step: Calculate growth rates
+    const monthlyStats = basicMonthlyStats.map((currentMonth, index) => {
+      if (index === 0) return currentMonth;
+
+      const prevMonth = basicMonthlyStats[index - 1];
+      const userGrowth = prevMonth.newUsers > 0
+        ? ((currentMonth.newUsers - prevMonth.newUsers) / prevMonth.newUsers) * 100
+        : 0;
+      const subscriptionGrowth = prevMonth.activeSubscriptions > 0
+        ? ((currentMonth.activeSubscriptions - prevMonth.activeSubscriptions) / prevMonth.activeSubscriptions) * 100
+        : 0;
+      const revenueGrowth = prevMonth.revenue > 0
+        ? ((currentMonth.revenue - prevMonth.revenue) / prevMonth.revenue) * 100
+        : 0;
+
+      return {
+        ...currentMonth,
+        userGrowth,
+        subscriptionGrowth,
+        revenueGrowth,
+      };
+    });
+
+    const newStats = {
+      totalUsers,
+      activeUsers,
+      inactiveUsers,
+      expiringUsers,
+      planStats,
+      revenue,
+      kpis,
+      monthlyStats,
+    };
+
+    setStats(newStats);
+  };
 
   const COST_PERCENTAGE = 0.08; // 8% de custo médio por usuário
 
@@ -275,12 +587,12 @@ export function Admin() {
     if (!selectedUser) return;
 
     try {
-      const { error } = await supabase
+      const { error: profileError } = await supabase
         .from('profiles')
         .update(updates)
         .eq('id', selectedUser.id);
 
-      if (error) throw error;
+      if (profileError) throw profileError;
 
       // Refresh users list
       loadData();
@@ -290,39 +602,55 @@ export function Admin() {
     }
   };
 
-  // Update getFilteredUsers function signature
-  const getFilteredUsers = (users: Profile[], filters: DashboardFilters) => {
-    return users.filter(user => {
-      // Status filter
-      if (filters.status && user.subscription_status !== filters.status) return false;
+  const handleRenewal = async (userId: string, planId: string, isFree: boolean) => {
+    try {
+      const plan = plans.find(p => p.id === planId);
+      if (!plan) return;
 
-      // Plan filter
-      if (filters.plan && user.plan_id !== filters.plan) return false;
+      const now = new Date();
+      const nextMonth = new Date();
+      nextMonth.setMonth(nextMonth.getMonth() + 1);
 
-      // Date range filter
-      if (filters.dateRange) {
-        const daysAgo = new Date();
-        daysAgo.setDate(daysAgo.getDate() - parseInt(filters.dateRange));
-        if (new Date(user.created_at) < daysAgo) return false;
-      }
+      const transaction = {
+        user_id: userId,
+        plan_id: planId,
+        amount: isFree ? 0 : plan.price,
+        is_free: isFree,
+        status: 'completed',
+        payment_method: 'manual',
+        payment_date: now.toISOString(),
+        next_billing_date: nextMonth.toISOString()
+      };
 
-      // Search filter
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        return (
-          user.email.toLowerCase().includes(searchLower) ||
-          (user.full_name && user.full_name.toLowerCase().includes(searchLower))
-        );
-      }
+      const { error: transactionError } = await supabase
+        .from('transactions')
+        .insert([transaction]);
 
-      return true;
-    });
+      if (transactionError) throw transactionError;
+
+      // Update user profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          subscription_status: 'active',
+          subscription_renewed_at: now.toISOString(),
+          plan_id: planId
+        })
+        .eq('id', userId);
+
+      if (profileError) throw profileError;
+
+      // Refresh data
+      loadData();
+      setEditModalOpen(false);
+    } catch (error) {
+      console.error('Error processing renewal:', error);
+    }
   };
 
   const loadData = async () => {
     try {
       setLoading(true);
-      console.log('Loading data...');
 
       // Load profiles and plans in parallel
       const [profilesResponse, plansResponse] = await Promise.all([
@@ -330,26 +658,13 @@ export function Admin() {
         supabase.from('plans').select('*')
       ]);
 
-      if (profilesResponse.error) {
-        console.error('Error loading profiles:', profilesResponse.error);
-        throw profilesResponse.error;
-      }
-
-      if (plansResponse.error) {
-        console.error('Error loading plans:', plansResponse.error);
-        throw plansResponse.error;
-      }
+      if (profilesResponse.error) throw profilesResponse.error;
+      if (plansResponse.error) throw plansResponse.error;
 
       const profiles = profilesResponse.data;
       const plans = plansResponse.data;
 
-      console.log('Loaded profiles:', profiles);
-      console.log('Loaded plans:', plans);
-
-      if (!profiles) {
-        console.log('No profiles found');
-        return;
-      }
+      if (!profiles) return;
 
       setPlans(plans);
 
@@ -359,214 +674,16 @@ export function Admin() {
         created_at: profile.created_at,
         full_name: profile.full_name,
         role: profile.role,
+        phone: profile.phone,
         subscription_status: profile.subscription_status,
         plan_id: profile.plan_id,
         subscription_renewed_at: profile.subscription_renewed_at,
       }));
 
-      console.log('Processed users:', users);
-
       setUsers(users);
 
-      // Get filtered users for calculations
-      const filteredUsers = getFilteredUsers(users, filters);
-      console.log('Filtered users:', filteredUsers);
-
-      // Calculate dashboard stats with filtered users
-      const totalUsers = filteredUsers.length;
-      const activeUsers = filteredUsers.filter((user) => user.subscription_status === 'active').length;
-      const inactiveUsers = totalUsers - activeUsers;
-
-      // Calculate expiring users (within next 7 days)
-      const now = new Date();
-      const sevenDaysFromNow = new Date();
-      sevenDaysFromNow.setDate(now.getDate() + 7);
-
-      const expiringUsers = filteredUsers.filter((user) => {
-        if (!user.subscription_renewed_at) return false;
-        const renewalDate = new Date(user.subscription_renewed_at);
-        renewalDate.setMonth(renewalDate.getMonth() + 1); // Assuming monthly renewals
-        return renewalDate <= sevenDaysFromNow && renewalDate >= now;
-      }).length;
-
-      // Initialize plan stats with all plans
-      const planStats = plans.reduce((acc: DashboardStats['planStats'], plan) => {
-        acc[plan.id] = {
-          total: 0,
-          active: 0,
-          name: plan.name,
-          price: plan.price,
-          activeRevenue: 0,
-          potentialRevenue: 0,
-          cost: 0,
-          profit: 0,
-          margin: 0,
-        };
-        return acc;
-      }, {});
-
-      // Calculate plan stats and revenue using filtered users
-      filteredUsers.forEach((user) => {
-        if (user.plan_id) {
-          const plan = plans.find(p => p.id === user.plan_id);
-          if (plan) {
-            planStats[user.plan_id].total += 1;
-
-            if (user.subscription_status === 'active') {
-              planStats[user.plan_id].active += 1;
-              planStats[user.plan_id].activeRevenue += plan.price;
-
-              // Calculate cost and profit for this plan
-              const userCost = plan.price * COST_PERCENTAGE;
-              planStats[user.plan_id].cost += userCost;
-              planStats[user.plan_id].profit += (plan.price - userCost);
-            }
-
-            planStats[user.plan_id].potentialRevenue += plan.price;
-          }
-        }
-      });
-
-      // Calculate margins for each plan
-      Object.values(planStats).forEach(plan => {
-        plan.margin = plan.activeRevenue > 0 ? ((plan.profit / plan.activeRevenue) * 100) : 0;
-      });
-
-      // Calculate total revenue and costs
-      const revenue = {
-        monthly: {
-          active: Object.values(planStats).reduce((total, plan) => total + plan.activeRevenue, 0),
-          potential: Object.values(planStats).reduce((total, plan) => total + plan.potentialRevenue, 0),
-          cost: Object.values(planStats).reduce((total, plan) => total + plan.cost, 0),
-          profit: Object.values(planStats).reduce((total, plan) => total + plan.profit, 0),
-          margin: 0,
-        },
-        total: {
-          active: 0,
-          potential: 0,
-          cost: 0,
-          profit: 0,
-          margin: 0,
-        },
-      };
-
-      // Calculate monthly margin
-      revenue.monthly.margin = revenue.monthly.active > 0
-        ? ((revenue.monthly.profit / revenue.monthly.active) * 100)
-        : 0;
-
-      // Calculate annual projections
-      revenue.total.active = revenue.monthly.active * 12;
-      revenue.total.potential = revenue.monthly.potential * 12;
-      revenue.total.cost = revenue.monthly.cost * 12;
-      revenue.total.profit = revenue.monthly.profit * 12;
-      revenue.total.margin = revenue.monthly.margin;
-
-      // Calculate additional KPIs with filtered data
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-      const recentUsers = filteredUsers.filter(user => new Date(user.created_at) >= thirtyDaysAgo);
-      const recentCancellations = filteredUsers.filter(
-        user => user.subscription_status === 'canceled' &&
-          user.subscription_renewed_at &&
-          new Date(user.subscription_renewed_at) >= thirtyDaysAgo
-      );
-
-      const kpis = {
-        churnRate: activeUsers > 0 ? (recentCancellations.length / activeUsers) * 100 : 0,
-        activeRate: totalUsers > 0 ? (activeUsers / totalUsers) * 100 : 0,
-        avgRevenuePerUser: activeUsers > 0 ? revenue.monthly.active / activeUsers : 0,
-        avgProfitPerUser: activeUsers > 0 ? revenue.monthly.profit / activeUsers : 0,
-        conversionRate: recentUsers.length > 0
-          ? (recentUsers.filter(u => u.subscription_status === 'active').length / recentUsers.length) * 100
-          : 0,
-      };
-
-      // Calculate monthly stats for the last 12 months
-      const last12Months = Array.from({ length: 12 }, (_, i) => {
-        const date = new Date();
-        date.setMonth(date.getMonth() - i);
-        return date.toISOString().slice(0, 7); // Format: YYYY-MM
-      }).reverse();
-
-      // First step: Calculate basic monthly stats
-      const basicMonthlyStats = last12Months.map(monthStr => {
-        const [year, month] = monthStr.split('-');
-        const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
-        const endDate = new Date(parseInt(year), parseInt(month), 0);
-
-        const monthUsers = filteredUsers.filter(user => {
-          const createdAt = new Date(user.created_at);
-          return createdAt >= startDate && createdAt <= endDate;
-        });
-
-        const activeInMonth = filteredUsers.filter(user => {
-          const createdAt = new Date(user.created_at);
-          return createdAt <= endDate && user.subscription_status === 'active';
-        });
-
-        const canceledInMonth = filteredUsers.filter(user => {
-          if (!user.subscription_renewed_at) return false;
-          const renewalDate = new Date(user.subscription_renewed_at);
-          return renewalDate >= startDate &&
-            renewalDate <= endDate &&
-            user.subscription_status === 'canceled';
-        });
-
-        const monthRevenue = activeInMonth.reduce((total, user) => {
-          const userPlan = plans.find(p => p.id === user.plan_id);
-          return total + (userPlan?.price || 0);
-        }, 0);
-
-        return {
-          month: new Date(startDate).toLocaleString('pt-BR', { month: 'short', year: 'numeric' }),
-          newUsers: monthUsers.length,
-          activeSubscriptions: activeInMonth.length,
-          revenue: monthRevenue,
-          churnRate: activeInMonth.length > 0 ? (canceledInMonth.length / activeInMonth.length) * 100 : 0,
-          userGrowth: 0,
-          subscriptionGrowth: 0,
-          revenueGrowth: 0,
-        };
-      });
-
-      // Second step: Calculate growth rates
-      const monthlyStats = basicMonthlyStats.map((currentMonth, index) => {
-        if (index === 0) return currentMonth;
-
-        const prevMonth = basicMonthlyStats[index - 1];
-        const userGrowth = prevMonth.newUsers > 0
-          ? ((currentMonth.newUsers - prevMonth.newUsers) / prevMonth.newUsers) * 100
-          : 0;
-        const subscriptionGrowth = prevMonth.activeSubscriptions > 0
-          ? ((currentMonth.activeSubscriptions - prevMonth.activeSubscriptions) / prevMonth.activeSubscriptions) * 100
-          : 0;
-        const revenueGrowth = prevMonth.revenue > 0
-          ? ((currentMonth.revenue - prevMonth.revenue) / prevMonth.revenue) * 100
-          : 0;
-
-        return {
-          ...currentMonth,
-          userGrowth,
-          subscriptionGrowth,
-          revenueGrowth,
-        };
-      });
-
-      const newStats = {
-        totalUsers,
-        activeUsers,
-        inactiveUsers,
-        expiringUsers,
-        planStats,
-        revenue,
-        kpis,
-        monthlyStats,
-      };
-
-      console.log('Calculated stats:', newStats);
-      setStats(newStats);
+      // Calculate stats with all users initially
+      updateStats(users);
 
     } catch (error) {
       console.error('Error loading data:', error);
@@ -574,33 +691,6 @@ export function Admin() {
       setLoading(false);
     }
   };
-
-  // Update useEffect to reload data when filters change
-  useEffect(() => {
-    loadData();
-  }, [filters]);
-
-  // Load data on mount
-  useEffect(() => {
-    loadData();
-    // Check if dark mode is enabled
-    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    setIsDarkMode(isDark);
-  }, []);
-
-  // Filter users based on current filters
-  const filteredUsers = users.filter(user => {
-    if (filters.status && user.subscription_status !== filters.status) return false;
-    if (filters.plan && user.plan_id !== filters.plan) return false;
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase();
-      return (
-        user.email.toLowerCase().includes(searchLower) ||
-        (user.full_name && user.full_name.toLowerCase().includes(searchLower))
-      );
-    }
-    return true;
-  });
 
   const links = [
     {
@@ -973,7 +1063,7 @@ export function Admin() {
                       onChange={(e) => setFilters({ ...filters, dateRange: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     >
-                      <option value="">Total</option>
+                      <option value="total">Todos os períodos</option>
                       <option value="7">Últimos 7 dias</option>
                       <option value="30">Últimos 30 dias</option>
                       <option value="90">Últimos 90 dias</option>
@@ -983,13 +1073,18 @@ export function Admin() {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Buscar
                     </label>
-                    <input
-                      type="text"
-                      value={filters.search}
-                      onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                      placeholder="Buscar por nome ou email"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder="Buscar por nome, email ou telefone"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      />
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <Search className="h-5 w-5 text-gray-400" />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1247,99 +1342,98 @@ export function Admin() {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Buscar
                     </label>
-                    <input
-                      type="text"
-                      value={filters.search}
-                      onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                      placeholder="Buscar por nome ou email"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder="Buscar por nome, email ou telefone"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      />
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <Search className="h-5 w-5 text-gray-400" />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Users Table */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead className="bg-gray-50 dark:bg-gray-900">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          Usuário
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          Email
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          Função
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          Plano
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          Renovação
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          Ações
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                      {filteredUsers.map((user) => (
-                        <tr key={user.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900 dark:text-white">
-                              {user.full_name || 'N/A'}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-500 dark:text-gray-300">{user.email}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.role === 'admin'
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                              : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-                              }`}>
-                              {user.role || 'user'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.subscription_status === 'active'
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                              : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                              }`}>
-                              {user.subscription_status || 'Sem plano'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-gray-500 dark:text-gray-300">
-                              {plans.find(p => p.id === user.plan_id)?.name || 'N/A'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                            {user.subscription_renewed_at
-                              ? new Date(user.subscription_renewed_at).toLocaleDateString()
-                              : 'N/A'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                            <button
-                              onClick={() => {
-                                setSelectedUser(user);
-                                loadUserResources(user.id);
-                                setEditModalOpen(true);
-                              }}
-                              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                            >
-                              Editar
-                            </button>
-                          </td>
+              <div className="mt-8 flow-root">
+                <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+                  <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+                    <table className="min-w-full divide-y divide-gray-700">
+                      <thead>
+                        <tr>
+                          <th className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-white sm:pl-0">
+                            Nome
+                          </th>
+                          <th className="px-3 py-3.5 text-left text-sm font-semibold text-white">
+                            Email
+                          </th>
+                          <th className="px-3 py-3.5 text-left text-sm font-semibold text-white">
+                            Telefone
+                          </th>
+                          <th className="px-3 py-3.5 text-left text-sm font-semibold text-white">
+                            Plano
+                          </th>
+                          <th className="px-3 py-3.5 text-left text-sm font-semibold text-white">
+                            Status
+                          </th>
+                          <th className="px-3 py-3.5 text-left text-sm font-semibold text-white">
+                            Renovação
+                          </th>
+                          <th className="relative py-3.5 pl-3 pr-4 sm:pr-0">
+                            <span className="sr-only">Ações</span>
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-gray-800">
+                        {getFilteredUsers().map((user) => {
+                          const userPlan = plans.find(p => p.id === user.plan_id);
+                          return (
+                            <tr key={user.id}>
+                              <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-white sm:pl-0">
+                                {user.full_name || 'N/A'}
+                              </td>
+                              <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-300">
+                                {user.email}
+                              </td>
+                              <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-300">
+                                {user.phone || 'N/A'}
+                              </td>
+                              <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-300">
+                                {userPlan?.name || 'Nenhum'}
+                              </td>
+                              <td className="whitespace-nowrap px-3 py-4 text-sm">
+                                <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ${getStatusColor(user.subscription_status)}`}>
+                                  {getStatusText(user.subscription_status)}
+                                </span>
+                              </td>
+                              <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-300">
+                                {user.subscription_renewed_at
+                                  ? new Date(user.subscription_renewed_at).toLocaleDateString('pt-BR')
+                                  : 'N/A'
+                                }
+                              </td>
+                              <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-0">
+                                <button
+                                  onClick={() => {
+                                    setSelectedUser(user);
+                                    setEditModalOpen(true);
+                                    loadUserResources(user.id);
+                                  }}
+                                  className="text-blue-400 hover:text-blue-300"
+                                >
+                                  Editar
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1403,7 +1497,10 @@ export function Admin() {
                   Editar Usuário: {selectedUser.full_name || selectedUser.email}
                 </h2>
                 <button
-                  onClick={() => setEditModalOpen(false)}
+                  onClick={() => {
+                    setEditModalOpen(false);
+                    setSelectedUser(null); // Reset selected user when closing
+                  }}
                   className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                 >
                   <X className="h-6 w-6" />
@@ -1420,8 +1517,29 @@ export function Admin() {
                     <input
                       type="text"
                       value={selectedUser.full_name || ''}
-                      onChange={(e) => setSelectedUser({ ...selectedUser, full_name: e.target.value })}
+                      onChange={(e) => {
+                        const newValue = e.target.value;
+                        setSelectedUser(prev => prev ? { ...prev, full_name: newValue } : null);
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Telefone/WhatsApp
+                    </label>
+                    <input
+                      type="tel"
+                      value={selectedUser.phone || ''}
+                      onChange={(e) => {
+                        const newValue = e.target.value;
+                        // Format phone number as user types
+                        const formatted = newValue.replace(/\D/g, '').replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3');
+                        setSelectedUser(prev => prev ? { ...prev, phone: formatted } : null);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      placeholder="(99) 99999-9999"
                     />
                   </div>
 
@@ -1504,6 +1622,47 @@ export function Admin() {
                   </div>
                 </div>
 
+                {/* Renewal Section */}
+                <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                  <h3 className="text-lg font-medium dark:text-white mb-4">Renovação</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Plano para Renovação
+                      </label>
+                      <select
+                        value={selectedUser.plan_id || ''}
+                        onChange={(e) => setSelectedUser({ ...selectedUser, plan_id: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      >
+                        <option value="">Selecione um plano</option>
+                        {plans.map(plan => (
+                          <option key={plan.id} value={plan.id}>
+                            {plan.name} - R$ {plan.price.toLocaleString('pt-BR')}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex items-center space-x-4">
+                      <button
+                        onClick={() => selectedUser.plan_id && handleRenewal(selectedUser.id, selectedUser.plan_id, false)}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex-1"
+                        disabled={!selectedUser.plan_id}
+                      >
+                        Renovar Assinatura
+                      </button>
+                      <button
+                        onClick={() => selectedUser.plan_id && handleRenewal(selectedUser.id, selectedUser.plan_id, true)}
+                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex-1"
+                        disabled={!selectedUser.plan_id}
+                      >
+                        Renovar Grátis
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
                 {/* User Resources */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium dark:text-white">Recursos do Usuário</h3>
@@ -1557,7 +1716,10 @@ export function Admin() {
 
                 <div className="flex justify-end space-x-3">
                   <button
-                    onClick={() => setEditModalOpen(false)}
+                    onClick={() => {
+                      setEditModalOpen(false);
+                      setSelectedUser(null); // Reset selected user when canceling
+                    }}
                     className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                   >
                     Cancelar
