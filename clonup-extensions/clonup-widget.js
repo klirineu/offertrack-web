@@ -347,19 +347,22 @@ if (!window.__clonupWidgetInjected) {
   // Destaca badge de quantidade em todos os cards
   function destacarQtdAnuncios() {
     getCards().forEach(card => {
-      const strong = Array.from(card.querySelectorAll('strong')).find(s => /\d+\s+anúncios?/.test(s.textContent));
-      if (strong) {
-        strong.style.background = '#2563eb';
-        strong.style.color = '#fff';
-        strong.style.padding = '2px 10px';
-        strong.style.marginLeft = '8px';
-        strong.style.marginRight = '8px';
-        strong.style.borderRadius = '12px';
-        strong.style.fontWeight = 'bold';
-        strong.style.fontSize = '1.1em';
-        strong.style.boxShadow = '0 1px 4px #0002';
-        strong.style.display = 'inline-block';
-      }
+      // Busca qualquer <strong> em qualquer profundidade dentro do card
+      const strongs = card.querySelectorAll('strong');
+      strongs.forEach(strong => {
+        if (/\d+\s+anúncios?/.test(strong.textContent)) {
+          strong.style.background = '#2563eb';
+          strong.style.color = '#fff';
+          strong.style.padding = '2px 10px';
+          strong.style.marginLeft = '8px';
+          strong.style.marginRight = '8px';
+          strong.style.borderRadius = '12px';
+          strong.style.fontWeight = 'bold';
+          strong.style.fontSize = '1.1em';
+          strong.style.boxShadow = '0 1px 4px #0002';
+          strong.style.display = 'inline-block';
+        }
+      });
     });
   }
 
@@ -419,14 +422,14 @@ if (!window.__clonupWidgetInjected) {
     const cardsFiltrados = [];
     const cardsRestantes = [];
     cards.forEach(card => {
-      const strong = Array.from(card.querySelectorAll('strong')).find(s => /\d+\s+anúncios?/.test(s.textContent));
-      if (!strong) {
+      // Busca qualquer elemento que contenha o texto de quantidade de anúncios
+      const qtdEl = Array.from(card.querySelectorAll('*')).find(el => /\d+\s+anúncios?/.test(el.textContent));
+      const qtd = qtdEl ? parseInt(qtdEl.textContent.match(/(\d+)/)[1], 10) : 0;
+      if (!qtdEl) {
         card.style.opacity = 0.5;
         cardsRestantes.push({ card, qtd: 0 });
         return;
       }
-      const match = strong.textContent.match(/(\d+)/);
-      const qtd = match ? parseInt(match[1], 10) : 0;
       if (qtd >= minQtd) {
         card.style.opacity = 1;
         cardsFiltrados.push({ card, qtd });

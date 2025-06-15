@@ -3,7 +3,7 @@ import { Board } from '../components/Board';
 import { useThemeStore } from '../store/themeStore';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Wrench } from 'lucide-react';
+import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Wrench, Users } from 'lucide-react';
 import { SidebarBody, SidebarLink, Sidebar } from '../components/ui/sidebar';
 import { useAuth } from '../context/AuthContext';
 
@@ -72,6 +72,14 @@ export function Dashboard() {
         { label: "Clonar Quiz", href: "/tools/clonequiz", icon: <Circle className="h-4 w-4" /> },
       ],
     },
+    // Adiciona link de admin apenas para usuários admin
+    ...(profile?.role === 'admin' ? [{
+      label: "Administração",
+      href: "/admin",
+      icon: (
+        <Users className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
+      ),
+    }] : []),
     {
       label: "Profile",
       href: "/profile",

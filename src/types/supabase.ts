@@ -17,6 +17,7 @@ export interface Database {
           email: string;
           full_name: string | null;
           avatar_url: string | null;
+          role: string | null;
           subscription_status:
             | "active"
             | "trialing"
@@ -39,6 +40,7 @@ export interface Database {
           email: string;
           full_name?: string | null;
           avatar_url?: string | null;
+          role?: string | null;
           subscription_status?:
             | "active"
             | "trialing"
@@ -61,6 +63,7 @@ export interface Database {
           email?: string;
           full_name?: string | null;
           avatar_url?: string | null;
+          role?: string | null;
           subscription_status?:
             | "active"
             | "trialing"

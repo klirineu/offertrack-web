@@ -24,6 +24,18 @@ import EscolherPlano from './pages/EscolherPlano';
 import StripMeta from './pages/tools/StripMeta';
 import EditorQuiz from './pages/tools/EditorQuiz';
 import ResetPassword from './pages/ResetPassword';
+import { Admin } from './pages/Admin';
+
+// Componente para proteger rotas de admin
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { profile } = useAuth();
+
+  if (profile?.role !== 'admin') {
+    return <Navigate to="/dashboard" />;
+  }
+
+  return <>{children}</>;
+};
 
 function WhatsAppButton() {
   return (
@@ -98,7 +110,9 @@ function App() {
         <Route path="/tools/clonesites" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
         <Route path="/tools/editor-studio" element={<ProtectedRoute><EditorStudio /></ProtectedRoute>} />
         <Route path="/tools/clonequiz" element={<ProtectedRoute><EditorQuiz /></ProtectedRoute>} />
-        <Route path="/offers/:offerId/metrics" element={<ProtectedRoute><OfferMetrics /></ProtectedRoute>} />
+        {/* Admin Routes */}
+        <Route path="/admin" element={<ProtectedRoute><AdminRoute><Admin /></AdminRoute></ProtectedRoute>} />
+        {/* Static Pages */}
         <Route path="/about" element={<About />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/terms" element={<TermsOfUse />} />
