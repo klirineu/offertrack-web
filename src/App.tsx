@@ -110,6 +110,7 @@ function App() {
         <Route path="/tools/clonesites" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
         <Route path="/tools/editor-studio" element={<ProtectedRoute><EditorStudio /></ProtectedRoute>} />
         <Route path="/tools/clonequiz" element={<ProtectedRoute><EditorQuiz /></ProtectedRoute>} />
+        <Route path="/offers/:offerId/metrics" element={<ProtectedRoute><OfferMetrics /></ProtectedRoute>} />
         {/* Admin Routes */}
         <Route path="/admin" element={<ProtectedRoute><AdminRoute><Admin /></AdminRoute></ProtectedRoute>} />
         {/* Static Pages */}
