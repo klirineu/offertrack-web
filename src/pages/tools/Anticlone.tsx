@@ -64,7 +64,7 @@ interface TrackingEvent {
   created_at: string;
 }
 
-const allowedEmails = ['naclisboa@gmail.com', 'klirineu.js@gmail.com'];
+const allowedEmails = ['naclisboa@gmail.com', 'klirineu.js@gmail.com', 'brunocezarmetzger@gmail.com'];
 
 const SiteTableRow = ({ site, onDelete, onSelect, getScriptUrl, theme, onTrack }: {
   site: Site;
