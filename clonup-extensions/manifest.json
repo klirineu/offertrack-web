@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Clonup",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Widget flutuante de palavras-chave Clonup para a biblioteca de anúncios do Facebook, com opções de automação e extração de links.",
   "permissions": ["clipboardWrite"],
   "host_permissions": ["https://www.facebook.com/ads/library/*"],

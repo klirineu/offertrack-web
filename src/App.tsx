@@ -25,6 +25,7 @@ import StripMeta from './pages/tools/StripMeta';
 import EditorQuiz from './pages/tools/EditorQuiz';
 import ResetPassword from './pages/ResetPassword';
 import { Admin } from './pages/Admin';
+import { Tracking } from './pages/tools/Tracking';
 
 // Componente para proteger rotas de admin
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
@@ -106,6 +107,7 @@ function App() {
         <Route path="/traffic-filter/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
         <Route path="/tools/encrypt" element={<ProtectedRoute><EncryptText /></ProtectedRoute>} />
         <Route path="/tools/anticlone" element={<ProtectedRoute><Anticlone /></ProtectedRoute>} />
+        <Route path="/tools/trackeamento" element={<ProtectedRoute><Tracking /></ProtectedRoute>} />
         <Route path="/tools/removemetadados" element={<ProtectedRoute><StripMeta /></ProtectedRoute>} />
         <Route path="/tools/clonesites" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
         <Route path="/tools/editor-studio" element={<ProtectedRoute><EditorStudio /></ProtectedRoute>} />
