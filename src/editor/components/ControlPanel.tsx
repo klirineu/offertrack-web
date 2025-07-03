@@ -2,6 +2,7 @@ import { useEditorStore } from '../editorStore';
 import { useEffect, useState } from 'react';
 import api from '../../services/api';
 import { useLocation } from 'react-router-dom';
+import { nanoid } from 'nanoid';
 
 function getElementByOtId(doc: Document | null, otId: string | null): HTMLElement | null {
   if (!doc || !otId) return null;
@@ -13,15 +14,6 @@ function isStylable(el: HTMLElement | null) {
   // Não estilizar tags sem visual (ex: script, style, etc)
   const nonStylable = ['SCRIPT', 'STYLE', 'META', 'TITLE', 'LINK'];
   return !nonStylable.includes(el.tagName);
-}
-
-function insertScriptInHtml(html: string, script: string, position: 'head' | 'body') {
-  if (!script.trim()) return html;
-  if (position === 'head') {
-    return html.replace(/<\/head>/i, script + '\n</head>');
-  } else {
-    return html.replace(/<\/body>/i, script + '\n</body>');
-  }
 }
 
 function isRelevantScript(s: Element) {
@@ -99,12 +91,23 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
     const doc = iframe.contentDocument;
     const el = getElementByOtId(doc, selectedOtId);
     if (!el) return;
-    setSelectedTag(el.tagName.toLowerCase());
+
+    // Verifica se o elemento está dentro de um <a>
+    const parentAnchor = el.closest('a');
+    if (parentAnchor) {
+      setSelectedElement('a');
+      setSelectedOtId(parentAnchor.getAttribute('data-ot-id') || selectedOtId);
+      setHref(parentAnchor.getAttribute('href') || '');
+      setCustomLink(parentAnchor.getAttribute('href') || '');
+    } else {
+      setSelectedTag(el.tagName.toLowerCase());
+      setCustomLink('');
+    }
+
     setText(el.innerText || '');
     setId(el.id || '');
     setClassName(el.className || '');
     setIsStylableElement(isStylable(el));
-    setHref(el.tagName === 'A' ? (el as HTMLAnchorElement).getAttribute('href') || '' : '');
     setSrc((el.tagName === 'IMG' || el.tagName === 'VIDEO') ? (el as HTMLImageElement).getAttribute('src') || '' : '');
     setAlt(el.tagName === 'IMG' ? (el as HTMLImageElement).getAttribute('alt') || '' : '');
     setBgColor(isStylable(el) ? (el.style.backgroundColor || window.getComputedStyle(el).backgroundColor || '') : '');
@@ -130,9 +133,24 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
     const doc = iframe.contentDocument;
     const el = getElementByOtId(doc, selectedOtId);
     if (!el) return;
+
+    let anchorElement: HTMLElement | null = null;
+    if (attr === 'href') {
+      anchorElement = el.tagName === 'A' ? el : el.closest('a');
+    }
+
     switch (attr) {
-      case 'text': el.innerText = value; setText(value); break;
-      case 'href': if (el.tagName === 'A') (el as HTMLAnchorElement).setAttribute('href', value); setHref(value); break;
+      case 'text':
+        el.innerText = value;
+        setText(value);
+        break;
+      case 'href':
+        if (anchorElement) {
+          anchorElement.setAttribute('href', value);
+          setHref(value);
+          setCustomLink(value);
+        }
+        break;
       case 'src':
         if (el.tagName === 'IMG') (el as HTMLImageElement).setAttribute('src', value);
         if (el.tagName === 'VIDEO') (el as HTMLVideoElement).setAttribute('src', value);
@@ -247,6 +265,22 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
     tempDoc.querySelectorAll('[title="Arrastar para mover"]').forEach(el => el.remove());
     tempDoc.querySelectorAll('.__ot-drag-handle').forEach(el => el.remove());
 
+    // Preserva os links e seus atributos
+    tempDoc.querySelectorAll('a').forEach(a => {
+      // Mantém o href atualizado
+      const href = a.getAttribute('href');
+      if (href) {
+        a.setAttribute('href', href);
+      }
+      // Garante que os estilos sejam mantidos
+      if (!a.style.textDecoration) {
+        a.style.textDecoration = 'none';
+      }
+      if (!a.style.color) {
+        a.style.color = 'inherit';
+      }
+    });
+
     // Converte URLs absolutas de volta para relativas
     const convertUrlsToRelative = (element: Element) => {
       // Converte src e href
@@ -287,6 +321,16 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
 
     // Garante que o HTML não está escapado
     html = decodeHtmlEntities(html);
+
+    // Preserva os links sem estilo padrão
+    tempDoc.querySelectorAll('a').forEach(a => {
+      if (!a.style.textDecoration) {
+        a.style.textDecoration = 'none';
+      }
+      if (!a.style.color) {
+        a.style.color = 'inherit';
+      }
+    });
 
     try {
       const res = await api.post('/api/clone/save', { html, subdomain });
@@ -419,16 +463,38 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
     if (!el) return;
 
     // Se já está dentro de um <a>, só atualiza o href
-    if (el.parentElement && el.parentElement.tagName === 'A') {
-      el.parentElement.setAttribute('href', href);
+    const existingAnchor = el.closest('a');
+    if (existingAnchor) {
+      existingAnchor.setAttribute('href', href);
+      existingAnchor.style.textDecoration = 'none';
+      existingAnchor.style.color = 'inherit';
+      if (!existingAnchor.hasAttribute('data-ot-id')) {
+        existingAnchor.setAttribute('data-ot-id', nanoid());
+      }
+      setSelectedElement('a');
+      setSelectedOtId(existingAnchor.getAttribute('data-ot-id') || '');
+      setHref(href);
+      setCustomLink(href);
       return;
     }
 
     // Cria o <a> e move o elemento para dentro
     const a = doc.createElement('a');
+    const newId = nanoid();
     a.setAttribute('href', href);
+    a.setAttribute('data-ot-id', newId);
+    a.style.textDecoration = 'none';
+    a.style.color = 'inherit';
     el.parentElement?.replaceChild(a, el);
     a.appendChild(el);
+
+    // Atualiza o estado do link no input
+    setCustomLink(href);
+    setHref(href);
+
+    // Atualiza o elemento selecionado para o novo <a>
+    setSelectedElement('a');
+    setSelectedOtId(newId);
   }
 
   if (!selectedElement) {
