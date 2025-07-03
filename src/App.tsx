@@ -26,6 +26,7 @@ import EditorQuiz from './pages/tools/EditorQuiz';
 import ResetPassword from './pages/ResetPassword';
 import { Admin } from './pages/Admin';
 import { Tracking } from './pages/tools/Tracking';
+import SiteBuilder from './pages/tools/SiteBuilder';
 
 // Componente para proteger rotas de admin
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
@@ -112,6 +113,7 @@ function App() {
         <Route path="/tools/clonesites" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
         <Route path="/tools/editor-studio" element={<ProtectedRoute><EditorStudio /></ProtectedRoute>} />
         <Route path="/tools/clonequiz" element={<ProtectedRoute><EditorQuiz /></ProtectedRoute>} />
+        <Route path="/tools/site-builder" element={<ProtectedRoute><SiteBuilder /></ProtectedRoute>} />
         <Route path="/offers/:offerId/metrics" element={<ProtectedRoute><OfferMetrics /></ProtectedRoute>} />
         {/* Admin Routes */}
         <Route path="/admin" element={<ProtectedRoute><AdminRoute><Admin /></AdminRoute></ProtectedRoute>} />

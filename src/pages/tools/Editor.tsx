@@ -296,6 +296,12 @@ export default function Editor() {
                 <Plus className="w-4 h-4" /> Clonar Site
               </button>
               <button
+                onClick={() => navigate('/tools/site-builder')}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+              >
+                <Wrench className="w-4 h-4" /> Construir Site
+              </button>
+              <button
                 onClick={() => navigate('/tools/clonequiz')}
                 className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
               >
