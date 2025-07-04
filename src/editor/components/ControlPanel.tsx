@@ -18,6 +18,7 @@ function isStylable(el: HTMLElement | null) {
 
 function isRelevantScript(s: Element) {
   const terms = [
+    // Analytics e Tracking
     'facebook.com/tr',
     '/tr?id=',
     '/pixel',
@@ -32,13 +33,40 @@ function isRelevantScript(s: Element) {
     '/connect.facebook.net',
     '/googletagmanager.com',
     '/clarity.ms',
+
+    // Redirecionamentos e Navegação
+    'window.location',
+    'location.href',
+    'location.replace',
+    'URLSearchParams',
+    'addEventListener',
+    'history.pushState',
+    'history.replaceState',
+    'document.location',
+    'window.open',
+    'redirect',
+
+    // Outros scripts importantes
+    'querySelector',
+    'getElementById',
+    'localStorage',
+    'sessionStorage',
+    'fetch(',
+    'axios',
+    '.ajax',
+    'XMLHttpRequest'
   ];
+
+  // Verifica o src do script
   if ((s as HTMLScriptElement).src) {
     return terms.some(term => (s as HTMLScriptElement).src.includes(term));
   }
+
+  // Verifica o conteúdo do script
   if (s.innerHTML) {
     return terms.some(term => s.innerHTML.includes(term));
   }
+
   return false;
 }
 
@@ -404,27 +432,26 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
     if (!iframe) return;
     const doc = iframe.contentDocument;
     if (!doc) return;
-    // Extrai todos os scripts do head (apenas relevantes)
-    const headScripts = Array.from(doc.head.querySelectorAll('script'))
-      .filter(isRelevantScript)
-      .map(s => s.outerHTML)
-      .join('\n');
-    // Extrai todos os scripts do body (apenas relevantes)
-    const bodyScripts = Array.from(doc.body.querySelectorAll('script'))
-      .filter(isRelevantScript)
-      .map(s => s.outerHTML)
-      .join('\n');
-    // Extrai noscripts relevantes
-    const headNoScripts = Array.from(doc.head.querySelectorAll('noscript'))
-      .filter(isRelevantScript)
-      .map(s => s.outerHTML)
-      .join('\n');
-    const bodyNoScripts = Array.from(doc.body.querySelectorAll('noscript'))
-      .filter(isRelevantScript)
-      .map(s => s.outerHTML)
-      .join('\n');
-    setHeadScriptsText([headScripts, headNoScripts].filter(Boolean).join('\n'));
-    setBodyScriptsText([bodyScripts, bodyNoScripts].filter(Boolean).join('\n'));
+
+    // Função para formatar scripts com espaços
+    const formatScripts = (scripts: Element[]) => {
+      return scripts
+        .filter(isRelevantScript)
+        .map(s => s.outerHTML)
+        .join('\n\n'); // Adiciona linha em branco entre scripts
+    };
+
+    // Extrai scripts do head
+    const headScripts = formatScripts(Array.from(doc.head.querySelectorAll('script')));
+    const headNoScripts = formatScripts(Array.from(doc.head.querySelectorAll('noscript')));
+
+    // Extrai scripts do body
+    const bodyScripts = formatScripts(Array.from(doc.body.querySelectorAll('script')));
+    const bodyNoScripts = formatScripts(Array.from(doc.body.querySelectorAll('noscript')));
+
+    // Combina os scripts com espaços extras para melhor legibilidade
+    setHeadScriptsText([headScripts, headNoScripts].filter(Boolean).join('\n\n'));
+    setBodyScriptsText([bodyScripts, bodyNoScripts].filter(Boolean).join('\n\n'));
     setShowScriptManager(true);
   }
 
@@ -433,21 +460,29 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
     if (!iframe) return;
     const doc = iframe.contentDocument;
     if (!doc) return;
-    // Remove todos os scripts do head/body
-    Array.from(doc.head.querySelectorAll('script')).forEach(s => s.remove());
-    Array.from(doc.body.querySelectorAll('script')).forEach(s => s.remove());
-    // Insere scripts do textarea do head
-    if (headScriptsText.trim()) {
-      const temp = doc.createElement('div');
-      temp.innerHTML = headScriptsText;
-      Array.from(temp.childNodes).forEach(node => doc.head.appendChild(node));
-    }
-    // Insere scripts do textarea do body
-    if (bodyScriptsText.trim()) {
-      const temp = doc.createElement('div');
-      temp.innerHTML = bodyScriptsText;
-      Array.from(temp.childNodes).forEach(node => doc.body.appendChild(node));
-    }
+
+    // Remove scripts existentes
+    Array.from(doc.head.querySelectorAll('script, noscript')).forEach(s => s.remove());
+    Array.from(doc.body.querySelectorAll('script, noscript')).forEach(s => s.remove());
+
+    // Função para inserir scripts mantendo a formatação
+    const insertScripts = (container: HTMLElement, scriptsText: string) => {
+      if (!scriptsText.trim()) return;
+
+      // Divide por blocos de script (separados por linhas em branco)
+      const scriptBlocks = scriptsText.split(/\n\s*\n/).filter(Boolean);
+
+      scriptBlocks.forEach(block => {
+        const temp = doc.createElement('div');
+        temp.innerHTML = block.trim();
+        Array.from(temp.childNodes).forEach(node => container.appendChild(node));
+      });
+    };
+
+    // Insere scripts no head e body
+    insertScripts(doc.head, headScriptsText);
+    insertScripts(doc.body, bodyScriptsText);
+
     setShowScriptManager(false);
     setSaveMsg('Scripts atualizados!');
     setTimeout(() => setSaveMsg(''), 3000);
