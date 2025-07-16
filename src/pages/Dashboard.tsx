@@ -2,15 +2,12 @@ import { useState } from 'react';
 import { Board } from '../components/Board';
 import { useThemeStore } from '../store/themeStore';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Wrench, Users } from 'lucide-react';
 import { SidebarBody, SidebarLink, Sidebar } from '../components/ui/sidebar';
 import { useAuth } from '../context/AuthContext';
 
 import LogoBranco from '../assets/logo-branco.png';
 import IconBranco from '../assets/ico-branco.png';
-import ClonupFloatingWidget from '../components/ClonupFloatingWidget';
-
 
 
 const Logo = () => {
@@ -107,7 +104,7 @@ export function Dashboard() {
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
       <Sidebar open={open} setOpen={setOpen}>
-        <SidebarBody className={`w-64 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border-r h-screen fixed left-0 top-0`}>
+        <SidebarBody className={`w-64 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border-r h-screen fixed left-0 top-0 z-40`}>
           <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
             {open ? <Logo /> : <LogoIcon />}
             <div className="mt-8 flex flex-col gap-2">
@@ -134,9 +131,9 @@ export function Dashboard() {
         </SidebarBody>
       </Sidebar>
 
-      <div className={`${open ? 'pl-72' : 'pl-14'} transition-all duration-300`}>
-        <header className={`${theme === 'dark' ? 'bg-gray-800 border-b border-gray-700' : 'bg-white shadow-sm'}`}>
-          <div className="px-4 py-4 flex items-center gap-2">
+      <div className={`${open ? 'lg:pl-72' : 'lg:pl-24'} transition-all duration-300`}>
+        <header className={`${theme === 'dark' ? 'bg-gray-800 border-b border-gray-700' : 'bg-white shadow-sm'} px-4 py-4 lg:px-8`}>
+          <div className="flex items-center gap-2">
             <Layout className="w-6 h-6 text-blue-600" />
             <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
               Gestão de Ofertas
@@ -144,7 +141,7 @@ export function Dashboard() {
           </div>
         </header>
 
-        <main className="px-4 py-8">
+        <main className="px-4 py-8 lg:px-8">
           <Board />
         </main>
       </div>

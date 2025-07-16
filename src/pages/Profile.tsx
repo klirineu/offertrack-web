@@ -9,7 +9,6 @@ import { useAuth } from '../context/AuthContext';
 import { format, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
 import { differenceInCalendarDays } from 'date-fns';
 
 import LogoBranco from '../assets/logo-branco.png';
@@ -47,25 +46,22 @@ const LogoIcon = () => {
 export function Profile() {
   const { theme } = useThemeStore();
   const [open, setOpen] = React.useState(false);
-  const { user, profile, updateProfile, isLoading, changePassword } = useAuth();
+  const { user, profile, updateProfile, changePassword } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [fullName, setFullName] = useState(profile?.full_name || '');
-  const [phone, setPhone] = useState(profile?.phone || '');
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [phone, setPhone] = useState((profile as any)?.phone || '');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [cancelLoading, setCancelLoading] = useState(false);
   const [password, setPassword] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   useEffect(() => {
     if (profile) {
       setFullName(profile.full_name || '');
-      setPhone(profile.phone || '');
+      setPhone((profile as any)?.phone || '');
     }
   }, [profile]);
 
@@ -99,18 +95,6 @@ export function Profile() {
   // Gerenciar assinatura
   const handleManage = () => {
     window.location.href = '/escolher-plano';
-  };
-
-  // Cancelar assinatura
-  const handleCancel = async () => {
-    if (!window.confirm('Tem certeza que deseja cancelar sua assinatura?')) return;
-    setCancelLoading(true);
-    await supabase
-      .from('profiles')
-      .update({ subscription_status: 'canceled' })
-      .eq('id', profile.id);
-    if (typeof window !== 'undefined' && window.location) window.location.reload();
-    setCancelLoading(false);
   };
 
   const formatPhone = (value: string) => {
@@ -149,7 +133,7 @@ export function Profile() {
       const { error } = await updateProfile({
         full_name: fullName,
         phone: phoneNumbers
-      });
+      } as any);
 
       if (error) throw error;
 
@@ -244,8 +228,16 @@ export function Profile() {
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
+      {/* Mobile overlay */}
+      {open && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+          onClick={() => setOpen(false)}
+        />
+      )}
+
       <Sidebar open={open} setOpen={setOpen}>
-        <SidebarBody className={`w-64 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border-r h-screen fixed left-0 top-0`}>
+        <SidebarBody className={`w-64 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border-r h-screen fixed left-0 top-0 z-40`}>
           <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
             {open ? <Logo /> : <LogoIcon />}
             <div className="mt-8 flex flex-col gap-2">
@@ -272,42 +264,44 @@ export function Profile() {
         </SidebarBody>
       </Sidebar>
 
-      <div className={`${open ? 'pl-72' : 'pl-14'} transition-all duration-300`}>
-        <header className={`${theme === 'dark' ? 'bg-gray-800 border-b border-gray-700' : 'bg-white shadow-sm'}`}>
-          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center gap-2">
-            <User className="w-6 h-6 text-blue-600" />
-            <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Profile
-            </h1>
+      <div className={`${open ? 'lg:pl-72' : 'lg:pl-24'} transition-all duration-300 px-4 py-8 lg:px-0 pt-16 lg:pt-0`}>
+        <header className={`${theme === 'dark' ? 'bg-gray-800 border-b border-gray-700' : 'bg-white shadow-sm'} px-4 py-4 lg:px-8`}>
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center gap-2">
+              <User className="w-6 h-6 text-blue-600" />
+              <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                Profile
+              </h1>
+            </div>
           </div>
         </header>
 
-        <main className="max-w-7xl mx-auto px-4 py-8">
+        <main className="max-w-7xl mx-auto px-4 py-8 lg:px-8">
           <div className="max-w-3xl mx-auto">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
-              <div className="flex items-center gap-4 mb-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 mb-6 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
                 <img
                   src={profile?.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(profile?.full_name || user?.email || 'U')}
                   alt={profile?.full_name || user?.email || 'Usuário'}
-                  className="w-20 h-20 rounded-full"
+                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-full mx-auto sm:mx-0"
                 />
-                <div>
-                  <h2 className="text-xl font-semibold dark:text-white">{profile?.full_name || user?.email || 'Usuário'}</h2>
-                  <p className="text-gray-600 dark:text-gray-400">{user?.email}</p>
+                <div className="text-center sm:text-left">
+                  <h2 className="text-lg sm:text-xl font-semibold dark:text-white">{profile?.full_name || user?.email || 'Usuário'}</h2>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">{user?.email}</p>
                   {user?.created_at && (
-                    <p className="text-gray-500 text-sm mt-1">Cadastrado em: {format(new Date(user.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
+                    <p className="text-gray-500 text-xs sm:text-sm mt-1">Cadastrado em: {format(new Date(user.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
                   )}
                 </div>
               </div>
 
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <Mail className="w-5 h-5 text-gray-400" />
-                  <span className="text-gray-600 dark:text-gray-400">{user?.email}</span>
+                  <Mail className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                  <span className="text-gray-600 dark:text-gray-400 text-sm sm:text-base break-all">{user?.email}</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <CreditCard className="w-5 h-5 text-gray-400" />
-                  <span className="text-gray-600 dark:text-gray-400">
+                <div className="flex items-start gap-3">
+                  <CreditCard className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+                  <div className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">
                     Status: <b>{profile ? statusPt : ''}</b><br />
                     {expiraEm && profile ? (
                       <>
@@ -317,19 +311,19 @@ export function Profile() {
                           : 'Sua assinatura expirou.'}
                       </>
                     ) : null}
-                  </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 mt-2">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mt-4">
                   <button
                     onClick={handleManage}
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm sm:text-base"
                   >
                     Gerenciar Assinatura
                   </button>
                   {/* <button
                     onClick={handleCancel}
                     disabled={cancelLoading || !!(profile && profile.subscription_status === 'canceled')}
-                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-60"
+                    className="w-full sm:w-auto px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-60 text-sm sm:text-base"
                   >
                     {cancelLoading ? 'Cancelando...' : 'Cancelar Assinatura'}
                   </button> */}
@@ -337,23 +331,23 @@ export function Profile() {
               </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+            <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 mb-6 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
                   Informações do Perfil
                 </h2>
                 {!isEditing ? (
                   <button
                     onClick={() => setIsEditing(true)}
-                    className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                    className="w-full sm:w-auto text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm sm:text-base"
                   >
                     Editar
                   </button>
                 ) : (
-                  <div className="space-x-2">
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
                     <button
                       onClick={handleSaveProfile}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                      className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm sm:text-base"
                     >
                       Salvar
                     </button>
@@ -361,9 +355,9 @@ export function Profile() {
                       onClick={() => {
                         setIsEditing(false);
                         setFullName(profile?.full_name || '');
-                        setPhone(profile?.phone || '');
+                        setPhone((profile as any)?.phone || '');
                       }}
-                      className="text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                      className="w-full sm:w-auto text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 text-sm sm:text-base"
                     >
                       Cancelar
                     </button>
@@ -372,13 +366,13 @@ export function Profile() {
               </div>
 
               {error && (
-                <div className="mb-4 p-4 bg-red-500/10 border border-red-500 rounded text-red-500">
+                <div className="mb-4 p-3 sm:p-4 bg-red-500/10 border border-red-500 rounded text-red-500 text-sm sm:text-base">
                   {error}
                 </div>
               )}
 
               {success && (
-                <div className="mb-4 p-4 bg-green-500/10 border border-green-500 rounded text-green-500">
+                <div className="mb-4 p-3 sm:p-4 bg-green-500/10 border border-green-500 rounded text-green-500 text-sm sm:text-base">
                   {success}
                 </div>
               )}
@@ -393,10 +387,10 @@ export function Profile() {
                       type="text"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm sm:text-base"
                     />
                   ) : (
-                    <p className="text-gray-900 dark:text-white">{profile?.full_name || 'Não informado'}</p>
+                    <p className="text-gray-900 dark:text-white text-sm sm:text-base">{profile?.full_name || 'Não informado'}</p>
                   )}
                 </div>
 
@@ -410,11 +404,11 @@ export function Profile() {
                       value={phone}
                       onChange={handlePhoneChange}
                       placeholder="(99) 99999-9999"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm sm:text-base"
                     />
                   ) : (
-                    <p className="text-gray-900 dark:text-white">
-                      {profile?.phone ? formatPhone(profile.phone) : 'Não informado'}
+                    <p className="text-gray-900 dark:text-white text-sm sm:text-base">
+                      {(profile as any)?.phone ? formatPhone((profile as any).phone) : 'Não informado'}
                     </p>
                   )}
                 </div>
@@ -423,15 +417,15 @@ export function Profile() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Email
                   </label>
-                  <p className="text-gray-900 dark:text-white">{profile?.email}</p>
+                  <p className="text-gray-900 dark:text-white text-sm sm:text-base break-all">{profile?.email}</p>
                 </div>
               </form>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-semibold mb-4 dark:text-white">Trocar Senha</h3>
-              {passwordSuccess && <div className="mb-2 p-2 bg-green-100 text-green-700 rounded">{passwordSuccess}</div>}
-              {passwordError && <div className="mb-2 p-2 bg-red-100 text-red-700 rounded">{passwordError}</div>}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-6">
+              <h3 className="text-base sm:text-lg font-semibold mb-4 dark:text-white">Trocar Senha</h3>
+              {passwordSuccess && <div className="mb-2 p-2 sm:p-3 bg-green-100 text-green-700 rounded text-sm sm:text-base">{passwordSuccess}</div>}
+              {passwordError && <div className="mb-2 p-2 sm:p-3 bg-red-100 text-red-700 rounded text-sm sm:text-base">{passwordError}</div>}
               <form className="space-y-4" onSubmit={handlePasswordChange}>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -441,7 +435,7 @@ export function Profile() {
                     type="password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm sm:text-base"
                   />
                 </div>
                 <div>
@@ -452,13 +446,13 @@ export function Profile() {
                     type="password"
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm sm:text-base"
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={passwordLoading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-60"
+                  className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-60 text-sm sm:text-base"
                 >
                   {passwordLoading ? 'Salvando...' : 'Trocar Senha'}
                 </button>

@@ -250,6 +250,84 @@ const SiteTableRow = ({ site, onDelete, onSelect, getScriptUrl, theme }: SiteTab
   );
 };
 
+// Componente de card para mobile
+const SiteCard = ({ site, onDelete, onSelect, getScriptUrl, theme }: SiteTableRowProps) => {
+  const [eventCount, setEventCount] = useState<number>(0);
+
+  useEffect(() => {
+    const fetchEventCount = async () => {
+      try {
+        const { count, error } = await supabase
+          .from('tracking_events')
+          .select('*', { count: 'exact', head: true })
+          .eq('anticlone_site_id', site.id);
+
+        if (error) {
+          console.error('Error fetching event count:', error);
+          setEventCount(0);
+        } else {
+          setEventCount(count || 0);
+        }
+      } catch (err) {
+        console.error('Error in fetchEventCount:', err);
+        setEventCount(0);
+      }
+    };
+    fetchEventCount();
+  }, [site.id]);
+
+  return (
+    <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'} shadow-sm`}>
+      <div className="space-y-3">
+        <div>
+          <div className="text-sm font-medium text-gray-500 dark:text-gray-400">URL Original</div>
+          <div className="break-all text-sm">{site.original_url}</div>
+        </div>
+
+        <div className="flex justify-between items-center">
+          <div>
+            <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Data Cadastro</div>
+            <div className="text-sm">{new Date(site.created_at).toLocaleDateString()}</div>
+          </div>
+          <div>
+            <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Eventos</div>
+            <div className="text-sm">{eventCount}</div>
+          </div>
+        </div>
+
+        <div className="flex justify-between items-center pt-2 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(getScriptUrl(site.id));
+                alert('Script copiado para a área de transferência!');
+              }}
+              className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+              title="Copiar Script"
+            >
+              <Copy className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => onSelect(site.id)}
+              className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+              title="Ver Detalhes"
+            >
+              <BarChart2 className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => onDelete(site.id)}
+              className="p-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+              title="Excluir"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export function Tracking() {
   const { theme } = useThemeStore();
   const { user, profile } = useAuth();
@@ -617,8 +695,16 @@ export function Tracking() {
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
+      {/* Mobile overlay */}
+      {open && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+          onClick={() => setOpen(false)}
+        />
+      )}
+
       <Sidebar open={open} setOpen={setOpen}>
-        <SidebarBody className={`w-64 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border-r h-screen fixed left-0 top-0`}>
+        <SidebarBody className={`w-64 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border-r h-screen fixed left-0 top-0 z-40`}>
           <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
             {open ? <Logo /> : <LogoIcon />}
             <div className="mt-8 flex flex-col gap-2">
@@ -645,10 +731,10 @@ export function Tracking() {
         </SidebarBody>
       </Sidebar>
 
-      <div className={`${open ? 'pl-72' : 'pl-14'} transition-all duration-300`}>
-        <header className={`${theme === 'dark' ? 'bg-gray-800 border-b border-gray-700' : 'bg-white shadow-sm'}`}>
-          <div className="max-w-7xl mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
+      <div className={`${open ? 'lg:pl-72' : 'lg:pl-24'} transition-all duration-300 px-4 py-8 lg:px-0 pt-16 lg:pt-0`}>
+        <header className={`${theme === 'dark' ? 'bg-gray-800 border-b border-gray-700' : 'bg-white shadow-sm'} px-4 py-4 lg:px-8`}>
+          <div className="max-w-7xl mx-auto">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center gap-2">
                 <BarChart2 className="w-6 h-6 text-blue-600" />
                 <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
@@ -657,7 +743,7 @@ export function Tracking() {
               </div>
               <button
                 onClick={() => setShowNewSiteForm(true)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
               >
                 <Plus className="w-5 h-5" />
                 Novo Site
@@ -666,7 +752,7 @@ export function Tracking() {
           </div>
         </header>
 
-        <main className="max-w-7xl mx-auto px-4 py-8">
+        <main className="max-w-7xl mx-auto px-4 py-8 lg:px-8">
           {error && (
             <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">
               {error}
@@ -674,7 +760,7 @@ export function Tracking() {
           )}
 
           {showNewSiteForm && (
-            <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-6 mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
               <h2 className="text-lg font-semibold mb-4">Novo Site</h2>
               <form onSubmit={handleAddSite} className="space-y-4">
                 <div>
@@ -685,21 +771,21 @@ export function Tracking() {
                     onChange={(e) => setNewSiteUrl(e.target.value)}
                     placeholder="https://meusite.com"
                     required
-                    className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
+                    className={`w-full px-3 py-2 sm:px-4 sm:py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
                   />
                 </div>
-                <div className="flex justify-end gap-4">
+                <div className="flex flex-col sm:flex-row sm:justify-end gap-3 sm:gap-4">
                   <button
                     type="button"
                     onClick={() => setShowNewSiteForm(false)}
-                    className="px-4 py-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+                    className="w-full sm:w-auto px-4 py-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
                     disabled={loading}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                   >
                     {loading ? 'Salvando...' : 'Salvar'}
                   </button>
@@ -708,7 +794,8 @@ export function Tracking() {
             </div>
           )}
 
-          <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          {/* Desktop Table */}
+          <div className={`hidden lg:block bg-white dark:bg-gray-800 rounded-lg shadow-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -735,63 +822,96 @@ export function Tracking() {
             </div>
           </div>
 
+          {/* Mobile Cards */}
+          <div className="lg:hidden space-y-4">
+            {sites.map((site: Site) => (
+              <SiteCard
+                key={site.id}
+                site={site}
+                onDelete={handleDeleteSite}
+                onSelect={setSelectedSite}
+                getScriptUrl={getScriptUrl}
+                theme={theme}
+              />
+            ))}
+          </div>
+
           {selectedSite && (
             <div className="mt-8">
-              <div className="flex gap-4 mb-4 items-center flex-wrap">
-                <label className={theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}>Período:</label>
-                <select
-                  value={period}
-                  onChange={e => setPeriod(e.target.value as 'today' | '7d' | '30d' | 'custom')}
-                  className={`px-2 py-1 rounded border ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-gray-100' : 'bg-white border-gray-300 text-gray-900'}`}
-                >
-                  <option value="today">Hoje</option>
-                  <option value="7d">Últimos 7 dias</option>
-                  <option value="30d">Últimos 30 dias</option>
-                  <option value="custom">Personalizado</option>
-                </select>
+              <div className="flex flex-col gap-4 mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                  <label className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>Período:</label>
+                  <select
+                    value={period}
+                    onChange={e => setPeriod(e.target.value as 'today' | '7d' | '30d' | 'custom')}
+                    className={`px-3 py-2 rounded-lg border text-sm ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-gray-100' : 'bg-white border-gray-300 text-gray-900'}`}
+                  >
+                    <option value="today">Hoje</option>
+                    <option value="7d">Últimos 7 dias</option>
+                    <option value="30d">Últimos 30 dias</option>
+                    <option value="custom">Personalizado</option>
+                  </select>
+                </div>
+
                 {period === 'custom' && (
-                  <>
-                    <input type="date" value={customRange.start} onChange={e => setCustomRange(r => ({ ...r, start: e.target.value }))} className="px-2 py-1 rounded border" />
-                    <span>a</span>
-                    <input type="date" value={customRange.end} onChange={e => setCustomRange(r => ({ ...r, end: e.target.value }))} className="px-2 py-1 rounded border" />
-                  </>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                    <input
+                      type="date"
+                      value={customRange.start}
+                      onChange={e => setCustomRange(r => ({ ...r, start: e.target.value }))}
+                      className={`px-3 py-2 rounded-lg border text-sm ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-gray-100' : 'bg-white border-gray-300 text-gray-900'}`}
+                    />
+                    <span className="text-sm">a</span>
+                    <input
+                      type="date"
+                      value={customRange.end}
+                      onChange={e => setCustomRange(r => ({ ...r, end: e.target.value }))}
+                      className={`px-3 py-2 rounded-lg border text-sm ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-gray-100' : 'bg-white border-gray-300 text-gray-900'}`}
+                    />
+                  </div>
                 )}
-                <label className={theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}>Tipo de Evento:</label>
-                <select
-                  value={selectedEventType}
-                  onChange={e => setSelectedEventType(e.target.value)}
-                  className={`px-2 py-1 rounded border ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-gray-100' : 'bg-white border-gray-300 text-gray-900'}`}
-                >
-                  <option value="all">Todos</option>
-                  {Object.keys(eventTypeTranslations).map(type => (
-                    <option key={type} value={type}>{eventTypeTranslations[type]}</option>
-                  ))}
-                </select>
-                <button
-                  onClick={handleRefresh}
-                  disabled={refreshing || loading}
-                  className={`p-2 rounded-lg transition-colors ${theme === 'dark'
-                    ? 'hover:bg-gray-700 text-gray-200'
-                    : 'hover:bg-gray-100 text-gray-700'
-                    } ${(refreshing || loading) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  title="Atualizar eventos"
-                >
-                  <RotateCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
-                </button>
+
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                  <label className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>Tipo de Evento:</label>
+                  <select
+                    value={selectedEventType}
+                    onChange={e => setSelectedEventType(e.target.value)}
+                    className={`px-3 py-2 rounded-lg border text-sm ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-gray-100' : 'bg-white border-gray-300 text-gray-900'}`}
+                  >
+                    <option value="all">Todos</option>
+                    {Object.keys(eventTypeTranslations).map(type => (
+                      <option key={type} value={type}>{eventTypeTranslations[type]}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={handleRefresh}
+                    disabled={refreshing || loading}
+                    className={`p-2 rounded-lg transition-colors ${theme === 'dark'
+                      ? 'hover:bg-gray-700 text-gray-200'
+                      : 'hover:bg-gray-100 text-gray-700'
+                      } ${(refreshing || loading) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    title="Atualizar eventos"
+                  >
+                    <RotateCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
               </div>
 
               {loading ? (
-                <div className="text-center py-4">Carregando eventos...</div>
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="mt-2 text-sm text-gray-500">Carregando eventos...</p>
+                </div>
               ) : (
                 <div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
-                      <div style={{ height: '300px' }}>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 shadow-sm">
+                      <div className="h-64 sm:h-80">
                         <Bar options={eventNameChartOptions} data={eventNameChartData} />
                       </div>
                     </div>
-                    <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
-                      <div style={{ height: '300px', position: 'relative' }}>
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 shadow-sm">
+                      <div className="h-64 sm:h-80 relative">
                         <Pie
                           data={pieData}
                           options={{
@@ -799,70 +919,77 @@ export function Tracking() {
                             responsive: true,
                             plugins: {
                               legend: {
-                                position: 'right' as const,
+                                position: 'bottom' as const,
                                 labels: {
                                   boxWidth: 12,
-                                  font: { size: 11 }
+                                  font: { size: 10 }
                                 }
                               }
                             }
                           }}
                         />
                       </div>
-                      <div className="mt-2 text-sm text-center">Distribuição por Tipo de Evento</div>
+                      <div className="mt-2 text-xs sm:text-sm text-center">Distribuição por Tipo de Evento</div>
                     </div>
                   </div>
                   <div className="space-y-4">
                     {Object.entries(eventsByIp).map(([ip, data]) => (
                       <div key={ip} className={`border rounded-lg overflow-hidden ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
                         <div
-                          className={`p-4 cursor-pointer flex items-center justify-between ${theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-gray-50 hover:bg-gray-100'}`}
+                          className={`p-4 cursor-pointer ${theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-gray-50 hover:bg-gray-100'}`}
                           onClick={() => toggleIpExpansion(ip)}
                         >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-4">
-                              <span className="font-medium">{ip}</span>
-                              <span className="text-sm text-gray-500">
-                                {String(data.location.ip_city || '-')}, {String(data.location.ip_country || '-')}
-                              </span>
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <div className="flex-1">
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                                <span className="font-medium text-sm sm:text-base">{ip}</span>
+                                <span className="text-xs sm:text-sm text-gray-500">
+                                  {String(data.location.ip_city || '-')}, {String(data.location.ip_country || '-')}
+                                </span>
+                              </div>
+                              <div className="text-xs sm:text-sm text-gray-500 mt-1">
+                                {data.totalEvents} eventos • {data.eventTypes.size} tipos • {getConnectionType(Array.from(data.userAgents)[0] || '')}
+                              </div>
                             </div>
-                            <div className="text-sm text-gray-500 mt-1">
-                              {data.totalEvents} eventos • {data.eventTypes.size} tipos • {getConnectionType(Array.from(data.userAgents)[0] || '')}
+                            <div className="text-xs sm:text-sm text-gray-500">
+                              <div className="sm:hidden">
+                                {new Date(data.firstSeen).toLocaleDateString()} → {new Date(data.lastSeen).toLocaleDateString()}
+                              </div>
+                              <div className="hidden sm:block">
+                                {new Date(data.firstSeen).toLocaleString()} → {new Date(data.lastSeen).toLocaleString()}
+                              </div>
                             </div>
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {new Date(data.firstSeen).toLocaleString()} → {new Date(data.lastSeen).toLocaleString()}
                           </div>
                         </div>
                         {expandedIps.has(ip) && (
                           <div className="overflow-x-auto">
                             {data.events.map(ev => (
                               <div key={ev.id} className="p-4 border-t border-gray-200 dark:border-gray-700">
-                                <div className="flex justify-between items-start">
-                                  <div className="font-medium">
+                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+                                  <div className="font-medium text-sm sm:text-base">
                                     {formatEventName(ev)}
                                   </div>
-                                  <span className="text-sm text-gray-500">
+                                  <span className="text-xs sm:text-sm text-gray-500">
                                     {new Date(ev.created_at).toLocaleString()}
                                   </span>
                                 </div>
 
                                 {/* Mostrar link clicado se for um evento de clique */}
                                 {ev.event_type === 'link_click' && ev.event_link && (
-                                  <div className="text-sm text-blue-500 dark:text-blue-400 mt-1">
+                                  <div className="text-xs sm:text-sm text-blue-500 dark:text-blue-400 mt-1 break-all">
                                     Link: {ev.event_link}
                                   </div>
                                 )}
 
                                 {/* UTMs formatados */}
                                 {ev.utms && Object.keys(ev.utms).length > 0 && (
-                                  <div className="mt-2 text-sm">
+                                  <div className="mt-2 text-xs sm:text-sm">
                                     <div className="font-medium mb-1">Dados da Campanha:</div>
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                                       {formatUtm(ev.utms)?.map(({ label, value }, idx) => (
                                         <div key={idx} className="bg-gray-100 dark:bg-gray-700 p-2 rounded">
                                           <div className="font-medium text-xs text-gray-500 dark:text-gray-400">{label}</div>
-                                          <div className="break-all">{value}</div>
+                                          <div className="break-all text-xs sm:text-sm">{value}</div>
                                         </div>
                                       ))}
                                     </div>

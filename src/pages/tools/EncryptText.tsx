@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useThemeStore } from '../../store/themeStore';
 import { Sidebar, SidebarBody, SidebarLink } from '../../components/ui/sidebar';
-import { Layout, UserCog, LogOut, Wrench, ArrowLeft, Circle, SettingsIcon } from 'lucide-react';
+import { Layout, UserCog, LogOut, Wrench, Circle, SettingsIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
@@ -151,8 +151,16 @@ export function EncryptText() {
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
+      {/* Mobile overlay */}
+      {open && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+          onClick={() => setOpen(false)}
+        />
+      )}
+
       <Sidebar open={open} setOpen={setOpen}>
-        <SidebarBody className={`w-64 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border-r h-screen fixed left-0 top-0`}>
+        <SidebarBody className={`w-64 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border-r h-screen fixed left-0 top-0 z-40`}>
           <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
             {open ? <Logo /> : <LogoIcon />}
             <div className="mt-8 flex flex-col gap-2">
@@ -179,9 +187,9 @@ export function EncryptText() {
         </SidebarBody>
       </Sidebar>
 
-      <div className={`${open ? 'pl-72' : 'pl-14'} transition-all duration-300`}>
-        <header className={`${theme === 'dark' ? 'bg-gray-800 border-b border-gray-700' : 'bg-white shadow-sm'}`}>
-          <div className="max-w-7xl mx-auto px-4 py-4">
+      <div className={`${open ? 'lg:pl-72' : 'lg:pl-24'} transition-all duration-300 px-4 py-8 lg:px-0 pt-16 lg:pt-0`}>
+        <header className={`${theme === 'dark' ? 'bg-gray-800 border-b border-gray-700' : 'bg-white shadow-sm'} px-4 py-4 lg:px-8`}>
+          <div className="max-w-7xl mx-auto">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Criptografar Texto</h1>
@@ -190,15 +198,15 @@ export function EncryptText() {
           </div>
         </header>
 
-        <main className="max-w-3xl mx-auto px-4 py-8">
-          <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+        <main className="max-w-3xl mx-auto px-4 py-8 lg:px-8">
+          <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2">Texto para criptografar:</label>
                 <textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'} focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                  className={`w-full px-3 py-2 sm:px-4 sm:py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'} focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base`}
                   rows={4}
                   placeholder="Digite seu texto aqui..."
                 />
@@ -206,7 +214,7 @@ export function EncryptText() {
 
               <button
                 onClick={encryptText}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Criptografar
               </button>
@@ -214,7 +222,7 @@ export function EncryptText() {
               {output && (
                 <div>
                   <label className="block text-sm font-medium mb-2">Resultado:</label>
-                  <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-lg break-all">{output}</div>
+                  <div className="p-3 sm:p-4 bg-gray-100 dark:bg-gray-700 rounded-lg break-all text-sm sm:text-base">{output}</div>
                 </div>
               )}
             </div>

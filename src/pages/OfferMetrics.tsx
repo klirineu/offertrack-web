@@ -222,8 +222,16 @@ export default function OfferMetrics() {
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
+      {/* Mobile overlay */}
+      {open && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+          onClick={() => setOpen(false)}
+        />
+      )}
+
       <Sidebar open={open} setOpen={setOpen}>
-        <SidebarBody className={`w-64 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border-r h-screen fixed left-0 top-0`}>
+        <SidebarBody className={`w-64 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border-r h-screen fixed left-0 top-0 z-40`}>
           <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
             {open ? <Logo /> : <LogoIcon />}
             <div className="mt-8 flex flex-col gap-2">
@@ -250,73 +258,73 @@ export default function OfferMetrics() {
         </SidebarBody>
       </Sidebar>
 
-      <div className={`${open ? 'pl-72' : 'pl-14'} transition-all duration-300`}>
-        <header className={`${theme === 'dark' ? 'bg-gray-800 border-b border-gray-700' : 'bg-white shadow-sm'}`}>
-          <div className="max-w-7xl mx-auto px-4 py-4">
-            <div className="flex items-center gap-2 mb-4">
-              <Layout className="w-6 h-6 text-blue-600" />
-              <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Métricas da Oferta
-              </h1>
+      <div className={`${open ? 'lg:pl-72' : 'lg:pl-24'} transition-all duration-300 px-4 py-8 lg:px-0 pt-16 lg:pt-0`}>
+        <header className={`${theme === 'dark' ? 'bg-gray-800 border-b border-gray-700' : 'bg-white shadow-sm'} px-4 py-4 lg:px-8`}>
+          <div className="max-w-7xl mx-auto">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
+              <div className="flex items-center gap-2">
+                <Layout className="w-6 h-6 text-blue-600" />
+                <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  Métricas da Oferta
+                </h1>
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2 flex-1">
-                <button
-                  onClick={fetchMetrics}
-                  disabled={refreshing}
-                  className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${theme === 'dark'
-                    ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                    : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-200'
-                    }`}
-                  title="Atualizar métricas"
-                >
-                  <RefreshCw className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`} />
-                  Atualizar
-                </button>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <button
+                onClick={fetchMetrics}
+                disabled={refreshing}
+                className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${theme === 'dark'
+                  ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                  : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-200'
+                  }`}
+                title="Atualizar métricas"
+              >
+                <RefreshCw className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`} />
+                Atualizar
+              </button>
 
-                <div className="flex-1 flex items-center gap-2">
-                  <label className="font-medium text-gray-700 dark:text-gray-200">Período:</label>
-                  <div className="flex flex-wrap gap-2">
-                    {PERIODS.map(p => (
-                      <button
-                        key={p.value}
-                        onClick={() => setPeriod(p.value)}
-                        className={`px-3 py-1.5 rounded-lg transition-colors ${period === p.value
-                          ? theme === 'dark'
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-blue-100 text-blue-700'
-                          : theme === 'dark'
-                            ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                            : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
-                          }`}
-                      >
-                        {p.label}
-                      </button>
-                    ))}
-                  </div>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <label className="font-medium text-gray-700 dark:text-gray-200 text-sm">Período:</label>
+                <div className="flex flex-wrap gap-1 sm:gap-2">
+                  {PERIODS.map(p => (
+                    <button
+                      key={p.value}
+                      onClick={() => setPeriod(p.value)}
+                      className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg transition-colors text-xs sm:text-sm ${period === p.value
+                        ? theme === 'dark'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-blue-100 text-blue-700'
+                        : theme === 'dark'
+                          ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                          : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                        }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
           </div>
         </header>
 
-        <main className="max-w-7xl mx-auto px-4 py-8">
+        <main className="max-w-7xl mx-auto px-4 py-8 lg:px-8">
           {/* Informações da Oferta */}
           {offer && (
             <div className="mb-6">
-              <div className={`p-6 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+              <div className={`p-4 sm:p-6 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'
                 } shadow-sm`}>
                 <h2 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'
                   }`}>
                   {offer.title}
                 </h2>
-                <div className="flex flex-wrap gap-4">
+                <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4">
                   <a
                     href={offer.offerUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-blue-500 hover:text-blue-600"
+                    className="flex items-center gap-1 text-blue-500 hover:text-blue-600 text-sm"
                   >
                     Página da Oferta <ArrowRight className="h-4 w-4" />
                   </a>
@@ -324,11 +332,11 @@ export default function OfferMetrics() {
                     href={offer.landingPageUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-blue-500 hover:text-blue-600"
+                    className="flex items-center gap-1 text-blue-500 hover:text-blue-600 text-sm"
                   >
                     Landing Page <ArrowRight className="h-4 w-4" />
                   </a>
-                  <span className={`px-2 py-1 rounded text-sm ${{
+                  <span className={`inline-flex px-2 py-1 rounded text-xs sm:text-sm ${{
                     waiting: 'bg-yellow-100 text-yellow-800',
                     testing: 'bg-blue-100 text-blue-800',
                     approved: 'bg-green-100 text-green-800',
@@ -344,84 +352,73 @@ export default function OfferMetrics() {
 
           {/* Cards de Métricas */}
           {!loading && !error && metrics.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-              <div className={`p-6 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6">
+              <div className={`p-4 sm:p-6 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'
                 } shadow-sm`}>
                 <h3 className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                   }`}>
-                  Anúncios Atuais
+                  Último Valor
                 </h3>
-                <p className={`text-2xl font-bold mt-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'
+                <p className={`text-2xl sm:text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'
                   }`}>
-                  {lastMetric.toLocaleString()}
+                  {lastMetric}
                 </p>
               </div>
 
-              <div className={`p-6 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+              <div className={`p-4 sm:p-6 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'
                 } shadow-sm`}>
                 <h3 className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                   }`}>
-                  Variação no Período
+                  Variação
                 </h3>
-                <div className="flex items-center gap-2 mt-2">
+                <div className="flex items-center gap-2">
+                  <p className={`text-2xl sm:text-3xl font-bold ${isPositive ? 'text-green-500' : 'text-red-500'
+                    }`}>
+                    {isPositive ? '+' : ''}{variation}
+                  </p>
                   {isPositive ? (
                     <TrendingUp className="h-5 w-5 text-green-500" />
                   ) : (
                     <TrendingDown className="h-5 w-5 text-red-500" />
                   )}
-                  <p className={`text-2xl font-bold ${isPositive ? 'text-green-500' : 'text-red-500'
-                    }`}>
-                    {variation > 0 ? '+' : ''}{variation.toLocaleString()}
-                  </p>
                 </div>
               </div>
 
-              <div className={`p-6 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+              <div className={`p-4 sm:p-6 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'
                 } shadow-sm`}>
                 <h3 className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                   }`}>
-                  Variação Percentual
+                  Variação %
                 </h3>
-                <div className="flex items-center gap-2 mt-2">
+                <div className="flex items-center gap-2">
+                  <p className={`text-2xl sm:text-3xl font-bold ${isPositive ? 'text-green-500' : 'text-red-500'
+                    }`}>
+                    {isPositive ? '+' : ''}{percentVariation.toFixed(1)}%
+                  </p>
                   {isPositive ? (
                     <TrendingUp className="h-5 w-5 text-green-500" />
                   ) : (
                     <TrendingDown className="h-5 w-5 text-red-500" />
                   )}
-                  <p className={`text-2xl font-bold ${isPositive ? 'text-green-500' : 'text-red-500'
-                    }`}>
-                    {percentVariation > 0 ? '+' : ''}{percentVariation.toFixed(1)}%
-                  </p>
                 </div>
               </div>
             </div>
           )}
 
           {/* Gráfico */}
-          <div className={`rounded-lg shadow-sm ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-            } p-6`}>
-            {loading && (
-              <div className="flex items-center justify-center h-80 text-gray-500 dark:text-gray-400">
-                <RefreshCw className="w-6 h-6 animate-spin mr-2" />
-                Carregando...
-              </div>
-            )}
-            {error && (
-              <div className="text-red-500 font-semibold flex items-center justify-center h-80">
-                {error}
-              </div>
-            )}
-            {!loading && !error && metrics.length === 0 && (
-              <div className="text-gray-500 dark:text-gray-400 text-center flex flex-col items-center justify-center h-80 gap-2">
-                <span className="text-4xl">📉</span>
-                <span>Nenhuma métrica registrada para este período.</span>
-              </div>
-            )}
-            {!loading && !error && metrics.length > 0 && (
-              <div className="w-full" style={{ height: '400px' }}>
+          {!loading && !error && metrics.length > 0 && (
+            <div className={`p-4 sm:p-6 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+              } shadow-sm`}>
+              <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'
+                }`}>
+                Evolução das Métricas
+              </h3>
+              <div className="h-64 sm:h-80">
                 <Line
                   data={chartData}
                   options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
                     plugins: {
                       legend: {
                         labels: {
@@ -430,14 +427,6 @@ export default function OfferMetrics() {
                           padding: 16,
                         },
                       },
-                      tooltip: {
-                        callbacks: {
-                          label: (context) => {
-                            const value = context.raw as number;
-                            return `Anúncios: ${value.toLocaleString()}`;
-                          }
-                        }
-                      }
                     },
                     scales: {
                       x: {
@@ -445,20 +434,36 @@ export default function OfferMetrics() {
                         grid: { color: theme === 'dark' ? 'rgba(55,65,81,0.2)' : 'rgba(156,163,175,0.2)' },
                       },
                       y: {
-                        ticks: {
-                          color: theme === 'dark' ? '#d1d5db' : '#6b7280',
-                          callback: (value) => value.toLocaleString()
-                        },
+                        ticks: { color: theme === 'dark' ? '#d1d5db' : '#6b7280' },
                         grid: { color: theme === 'dark' ? 'rgba(55,65,81,0.2)' : 'rgba(156,163,175,0.2)' },
                       },
                     },
-                    responsive: true,
-                    maintainAspectRatio: false,
                   }}
                 />
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* Estados de Loading e Error */}
+          {loading && (
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          )}
+
+          {error && (
+            <div className="text-center py-8">
+              <p className="text-red-600 dark:text-red-400">{error}</p>
+            </div>
+          )}
+
+          {!loading && !error && metrics.length === 0 && (
+            <div className="text-center py-8">
+              <p className={`text-gray-500 ${theme === 'dark' ? 'dark:text-gray-400' : ''}`}>
+                Nenhuma métrica encontrada para este período.
+              </p>
+            </div>
+          )}
         </main>
       </div>
     </div>

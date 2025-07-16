@@ -92,6 +92,7 @@ type Plan = {
   features: string[];
   max_quizzes?: number | null;
   quiz_extra_price?: number | null;
+  checkout_url: string; // Added for new plan structure
 };
 
 // Seção de funcionalidades poderosas
@@ -179,7 +180,6 @@ export function LandingPage() {
             <a href="#features" className={theme === 'dark' ? 'hover:text-[#2563eb]' : 'hover:text-blue-600'}>Recursos</a>
             <a href="#planos" className={theme === 'dark' ? 'hover:text-[#2563eb]' : 'hover:text-blue-600'}>Planos</a>
             <a href="#faq" className={theme === 'dark' ? 'hover:text-[#2563eb]' : 'hover:text-blue-600'}>FAQ</a>
-            {/* <a href="/login" className={theme === 'dark' ? 'hover:text-[#2563eb]' : 'hover:text-blue-600'}>Entrar</a> */}
             <button
               onClick={toggleTheme}
               className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -191,9 +191,9 @@ export function LandingPage() {
               )}
             </button>
           </div>
-          <div>
-            <a href="#planos" className={theme === 'dark' ? 'px-4 py-2 bg-[#131a29] text-white rounded-lg font-semibold hover:bg-[#374151] border border-[#374151]' : 'px-4 py-2 bg-gray-100 text-gray-900 rounded-lg font-semibold hover:bg-gray-200 border border-gray-200'}>Comece Grátis</a>
-            <a href="/login" className={theme === 'dark' ? 'ml-4 px-4 py-2 bg-[#2563eb] text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors' : 'ml-4 px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors'}>Entrar</a>
+          <div className="flex items-center gap-2">
+            <a href="#planos" className={theme === 'dark' ? 'hidden sm:inline-block px-4 py-2 bg-[#131a29] text-white rounded-lg font-semibold hover:bg-[#374151] border border-[#374151]' : 'hidden sm:inline-block px-4 py-2 bg-gray-100 text-gray-900 rounded-lg font-semibold hover:bg-gray-200 border border-gray-200'}>Comece Grátis</a>
+            <a href="/login" className={theme === 'dark' ? 'px-4 py-2 bg-[#2563eb] text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors' : 'px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors'}>Entrar</a>
           </div>
         </nav>
       </header>
@@ -201,21 +201,14 @@ export function LandingPage() {
       {/* Hero Section */}
       <section className={theme === 'dark' ? 'pt-32 pb-0 px-4 bg-[#111827] text-center' : 'pt-32 pb-0 px-4 bg-white text-center'} id="hero">
         <div className="max-w-4xl mx-auto">
-          <h1 className={theme === 'dark' ? 'text-4xl md:text-6xl font-bold mb-6 leading-tight' : 'text-4xl md:text-6xl font-bold mb-6 leading-tight text-gray-900'}>Clone, Analise e Proteja suas Ofertas com Clonup</h1>
-          <p className={theme === 'dark' ? 'text-xl text-[#cbd5e1] max-w-2xl mx-auto mb-8' : 'text-xl text-gray-600 max-w-2xl mx-auto mb-8'}>Tudo o que afiliados, produtores e media buyers precisam numa só plataforma.</p>
+          <h1 className={theme === 'dark' ? 'text-3xl sm:text-4xl md:text-6xl font-bold mb-6 leading-tight' : 'text-3xl sm:text-4xl md:text-6xl font-bold mb-6 leading-tight text-gray-900'}>Clone, Analise e Proteja suas Ofertas com Clonup</h1>
+          <p className={theme === 'dark' ? 'text-lg sm:text-xl text-[#cbd5e1] max-w-2xl mx-auto mb-8' : 'text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto mb-8'}>Tudo o que afiliados, produtores e media buyers precisam numa só plataforma.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            <a href="#planos" className={theme === 'dark' ? 'px-8 py-3 bg-[#2563eb] text-white rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors' : 'px-8 py-3 bg-blue-600 text-white rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors'}>Liberar acesso ao Clonup</a>
-            {/* <a href="#planos" className={theme === 'dark' ? 'px-8 py-3 bg-[#131a29] text-white rounded-lg text-lg font-semibold hover:bg-[#374151] border border-[#374151]' : 'px-8 py-3 bg-gray-100 text-gray-900 rounded-lg text-lg font-semibold hover:bg-gray-200 border border-gray-200'}>Comece Grátis</a> */}
+            <a href="#planos" className={theme === 'dark' ? 'px-6 sm:px-8 py-3 bg-[#2563eb] text-white rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors' : 'px-6 sm:px-8 py-3 bg-blue-600 text-white rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors'}>Liberar acesso ao Clonup</a>
           </div>
-          <div id="preview" className={theme === 'dark' ? 'rounded-xl  p-4 max-w-2xl mx-auto my-6' : 'rounded-xl p-4 max-w-2xl mx-auto my-6'}>
+          <div id="preview" className={theme === 'dark' ? 'rounded-xl p-4 max-w-2xl mx-auto my-6' : 'rounded-xl p-4 max-w-2xl mx-auto my-6'}>
             <div className="w-full aspect-video rounded-lg">
-              {/* <video
-                src="/assets/editor-demo.mp4"
-                poster="/assets/editor-demo-poster.png"
-                controls
-                className="w-full h-full object-cover rounded-lg"
-                style={{ maxHeight: 320 }}
-              /> */}
+              {/* Video placeholder */}
             </div>
           </div>
         </div>
@@ -338,81 +331,58 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Planos e Preços */}
-      <section id="planos" className={theme === 'dark' ? 'py-20 px-4 bg-[#111827]' : 'py-20 px-4 bg-white'}>
-        <div className="max-w-7xl mx-auto text-center mb-12">
-          <h2 className={theme === 'dark' ? 'text-3xl md:text-4xl font-bold mb-4' : 'text-3xl md:text-4xl font-bold mb-4 text-gray-900'}>🧩 Planos e Preços — Tudo o que você precisa para dominar os anúncios</h2>
-          <p className={theme === 'dark' ? 'text-xl text-[#cbd5e1]' : 'text-xl text-gray-600'}>Todos os planos incluem:</p>
-          <ul className={theme === 'dark' ? 'text-[#cbd5e1] flex flex-wrap gap-3 justify-center mt-4 text-base' : 'text-gray-600 flex flex-wrap gap-3 justify-center mt-4 text-base'}>
-            <li className="flex items-center gap-2"><span className="text-green-400">✔</span> Hospedagem premium + SSL gratuito</li>
-            <li className="flex items-center gap-2"><span className="text-green-400">✔</span> Extração e download de criativos vencedores</li>
-            <li className="flex items-center gap-2"><span className="text-green-400">✔</span> Monitoramento de bibliotecas do Facebook Ads</li>
-            <li className="flex items-center gap-2"><span className="text-green-400">✔</span> Clonagem e anticlone (quantidade definida por plano)</li>
-            <li className="flex items-center gap-2"><span className="text-green-400">✔</span> Suporte via WhatsApp</li>
-          </ul>
-        </div>
-        <div className="max-w-5xl mx-auto grid md:grid-cols-3 gap-8">
-          {plans.map((plan, idx) => {
-            const isStarter = plan.name === 'starter';
-            const isPromo = isStarter && plan.price === 67;
-            return (
-              <div key={plan.id} className={theme === 'dark'
-                ? `min-w-[320px] max-w-full md:min-w-[340px] md:max-w-[400px] flex-1 bg-[#131a29] rounded-xl shadow-lg p-8 flex flex-col items-center border-2 ${idx === 1 ? 'border-4 border-yellow-400 scale-105' : idx === 2 ? 'border-2 border-red-500' : 'border-2 border-[#2563eb]'}`
-                : `min-w-[320px] max-w-full md:min-w-[340px] md:max-w-[400px] flex-1 bg-white rounded-xl shadow-lg p-8 flex flex-col items-center ${idx === 1 ? 'border-4 border-yellow-400 scale-105' : idx === 2 ? 'border-2 border-red-500' : 'border-2 border-blue-600'}`
-              }>
-                <h3 className="text-xl font-bold mb-2 text-center">
-                  {isStarter ? '🟢 Starter' : plan.name === 'intermediario' ? '🟡 Intermediário' : '🔴 Avançado'}
-                </h3>
-                {idx === 1 && (
-                  <div className="flex justify-center">
-                    <span className="inline-block mt-2 px-3 py-1 bg-yellow-400 text-black rounded-full text-xs font-bold shadow">Recomendado</span>
+      {/* Planos Section */}
+      <section id="planos" className={theme === 'dark' ? 'py-20 px-4 bg-[#131a29]' : 'py-20 px-4 bg-gray-50'}>
+        <div className="max-w-7xl mx-auto text-center">
+          <h2 className={theme === 'dark' ? 'text-3xl sm:text-4xl font-bold mb-4' : 'text-3xl sm:text-4xl font-bold mb-4 text-gray-900'}>Escolha o plano ideal para você</h2>
+          <p className={theme === 'dark' ? 'text-lg sm:text-xl text-[#cbd5e1] mb-12' : 'text-lg sm:text-xl text-gray-600 mb-12'}>Comece grátis e escale conforme sua necessidade</p>
+
+          <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+            {plans.map((plan, idx) => {
+              const isStarter = plan.name === 'starter';
+              return (
+                <div key={plan.id} className={theme === 'dark'
+                  ? `w-full max-w-md mx-auto bg-[#131a29] rounded-xl shadow-lg p-6 sm:p-8 flex flex-col items-center border-2 ${idx === 1 ? 'border-4 border-yellow-400 lg:scale-105' : idx === 2 ? 'border-2 border-red-500' : 'border-2 border-[#2563eb]'}`
+                  : `w-full max-w-md mx-auto bg-white rounded-xl shadow-lg p-6 sm:p-8 flex flex-col items-center ${idx === 1 ? 'border-4 border-yellow-400 lg:scale-105' : idx === 2 ? 'border-2 border-red-500' : 'border-2 border-blue-600'}`
+                }>
+                  <h3 className="text-lg sm:text-xl font-bold mb-2 text-center">
+                    {isStarter ? '🟢 Starter' : plan.name === 'intermediario' ? '🟡 Intermediário' : '🔴 Avançado'}
+                  </h3>
+                  {idx === 1 && (
+                    <div className="flex justify-center">
+                      <span className="inline-block mt-2 px-3 py-1 bg-yellow-400 text-black rounded-full text-xs font-bold shadow">Recomendado</span>
+                    </div>
+                  )}
+                  {idx === 2 && (
+                    <div className="flex justify-center">
+                      <span className="inline-block mt-2 px-3 py-1 bg-red-500 text-white rounded-full text-xs font-bold shadow">Mais Vendido</span>
+                    </div>
+                  )}
+                  <div className="text-center my-6">
+                    <span className="text-3xl sm:text-4xl font-bold">R$ {plan.price}</span>
+                    <span className={theme === 'dark' ? 'text-[#cbd5e1] ml-2' : 'text-gray-600 ml-2'}>/mês</span>
                   </div>
-                )}
-                {isPromo ? (
-                  <>
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="text-lg line-through text-gray-400">R$ 67</span>
-                      <span className="text-4xl font-extrabold text-green-500">R$ 37</span>
-                      <span className="text-base font-normal text-gray-400">/ mês</span>
-                    </div>
-                    <span className="inline-block mb-2 px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-bold">Lançamento</span>
-                    <div className="mt-2 text-xs text-green-700 bg-green-50 rounded px-2 py-1 text-center">
-                      Para garantir o valor de R$37, use o cupom <b>lancamento</b> no checkout.
-                    </div>
-                  </>
-                ) : (
-                  <span className="text-3xl font-extrabold mb-2">R$ {plan.price},00 <span className="text-base font-normal">/ mês</span></span>
-                )}
-                <ul className={theme === 'dark' ? 'text-[#cbd5e1] mb-6 space-y-1 text-center' : 'text-gray-600 mb-6 space-y-1 text-center'}>
-                  <li>📊 Monitoramento de até <b>{plan.max_libraries}</b> bibliotecas</li>
-                  <li>🧬 Até <b>{plan.max_clones}</b> páginas clonadas + {plan.max_anticlone} com anticlone</li>
-                  {plan.max_quizzes !== undefined && plan.max_quizzes !== null && (
-                    <li>📝 Até <b>{plan.max_quizzes === -1 ? 'ilimitados' : plan.max_quizzes}</b> quizzes clonados</li>
-                  )}
-                  {plan.quiz_extra_price !== undefined && plan.quiz_extra_price !== null && plan.max_quizzes !== null && plan.max_quizzes !== -1 && (
-                    <li>➕ Quiz adicional: <b>R$ {plan.quiz_extra_price},00</b></li>
-                  )}
-                  {plan.max_cloaker_requests && <li>🛡️ Cloaker incluso com até <b>{plan.max_cloaker_requests.toLocaleString('pt-BR')}</b> requisições/mês</li>}
-                  {plan.name === 'intermediario' && <li>⚠️ Excedente: R$ 3,00 a cada 1.000 requisições extras</li>}
-                  {plan.name === 'avancado' && <li>⚠️ Excedente: R$ 2,00 a cada 1.000 requisições extras</li>}
-                  {Array.isArray(plan.features) && plan.features.map((f: string, i: number) => <li key={i}>{f}</li>)}
-                </ul>
-                <a
-                  href={`/register?plan=${plan.name}`}
-                  className={theme === 'dark'
-                    ? `w-full py-3 ${idx === 1 ? 'bg-yellow-400 text-black' : idx === 2 ? 'bg-red-500 text-white' : 'bg-[#2563eb] text-white'} rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors text-center`
-                    : `w-full py-3 ${idx === 1 ? 'bg-yellow-400 text-black' : idx === 2 ? 'bg-red-500 text-white' : 'bg-blue-600 text-white'} rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors text-center`
-                  }
-                >
-                  Assinar {plan.name.charAt(0).toUpperCase() + plan.name.slice(1)}
-                </a>
-              </div>
-            );
-          })}
-        </div>
-        <div className={theme === 'dark' ? 'text-[#cbd5e1] text-center mt-8' : 'text-gray-600 text-center mt-8'}>
-          <p>Todos os planos contam com <b>garantia de 7 dias</b>. Cancele sem compromisso caso não ache que é para você.</p>
-          <p className="mt-2">O <b>plano intermediário</b> oferece o melhor custo-benefício para quem já faz anúncios e quer escalar com segurança e inteligência.</p>
+                  <ul className="space-y-3 mb-8 text-left w-full">
+                    {plan.features.map((feature, featureIdx) => (
+                      <li key={featureIdx} className="flex items-start gap-3">
+                        <span className="text-green-500 mt-1 flex-shrink-0">✓</span>
+                        <span className={theme === 'dark' ? 'text-[#cbd5e1] text-sm' : 'text-gray-600 text-sm'}>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <a
+                    href={plan.checkout_url}
+                    className={theme === 'dark'
+                      ? 'w-full py-3 bg-[#2563eb] text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors text-center'
+                      : 'w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors text-center'
+                    }
+                  >
+                    Começar Agora
+                  </a>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </section>
 

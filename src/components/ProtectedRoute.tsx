@@ -25,6 +25,15 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // Se o pagamento estiver atrasado, redirecionar para tela especial
+      if (profile.subscription_status === 'past_due') {
+        if (isMounted) {
+          setRedirectUrl('/escolher-plano?message=past_due');
+          setChecking(false);
+        }
+        return;
+      }
+
       // Se estiver em trial, verificar se expirou
       if (profile.subscription_status === 'trialing') {
         // Se não tiver data de expiração do trial, precisa escolher plano
@@ -119,7 +128,11 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }, [refreshProfile]);
 
   if (isLoading || checking) {
-    return <div className="p-8">Carregando...</div>;
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
   }
 
   if (!user) {

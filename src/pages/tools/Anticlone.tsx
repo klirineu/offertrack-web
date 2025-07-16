@@ -103,6 +103,84 @@ const SiteTableRow = ({ site, onDelete, onSelect, getScriptUrl, theme }: SiteTab
   );
 };
 
+// Componente de card para mobile
+const SiteCard = ({ site, onDelete, onSelect, getScriptUrl, theme }: SiteTableRowProps) => {
+  const [cloneCount, setCloneCount] = useState<number>(0);
+
+  useEffect(() => {
+    const fetchCloneCount = async () => {
+      try {
+        const { count, error } = await supabase
+          .from('detected_clones')
+          .select('*', { count: 'exact', head: true })
+          .eq('anticlone_site_id', site.id);
+
+        if (error) {
+          console.error('Error fetching clone count:', error);
+          setCloneCount(0);
+        } else {
+          setCloneCount(count || 0);
+        }
+      } catch (err) {
+        console.error('Error in fetchCloneCount:', err);
+        setCloneCount(0);
+      }
+    };
+    fetchCloneCount();
+  }, [site.id]);
+
+  return (
+    <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'} shadow-sm`}>
+      <div className="space-y-3">
+        <div>
+          <div className="text-sm font-medium text-gray-500 dark:text-gray-400">URL Original</div>
+          <div className="break-all text-sm">{site.original_url}</div>
+        </div>
+
+        <div className="flex justify-between items-center">
+          <div>
+            <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Data Cadastro</div>
+            <div className="text-sm">{new Date(site.created_at).toLocaleDateString()}</div>
+          </div>
+          <div>
+            <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Clones Detectados</div>
+            <div className="text-sm">{cloneCount}</div>
+          </div>
+        </div>
+
+        <div className="flex justify-between items-center pt-2 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(getScriptUrl(site.id));
+                alert('Script copiado para a área de transferência!');
+              }}
+              className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+              title="Copiar Script"
+            >
+              <Copy className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => onSelect(site.id)}
+              className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+              title="Ver Detalhes"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => onDelete(site.id)}
+              className="p-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+              title="Excluir"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ClonedDomainsList = ({ siteId }: { siteId: string }) => {
   const [clones, setClones] = useState<ClonedDomain[]>([]);
   const [loading, setLoading] = useState(true);
@@ -176,7 +254,7 @@ const ClonedDomainsList = ({ siteId }: { siteId: string }) => {
 
   return (
     <div className="space-y-4">
-      <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}>
+      <div className={`p-4 sm:p-6 rounded-lg border ${theme === 'dark' ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}>
         <h3 className="text-lg font-medium mb-4">Configurar Ação</h3>
         <div className="space-y-4">
           <div>
@@ -184,7 +262,7 @@ const ClonedDomainsList = ({ siteId }: { siteId: string }) => {
             <select
               value={editingAction.type}
               onChange={(e) => setEditingAction(prev => ({ ...prev, type: e.target.value as ActionType }))}
-              className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark'
+              className={`w-full px-3 py-2 sm:px-4 sm:py-2 rounded-lg border ${theme === 'dark'
                 ? 'bg-gray-700 border-gray-600 text-white'
                 : 'bg-white border-gray-300 text-gray-900'
                 }`}
@@ -209,7 +287,7 @@ const ClonedDomainsList = ({ siteId }: { siteId: string }) => {
                     ? 'https://seusite.com'
                     : 'https://seusite.com/imagem.jpg'
                 }
-                className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark'
+                className={`w-full px-3 py-2 sm:px-4 sm:py-2 rounded-lg border ${theme === 'dark'
                   ? 'bg-gray-700 border-gray-600 text-white'
                   : 'bg-white border-gray-300 text-gray-900'
                   }`}
@@ -223,7 +301,7 @@ const ClonedDomainsList = ({ siteId }: { siteId: string }) => {
 
           <button
             onClick={handleUpdateAction}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             Salvar Ação
           </button>
@@ -231,30 +309,30 @@ const ClonedDomainsList = ({ siteId }: { siteId: string }) => {
       </div>
 
       {clones.length === 0 ? (
-        <div className="text-center text-gray-500">Nenhum clone detectado ainda.</div>
+        <div className="text-center text-gray-500 py-8">Nenhum clone detectado ainda.</div>
       ) : (
-        clones.map((clone) => (
-          <div
-            key={clone.url}
-            className={`p-4 rounded-lg border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}
-          >
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <div className="font-medium break-all">{clone.url}</div>
-                  <div className="text-sm text-gray-500">Domínio: {clone.domain}</div>
+        <div className="space-y-4">
+          {clones.map((clone) => (
+            <div
+              key={clone.url}
+              className={`p-4 sm:p-6 rounded-lg border ${theme === 'dark' ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}
+            >
+              <div className="space-y-3">
+                <div>
+                  <div className="font-medium break-all text-sm sm:text-base">{clone.url}</div>
+                  <div className="text-xs sm:text-sm text-gray-500">Domínio: {clone.domain}</div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-xs sm:text-sm text-gray-500">
+                  <div>Detectado em: {new Date(clone.firstSeen).toLocaleDateString()}</div>
+                  <div>Último acesso: {new Date(clone.lastAccess).toLocaleDateString()}</div>
+                  <div>Acessos: {clone.accessCount}</div>
+                  <div>Status: {clone.status}</div>
+                  <div>Similaridade: {clone.similarityScore}%</div>
                 </div>
               </div>
-              <div className="text-sm text-gray-500 grid grid-cols-1 md:grid-cols-2 gap-2">
-                <div>Detectado em: {new Date(clone.firstSeen).toLocaleDateString()}</div>
-                <div>Último acesso: {new Date(clone.lastAccess).toLocaleDateString()}</div>
-                <div>Acessos: {clone.accessCount}</div>
-                <div>Status: {clone.status}</div>
-                <div>Similaridade: {clone.similarityScore}%</div>
-              </div>
             </div>
-          </div>
-        ))
+          ))}
+        </div>
       )}
     </div>
   );
@@ -390,8 +468,16 @@ export function Anticlone() {
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
+      {/* Mobile overlay */}
+      {open && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+          onClick={() => setOpen(false)}
+        />
+      )}
+
       <Sidebar open={open} setOpen={setOpen}>
-        <SidebarBody className={`w-64 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border-r h-screen fixed left-0 top-0`}>
+        <SidebarBody className={`w-64 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border-r h-screen fixed left-0 top-0 z-40`}>
           <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
             {open ? <Logo /> : <LogoIcon />}
             <div className="mt-8 flex flex-col gap-2">
@@ -418,25 +504,27 @@ export function Anticlone() {
         </SidebarBody>
       </Sidebar>
 
-      <div className={`${open ? 'pl-72' : 'pl-14'} transition-all duration-300`}>
-        <header className={`${theme === 'dark' ? 'bg-gray-800 border-b border-gray-700' : 'bg-white shadow-sm'}`}>
-          <div className="max-w-7xl mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Shield className="w-6 h-6 text-blue-600" />
-                <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Anticlone
-                </h1>
+      <div className={`${open ? 'lg:pl-72' : 'lg:pl-24'} transition-all duration-300 px-4 py-8 lg:px-0 pt-16 lg:pt-0`}>
+        <header className={`${theme === 'dark' ? 'bg-gray-800 border-b border-gray-700' : 'bg-white shadow-sm'} px-4 py-4 lg:px-8`}>
+          <div className="max-w-7xl mx-auto">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                <div className="flex items-center gap-2">
+                  <Shield className="w-6 h-6 text-blue-600" />
+                  <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    Anticlone
+                  </h1>
+                </div>
                 <button
                   onClick={fetchSites}
-                  className="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded text-sm ml-2"
+                  className="w-full sm:w-auto px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded text-sm"
                 >
                   Atualizar
                 </button>
               </div>
               <button
                 onClick={() => setShowNewOfferForm(true)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
               >
                 <Plus className="w-5 h-5" />
                 Nova Oferta
@@ -445,7 +533,7 @@ export function Anticlone() {
           </div>
         </header>
 
-        <main className="max-w-7xl mx-auto px-4 py-8">
+        <main className="max-w-7xl mx-auto px-4 py-8 lg:px-8">
           {error && (
             <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">
               {error}
@@ -453,7 +541,7 @@ export function Anticlone() {
           )}
 
           {showNewOfferForm && (
-            <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-6 mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
               <h2 className="text-lg font-semibold mb-4">Nova Oferta</h2>
               <form onSubmit={handleAddSite} className="space-y-4">
                 <div>
@@ -464,21 +552,21 @@ export function Anticlone() {
                     onChange={(e) => setNewSiteUrl(e.target.value)}
                     placeholder="https://meusite.com/oferta"
                     required
-                    className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
+                    className={`w-full px-3 py-2 sm:px-4 sm:py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
                   />
                 </div>
-                <div className="flex justify-end gap-4">
+                <div className="flex flex-col sm:flex-row sm:justify-end gap-3 sm:gap-4">
                   <button
                     type="button"
                     onClick={() => setShowNewOfferForm(false)}
-                    className="px-4 py-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+                    className="w-full sm:w-auto px-4 py-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                   >
                     {isLoading ? 'Salvando...' : 'Salvar'}
                   </button>
@@ -487,7 +575,8 @@ export function Anticlone() {
             </div>
           )}
 
-          <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          {/* Desktop Table */}
+          <div className={`hidden lg:block bg-white dark:bg-gray-800 rounded-lg shadow-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -516,15 +605,30 @@ export function Anticlone() {
             </div>
           </div>
 
+          {/* Mobile Cards */}
+          <div className="lg:hidden space-y-4">
+            {sites.map((site: Site) => (
+              <SiteCard
+                key={site.id}
+                site={site}
+                onDelete={handleDeleteSite}
+                onSelect={setSelectedSite}
+                getScriptUrl={getScriptUrl}
+                theme={theme}
+              />
+            ))}
+          </div>
+
           {selectedSite && (
-            <div className={`mt-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              <div className="flex items-center justify-between mb-6">
+            <div className={`mt-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <h2 className="text-lg font-semibold">Domínios Clonados</h2>
                 <button
                   onClick={() => setSelectedSite(null)}
-                  className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
                 >
                   <ArrowLeft className="w-5 h-5" />
+                  Voltar
                 </button>
               </div>
               <ClonedDomainsList siteId={selectedSite} />

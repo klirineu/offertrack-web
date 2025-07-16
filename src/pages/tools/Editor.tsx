@@ -57,7 +57,7 @@ export default function Editor() {
 
   const urlParam = searchParams.get('url');
 
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [clones, setClones] = useState<CloneSite[]>([]);
   const [clonesLoading, setClonesLoading] = useState(false);
   const [editorResult, setEditorResult] = useState<{ url: string, id: string } | null>(null);
@@ -181,80 +181,141 @@ export default function Editor() {
     return !site && !quiz;
   }
 
-  // Adicionar função para clonar para o editor
-  async function handleCloneToEditor(url: string, subdomainCorreto: string) {
-    if (!user) return;
-    setActionLoading('editor');
+  const handleZipDownload = async (clone: CloneSite) => {
+    if (!clone.url) return;
+
+    setActionLoading('zip');
     try {
-      // Verificar limite antes de chamar o backend
-      const limit = await checkCloneLimit(user.id);
-      if (!limit.allowed) {
-        setErrorModal(limit.error?.message || 'Limite de clones atingido.');
+      const response = await api.post('/download-zip', { url: clone.url });
+      const downloadUrl = response.data.url;
+
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `${getDomainFromUrl(clone.original_url || clone.url)}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+    } catch (error) {
+      console.error('Erro ao baixar ZIP:', error);
+      alert('Erro ao baixar o arquivo ZIP');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDeleteClone = async (id: string) => {
+    if (!window.confirm('Tem certeza que deseja excluir este clone?')) return;
+    if (!user) return;
+
+    setDeleteLoadingId(id);
+
+    // Find the clone to get its subdomain
+    const clone = clones.find(c => c.id === id);
+    if (!clone) {
+      setDeleteLoadingId(null);
+      return;
+    }
+
+    const subdomain = getSubdomainFromUrl(clone.url) || clone.subdomain || clone.id;
+    const { error } = await removeCloneService(user.id, id, subdomain);
+
+    if (error) {
+      console.error('Erro ao deletar clone:', error);
+      alert('Erro ao deletar clone');
+    } else {
+      setClones(prev => prev.filter(clone => clone.id !== id));
+    }
+    setDeleteLoadingId(null);
+  };
+
+  const handleCloneAction = async (action: 'editor' | 'zip') => {
+    if (!cloneUrlToProcess || !user) return;
+
+    setActionLoading(action);
+    try {
+      const limitCheck = await checkCloneLimit(user.id);
+      if (!limitCheck.allowed) {
+        setErrorModal(limitCheck.error?.message || `Você atingiu o limite de ${limitCheck.max} clones. Upgrade seu plano para clonar mais sites.`);
         setActionLoading(null);
         return;
       }
-      const res = await api.post('/api/clone/folder', { url, subdomain: subdomainCorreto });
-      const data = res.data;
-      const urlSite = data.url;
-      const { error } = await addCloneService(user.id, url, urlSite, subdomainCorreto);
-      if (error) throw error;
-      setEditorResult({ url: urlSite, id: subdomainCorreto || '' });
-      // Atualizar lista de clones
-      const { data: clonesData, error: clonesError } = await fetchClonesService(user.id);
-      if (clonesError) console.error('Erro ao carregar clones:', clonesError);
-      if (clonesData) setClones(clonesData);
-    } catch (err) {
-      let msg = 'Erro inesperado ao clonar.';
-      if (err && typeof err === 'object') {
-        if (err instanceof Error && err.message) {
-          if (err.message.includes('duplicate key value')) {
-            msg = 'Este subdomínio já está em uso. Escolha outro.';
-          } else {
-            msg = err.message;
-          }
-        } else if ('error' in err && err.error && typeof err.error === 'object' && 'message' in err.error && typeof err.error.message === 'string') {
-          msg = err.error.message;
-        } else if ('message' in err && typeof (err as any).message === 'string') {
-          msg = (err as any).message;
-        }
+
+      const domain = getDomainFromUrl(cloneUrlToProcess);
+      const subdomain = subdomainInput || domain;
+
+      if (subdomainError) {
+        setActionLoading(null);
+        return;
       }
-      setErrorModal(msg);
-      console.error('Erro inesperado no handleCloneToEditor:', err);
+
+      if (!await checkSubdomainUnique(subdomain)) {
+        setSubdomainError('Este subdomínio já está em uso');
+        setActionLoading(null);
+        return;
+      }
+
+      // Generate a temporary URL for the clone
+      const tempUrl = `https://${subdomain}.clonup.site`;
+
+      const { error } = await addCloneService(
+        user.id,
+        cloneUrlToProcess,
+        tempUrl,
+        subdomain
+      );
+
+      if (error) {
+        console.error('Erro ao clonar:', error);
+        setErrorModal('Erro ao clonar o site. Tente novamente.');
+        setActionLoading(null);
+        return;
+      }
+
+      if (action === 'editor') {
+        setEditorResult({ url: tempUrl, id: subdomain });
+      } else {
+        // For ZIP download, we need to call the API directly
+        const response = await api.post('/api/clone/zip', { url: cloneUrlToProcess }, { responseType: 'blob' });
+        const blob = response.data;
+        const link = document.createElement('a');
+        link.href = window.URL.createObjectURL(blob);
+        link.download = `${domain}.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+
+      // Refresh the clones list
+      const { data: clonesData } = await fetchClonesService(user.id);
+      if (clonesData) setClones(clonesData);
+
+      setCloneUrlToProcess(null);
+      setSubdomainInput('');
+      setSubdomainError(null);
+
+    } catch (error) {
+      console.error('Erro:', error);
+      setErrorModal('Erro inesperado. Tente novamente.');
     } finally {
       setActionLoading(null);
-      setCloneUrlToProcess(null);
     }
-  }
-
-  // Função para excluir clone e mostrar modal de loading
-  async function handleDeleteClone(clone: CloneSite) {
-    const urlSite = clone.subdomain || getSubdomainFromUrl(clone.url);
-    if (!urlSite || urlSite.length === 0) {
-      setErrorModal('Não foi possível identificar o subdomínio do site clonado.');
-      return;
-    }
-    try {
-      if (!user) return;
-      setDeleteLoadingId(clone.id);
-      await removeCloneService(user.id, clone.id, urlSite);
-      // Atualizar lista de clones
-      const { data: clonesData, error: clonesError } = await fetchClonesService(user.id);
-      if (clonesError) console.error('Erro ao carregar clones:', clonesError);
-      if (clonesData) setClones(clonesData);
-    } catch (err) {
-      setErrorModal('Erro ao excluir clone: ' + (err instanceof Error ? err.message : String(err)));
-      console.error('Erro ao excluir clone:', err);
-    } finally {
-      setDeleteLoadingId(null);
-    }
-  }
+  };
 
   console.log(clones);
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
+      {/* Mobile overlay */}
+      {open && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+          onClick={() => setOpen(false)}
+        />
+      )}
+
       <Sidebar open={open} setOpen={setOpen}>
-        <SidebarBody className={`w-64 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border-r h-screen fixed left-0 top-0`}>
+        <SidebarBody className={`w-64 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border-r h-screen fixed left-0 top-0 z-40`}>
           <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
             {open ? <Logo /> : <LogoIcon />}
             <div className="mt-8 flex flex-col gap-2">
@@ -266,11 +327,11 @@ export default function Editor() {
           <div>
             <SidebarLink
               link={{
-                label: user?.email || 'Usuário',
+                label: profile?.full_name || user?.email || 'Usuário',
                 href: "/profile",
                 icon: (
                   <img
-                    src={'https://ui-avatars.com/api/?name=' + encodeURIComponent(user?.email || 'U')}
+                    src={profile?.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(profile?.full_name || user?.email || 'U')}
                     className="h-7 w-7 flex-shrink-0 rounded-full"
                     alt="Avatar"
                   />
@@ -280,239 +341,222 @@ export default function Editor() {
           </div>
         </SidebarBody>
       </Sidebar>
-      <div className={`${open ? 'pl-72' : 'pl-14'} transition-all duration-300`}>
-        <header className="w-full shadow-sm bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 h-16 flex items-center px-6 z-10">
-          <div className="flex-1 flex items-center gap-4">
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">Clone</h1>
+
+      <div className={`${open ? 'lg:pl-72' : 'lg:pl-24'} transition-all duration-300 px-4 py-8 lg:px-0 pt-16 lg:pt-0`}>
+        <header className={`${theme === 'dark' ? 'bg-gray-800 border-b border-gray-700' : 'bg-white shadow-sm'} px-4 py-4 lg:px-8`}>
+          <div className="max-w-7xl mx-auto">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <Edit className="w-6 h-6 text-blue-600" />
+                <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  Clonar Sites
+                </h1>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                <button
+                  onClick={() => setCloneUrlToProcess('')}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
+                >
+                  <Plus className="w-4 h-4" /> Clonar Site
+                </button>
+                <button
+                  onClick={() => navigate('/tools/site-builder')}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-sm"
+                >
+                  <Wrench className="w-4 h-4" /> Construir Site
+                </button>
+                <button
+                  onClick={() => navigate('/tools/clonequiz')}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm"
+                >
+                  <Plus className="w-4 h-4" /> Clonar Quiz
+                </button>
+              </div>
+            </div>
           </div>
         </header>
-        <main className="flex-1 flex flex-col items-center justify-center p-0">
-          <div className="w-full max-w-3xl mx-auto mt-8">
-            <div className="flex gap-2 mb-4">
-              <button
-                onClick={() => setCloneUrlToProcess('')}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-              >
-                <Plus className="w-4 h-4" /> Clonar Site
-              </button>
-              <button
-                onClick={() => navigate('/tools/site-builder')}
-                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
-              >
-                <Wrench className="w-4 h-4" /> Construir Site
-              </button>
-              <button
-                onClick={() => navigate('/tools/clonequiz')}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-              >
-                <Plus className="w-4 h-4" /> Clonar Quiz
-              </button>
+
+        <main className="max-w-7xl mx-auto px-4 py-8 lg:px-8">
+          {/* Modal de escolha ao clonar site */}
+          {cloneUrlToProcess !== null && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 sm:p-8 flex flex-col gap-4 sm:gap-6 items-center w-full max-w-md">
+                <h2 className="text-xl sm:text-2xl font-bold text-center text-gray-900 dark:text-white">O que deseja fazer?</h2>
+                <input
+                  type="url"
+                  placeholder="https://exemplo.com"
+                  value={cloneUrlToProcess}
+                  onChange={e => setCloneUrlToProcess(e.target.value)}
+                  className="w-full px-3 py-2 sm:px-4 sm:py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base"
+                />
+                <input
+                  type="text"
+                  placeholder="Nome do site (subdomínio)"
+                  value={subdomainInput}
+                  maxLength={20}
+                  onChange={e => {
+                    setSubdomainInput(e.target.value);
+                    setSubdomainError(validateSubdomain(e.target.value));
+                  }}
+                  className="w-full px-3 py-2 sm:px-4 sm:py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base"
+                />
+                {subdomainError && <div className="text-red-500 text-xs sm:text-sm">{subdomainError}</div>}
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full">
+                  <button
+                    onClick={() => handleCloneAction('editor')}
+                    disabled={actionLoading === 'editor' || !cloneUrlToProcess || !!subdomainError}
+                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
+                  >
+                    {actionLoading === 'editor' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Edit className="w-4 h-4" />}
+                    {actionLoading === 'editor' ? 'Clonando...' : 'Editor'}
+                  </button>
+                  <button
+                    onClick={() => handleCloneAction('zip')}
+                    disabled={actionLoading === 'zip' || !cloneUrlToProcess || !!subdomainError}
+                    className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
+                  >
+                    {actionLoading === 'zip' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                    {actionLoading === 'zip' ? 'Baixando...' : 'ZIP'}
+                  </button>
+                </div>
+                <button
+                  onClick={() => {
+                    setCloneUrlToProcess(null);
+                    setSubdomainInput('');
+                    setSubdomainError(null);
+                  }}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-sm"
+                >
+                  Cancelar
+                </button>
+              </div>
             </div>
-            {/* Modal de escolha ao clonar site */}
-            {cloneUrlToProcess !== null && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 flex flex-col gap-6 items-center w-full max-w-md">
-                  <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-white mb-2">O que deseja fazer?</h2>
-                  <input
-                    type="url"
-                    placeholder="https://exemplo.com"
-                    value={cloneUrlToProcess}
-                    onChange={e => setCloneUrlToProcess(e.target.value)}
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white mb-2"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Nome do site (subdomínio)"
-                    value={subdomainInput}
-                    maxLength={20}
-                    onChange={e => {
-                      setSubdomainInput(e.target.value);
-                      setSubdomainError(validateSubdomain(e.target.value));
+          )}
+
+          {/* Modal de erro */}
+          {errorModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 sm:p-8 flex flex-col gap-4 items-center w-full max-w-md">
+                <h2 className="text-lg sm:text-xl font-bold text-center text-red-600">Erro</h2>
+                <p className="text-center text-gray-900 dark:text-white text-sm sm:text-base">{errorModal}</p>
+                <button
+                  onClick={() => setErrorModal(null)}
+                  className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Modal de resultado do editor */}
+          {editorResult && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 sm:p-8 flex flex-col gap-4 sm:gap-6 items-center w-full max-w-md">
+                <h2 className="text-lg sm:text-xl font-bold text-center text-green-600">Clone Criado!</h2>
+                <p className="text-center text-gray-900 dark:text-white text-sm sm:text-base">
+                  Seu site foi clonado com sucesso!
+                </p>
+                <input
+                  ref={copyRef}
+                  type="text"
+                  value={editorResult.url}
+                  readOnly
+                  className="w-full px-3 py-2 sm:px-4 sm:py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-sm break-all"
+                />
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full">
+                  <button
+                    onClick={() => {
+                      copyRef.current?.select();
+                      document.execCommand('copy');
+                      alert('URL copiada!');
                     }}
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white mb-2"
-                  />
-                  {subdomainError && <div className="text-red-500 text-sm">{subdomainError}</div>}
-                  <div className="flex flex-col gap-4 w-full">
-                    <button
-                      className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 text-lg disabled:opacity-60"
-                      disabled={actionLoading !== null || !cloneUrlToProcess}
-                      onClick={async () => {
-                        const err = validateSubdomain(subdomainInput.toLowerCase());
-                        if (err) { setSubdomainError(err); return; }
-                        setSubdomainError(null);
-                        const unique = await checkSubdomainUnique(subdomainInput.toLowerCase());
-                        if (!unique) { setSubdomainError("Este nome já está em uso."); return; }
-                        await handleCloneToEditor(cloneUrlToProcess!, subdomainInput.toLowerCase());
-                      }}
-                    >
-                      {actionLoading === 'editor' ? (
-                        <span className="flex items-center gap-2"><svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" /></svg> Processando...</span>
-                      ) : (
-                        <><Edit className="w-5 h-5" /> Usar Hospedagem Clonup</>
-                      )}
-                    </button>
-                    <button
-                      className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-2 text-lg disabled:opacity-60"
-                      disabled={actionLoading !== null || !cloneUrlToProcess}
-                      onClick={async () => {
-                        setActionLoading('zip');
-                        const res = await api.post('/api/clone/zip', { url: cloneUrlToProcess }, { responseType: 'blob' });
-                        setActionLoading(null);
-                        if (res.status < 200 || res.status >= 300) {
-                          setErrorModal('Erro ao baixar ZIP');
-                          return;
-                        }
-                        const blob = res.data;
-                        const a = document.createElement('a');
-                        a.href = window.URL.createObjectURL(blob);
-                        const domain = getDomainFromUrl(cloneUrlToProcess);
-                        a.download = `${domain}.zip`;
-                        a.click();
-                        setCloneUrlToProcess(null);
-                      }}
-                    >
-                      {actionLoading === 'zip' ? (
-                        <span className="flex items-center gap-2"><svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" /></svg> Processando...</span>
-                      ) : (
-                        <><Download className="w-5 h-5" /> Baixar ZIP</>
-                      )}
-                    </button>
-                  </div>
-                  <button
-                    className="mt-4 text-sm text-gray-500 hover:underline"
-                    onClick={() => setCloneUrlToProcess(null)}
-                    disabled={actionLoading !== null}
+                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base"
                   >
-                    Cancelar
+                    Copiar URL
+                  </button>
+                  <button
+                    onClick={() => navigate(`/tools/editor-studio?id=${editorResult.id}`)}
+                    className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm sm:text-base"
+                  >
+                    Editar
                   </button>
                 </div>
+                <button
+                  onClick={() => setEditorResult(null)}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-sm"
+                >
+                  Fechar
+                </button>
               </div>
-            )}
-            {/* Modal de sucesso após clonar */}
-            {editorResult && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 flex flex-col gap-6 items-center w-full max-w-md">
-                  <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-white mb-2">Site clonado com sucesso!</h2>
-                  <input
-                    ref={copyRef}
-                    value={editorResult.url}
-                    readOnly
-                    className="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white mb-2"
-                    onFocus={e => e.target.select()}
-                  />
-                  <div className="flex gap-2 w-full">
-                    <button
-                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                      onClick={() => {
-                        if (copyRef.current) {
-                          copyRef.current.select();
-                          document.execCommand('copy');
-                        }
-                      }}
-                    >
-                      Copiar Link
-                    </button>
-                    <button
-                      className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                      onClick={() => {
-                        const urlSite = editorResult.url;
-                        const subdomain = getSubdomainFromUrl(urlSite);
-                        if (subdomain && subdomain.length > 0) {
-                          navigate(`/tools/editor-studio?id=${subdomain}`);
-                        } else {
-                          setErrorModal('Não foi possível identificar o subdomínio do site clonado.');
-                        }
-                      }}
-                    >
-                      Ir para o Editor
-                    </button>
-                  </div>
-                  <button
-                    className="mt-4 text-sm text-gray-500 hover:underline"
-                    onClick={() => { setEditorResult(null); navigate('/tools/clonesites'); }}
-                  >
-                    Voltar
-                  </button>
-                </div>
-              </div>
-            )}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-              <h3 className="text-md font-semibold px-6 pt-6 pb-2 text-gray-900 dark:text-white">Sites Clonados</h3>
-              <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                {clonesLoading ? (
-                  <li className="px-6 py-4 text-gray-500 dark:text-gray-400">Carregando...</li>
-                ) : clones.length === 0 ? (
-                  <li className="px-6 py-4 text-gray-500 dark:text-gray-400">Nenhum site clonado ainda.</li>
-                ) : clones.map(clone => (
-                  <li key={clone.id} className="flex items-center justify-between px-6 py-4 group hover:bg-gray-50 dark:hover:bg-gray-900 transition">
-                    <div>
-                      <a
-                        href={clone.url}
-                        className="text-blue-600 dark:text-blue-400 underline break-all"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {clone.url}
-                      </a>
-                      {clone.original_url && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-xs truncate" title={clone.original_url}>
-                          <span className="font-semibold">Original:</span> {clone.original_url}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          const urlSite = clone.url;
-                          const subdomain = getSubdomainFromUrl(urlSite);
-                          if (subdomain && subdomain.length > 0) {
-                            navigate(`/tools/editor-studio?id=${subdomain}`);
-                          } else {
-                            setErrorModal('Não foi possível identificar o subdomínio do site clonado.');
-                          }
-                        }}
-                        className="p-2 text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400"
-                        title="Editar"
-                      >
-                        <Edit className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteClone(clone)}
-                        className="p-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                        title="Excluir"
-                        disabled={!!deleteLoadingId}
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
             </div>
-            {/* Modal de loading ao excluir clone */}
-            {deleteLoadingId && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 flex flex-col gap-4 items-center w-full max-w-xs">
-                  <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
-                  <span className="text-lg text-gray-900 dark:text-white font-semibold">Excluindo site...</span>
-                </div>
-              </div>
-            )}
-            {/* Modal de erro */}
-            {errorModal && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 flex flex-col gap-6 items-center w-full max-w-md">
-                  <h2 className="text-2xl font-bold text-center text-red-600 dark:text-red-400 mb-2">Erro</h2>
-                  <div className="text-center text-gray-800 dark:text-gray-200 text-lg">{errorModal}</div>
-                  <button
-                    className="mt-2 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-                    onClick={() => setErrorModal(null)}
-                  >
-                    Fechar
-                  </button>
-                </div>
-              </div>
-            )}
+          )}
+
+          {/* Lista de clones */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <h3 className="text-base sm:text-lg font-semibold px-4 py-4 sm:px-6 sm:pt-6 sm:pb-2 text-gray-900 dark:text-white">Sites Clonados</h3>
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              {clonesLoading ? (
+                <div className="px-4 py-4 sm:px-6 text-gray-500 dark:text-gray-400 text-sm sm:text-base">Carregando...</div>
+              ) : clones.length === 0 ? (
+                <div className="px-4 py-4 sm:px-6 text-gray-500 dark:text-gray-400 text-sm sm:text-base">Nenhum site clonado ainda.</div>
+              ) : (
+                clones.map(clone => (
+                  <div key={clone.id} className="px-4 py-4 sm:px-6 hover:bg-gray-50 dark:hover:bg-gray-900 transition">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        {clone.url ? (
+                          <a
+                            href={clone.url}
+                            className="text-blue-600 dark:text-blue-400 underline break-all text-sm sm:text-base"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            {clone.url}
+                          </a>
+                        ) : (
+                          <span className="text-gray-500 dark:text-gray-400 text-sm sm:text-base">(Processando...)</span>
+                        )}
+                        {clone.original_url && (
+                          <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 break-all">
+                            <span className="font-semibold">Original:</span> {clone.original_url}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {clone.url && (
+                          <button
+                            onClick={() => navigate(`/tools/editor-studio?id=${clone.id}`)}
+                            className="p-2 text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300"
+                            title="Editar"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                        )}
+                        {clone.url && (
+                          <button
+                            onClick={() => handleZipDownload(clone)}
+                            disabled={actionLoading === 'zip'}
+                            className="p-2 text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 disabled:opacity-50"
+                            title="Baixar ZIP"
+                          >
+                            {actionLoading === 'zip' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDeleteClone(clone.id)}
+                          disabled={deleteLoadingId === clone.id}
+                          className="p-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 disabled:opacity-50"
+                          title="Excluir"
+                        >
+                          {deleteLoadingId === clone.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </main>
       </div>
