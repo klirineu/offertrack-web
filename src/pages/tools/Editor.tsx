@@ -526,7 +526,15 @@ export default function Editor() {
                       <div className="flex items-center gap-2">
                         {clone.url && (
                           <button
-                            onClick={() => navigate(`/tools/editor-studio?id=${clone.id}`)}
+                            onClick={() => {
+                              const urlSite = clone.url;
+                              const subdomain = getSubdomainFromUrl(urlSite);
+                              if (subdomain && subdomain.length > 0) {
+                                navigate(`/tools/editor-studio?id=${subdomain}`);
+                              } else {
+                                setErrorModal('Não foi possível identificar o subdomínio do site clonado.');
+                              }
+                            }}
                             className="p-2 text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300"
                             title="Editar"
                           >
