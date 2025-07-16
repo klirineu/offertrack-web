@@ -17,6 +17,11 @@ function isStylable(el: HTMLElement | null) {
 }
 
 function isRelevantScript(s: Element) {
+  // Exclude editor scripts
+  if (s.id === 'editor-script' || s.id === 'editor-styles') {
+    return false;
+  }
+
   const terms = [
     // Analytics e Tracking
     'facebook.com/tr',
