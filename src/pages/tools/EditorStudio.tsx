@@ -20,9 +20,9 @@ export default function EditorStudio() {
     if (!cloneId) return;
     setLoading(true);
     try {
-      // Use the API endpoint to fetch the HTML instead of direct request
-      const response = await api.get(`/api/clone/html/${cloneId}`);
-      setHtml(response.data.html);
+      const siteUrl = `https://${cloneId}.clonup.site?t=${Date.now()}`;
+      const htmlRes = await api.get(siteUrl);
+      setHtml(htmlRes.data);
     } catch (error) {
       setHtml(null);
       console.error('Erro ao carregar o site:', error);
