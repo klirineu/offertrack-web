@@ -229,78 +229,50 @@ export default function Editor() {
     setDeleteLoadingId(null);
   };
 
-  const handleCloneAction = async (action: 'editor' | 'zip') => {
-    if (!cloneUrlToProcess || !user) return;
-
-    setActionLoading(action);
+  // Função específica para clonar para o editor
+  async function handleCloneToEditor(url: string, subdomainCorreto: string) {
+    if (!user) return;
+    setActionLoading('editor');
     try {
-      const limitCheck = await checkCloneLimit(user.id);
-      if (!limitCheck.allowed) {
-        setErrorModal(limitCheck.error?.message || `Você atingiu o limite de ${limitCheck.max} clones. Upgrade seu plano para clonar mais sites.`);
+      // Verificar limite antes de chamar o backend
+      const limit = await checkCloneLimit(user.id);
+      if (!limit.allowed) {
+        setErrorModal(limit.error?.message || 'Limite de clones atingido.');
         setActionLoading(null);
         return;
       }
-
-      const domain = getDomainFromUrl(cloneUrlToProcess);
-      const subdomain = subdomainInput || domain;
-
-      if (subdomainError) {
-        setActionLoading(null);
-        return;
-      }
-
-      if (!await checkSubdomainUnique(subdomain)) {
-        setSubdomainError('Este subdomínio já está em uso');
-        setActionLoading(null);
-        return;
-      }
-
-      // Generate a temporary URL for the clone
-      const tempUrl = `https://${subdomain}.clonup.site`;
-
-      const { error } = await addCloneService(
-        user.id,
-        cloneUrlToProcess,
-        tempUrl,
-        subdomain
-      );
-
-      if (error) {
-        console.error('Erro ao clonar:', error);
-        setErrorModal('Erro ao clonar o site. Tente novamente.');
-        setActionLoading(null);
-        return;
-      }
-
-      if (action === 'editor') {
-        setEditorResult({ url: tempUrl, id: subdomain });
-      } else {
-        // For ZIP download, we need to call the API directly
-        const response = await api.post('/api/clone/zip', { url: cloneUrlToProcess }, { responseType: 'blob' });
-        const blob = response.data;
-        const link = document.createElement('a');
-        link.href = window.URL.createObjectURL(blob);
-        link.download = `${domain}.zip`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
-
-      // Refresh the clones list
-      const { data: clonesData } = await fetchClonesService(user.id);
+      const res = await api.post('/api/clone/folder', { url, subdomain: subdomainCorreto });
+      const data = res.data;
+      const urlSite = data.url;
+      const { error } = await addCloneService(user.id, url, urlSite, subdomainCorreto);
+      if (error) throw error;
+      setEditorResult({ url: urlSite, id: subdomainCorreto || '' });
+      // Atualizar lista de clones
+      const { data: clonesData, error: clonesError } = await fetchClonesService(user.id);
+      if (clonesError) console.error('Erro ao carregar clones:', clonesError);
       if (clonesData) setClones(clonesData);
-
-      setCloneUrlToProcess(null);
-      setSubdomainInput('');
-      setSubdomainError(null);
-
-    } catch (error) {
-      console.error('Erro:', error);
-      setErrorModal('Erro inesperado. Tente novamente.');
+    } catch (err) {
+      let msg = 'Erro inesperado ao clonar.';
+      if (err && typeof err === 'object') {
+        if (err instanceof Error && err.message) {
+          if (err.message.includes('duplicate key value')) {
+            msg = 'Este subdomínio já está em uso. Escolha outro.';
+          } else {
+            msg = err.message;
+          }
+        } else if ('error' in err && err.error && typeof err.error === 'object' && 'message' in err.error && typeof err.error.message === 'string') {
+          msg = err.error.message;
+        } else if ('message' in err && typeof (err as any).message === 'string') {
+          msg = (err as any).message;
+        }
+      }
+      setErrorModal(msg);
+      console.error('Erro inesperado no handleCloneToEditor:', err);
     } finally {
       setActionLoading(null);
+      setCloneUrlToProcess(null);
     }
-  };
+  }
 
   console.log(clones);
 
@@ -401,31 +373,64 @@ export default function Editor() {
                   className="w-full px-3 py-2 sm:px-4 sm:py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base"
                 />
                 {subdomainError && <div className="text-red-500 text-xs sm:text-sm">{subdomainError}</div>}
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 
+                w-full">
                   <button
-                    onClick={() => handleCloneAction('editor')}
-                    disabled={actionLoading === 'editor' || !cloneUrlToProcess || !!subdomainError}
-                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
+                    className="w-full px-4 py-2 bg-blue-600 text-white 
+                    rounded-lg hover:bg-blue-700 disabled:opacity-50 
+                    disabled:cursor-not-allowed flex items-center 
+                    justify-center gap-2 text-sm sm:text-base"
+                    disabled={actionLoading !== null || !cloneUrlToProcess}
+                    onClick={async () => {
+                      const err = validateSubdomain(subdomainInput.toLowerCase());
+                      if (err) { setSubdomainError(err); return; }
+                      setSubdomainError(null);
+                      const unique = await checkSubdomainUnique(subdomainInput.toLowerCase());
+                      if (!unique) { setSubdomainError("Este nome já está em uso."); return; }
+                      await handleCloneToEditor(cloneUrlToProcess!, subdomainInput.toLowerCase());
+                    }}
                   >
-                    {actionLoading === 'editor' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Edit className="w-4 h-4" />}
-                    {actionLoading === 'editor' ? 'Clonando...' : 'Editor'}
+                    {actionLoading === 'editor' ? (
+                      <span className="flex items-center gap-2"><svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" /></svg> Processando...</span>
+                    ) : (
+                      <><Edit className="w-5 h-5" /> Editor</>
+                    )}
                   </button>
                   <button
-                    onClick={() => handleCloneAction('zip')}
-                    disabled={actionLoading === 'zip' || !cloneUrlToProcess || !!subdomainError}
-                    className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
+                    className="w-full px-4 py-2 bg-green-600 text-white 
+                    rounded-lg hover:bg-green-700 disabled:opacity-50 
+                    disabled:cursor-not-allowed flex items-center 
+                    justify-center gap-2 text-sm sm:text-base"
+                    disabled={actionLoading !== null || !cloneUrlToProcess}
+                    onClick={async () => {
+                      setActionLoading('zip');
+                      const res = await api.post('/api/clone/zip', { url: cloneUrlToProcess }, { responseType: 'blob' });
+                      setActionLoading(null);
+                      if (res.status < 200 || res.status >= 300) {
+                        setErrorModal('Erro ao baixar ZIP');
+                        return;
+                      }
+                      const blob = res.data;
+                      const a = document.createElement('a');
+                      a.href = window.URL.createObjectURL(blob);
+                      const domain = getDomainFromUrl(cloneUrlToProcess);
+                      a.download = `${domain}.zip`;
+                      a.click();
+                      setCloneUrlToProcess(null);
+                    }}
                   >
-                    {actionLoading === 'zip' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                    {actionLoading === 'zip' ? 'Baixando...' : 'ZIP'}
+                    {actionLoading === 'zip' ? (
+                      <span className="flex items-center gap-2"><svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" /></svg> Processando...</span>
+                    ) : (
+                      <><Download className="w-5 h-5" /> Baixar ZIP</>
+                    )}
                   </button>
                 </div>
                 <button
-                  onClick={() => {
-                    setCloneUrlToProcess(null);
-                    setSubdomainInput('');
-                    setSubdomainError(null);
-                  }}
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-sm"
+                  className="text-gray-500 hover:text-gray-700 
+                  dark:text-gray-400 dark:hover:text-gray-200 text-sm"
+                  onClick={() => setCloneUrlToProcess(null)}
+                  disabled={actionLoading !== null}
                 >
                   Cancelar
                 </button>
