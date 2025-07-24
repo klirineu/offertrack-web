@@ -2,13 +2,14 @@ import { useState, useRef, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Wrench, Edit, Trash2, Plus, Download, Loader2 } from 'lucide-react';
+import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Wrench, Edit, Trash2, Plus, Download, Loader2, Clock } from 'lucide-react';
 import { SidebarBody, SidebarLink, Sidebar } from '../../components/ui/sidebar';
 import { useThemeStore } from '../../store/themeStore';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import { fetchClonesService, addCloneService, removeCloneService, checkCloneLimit, CloneSite } from '../../services/clonesService';
 import { supabase } from '../../lib/supabase';
+import { checkTrialStatus } from '../../utils/trialUtils';
 
 // Permitir tipagem global para o editor
 declare global {
@@ -217,8 +218,7 @@ export default function Editor() {
       return;
     }
 
-    const subdomain = getSubdomainFromUrl(clone.url) || clone.subdomain || clone.id;
-    const { error } = await removeCloneService(user.id, id, subdomain);
+    const { error } = await removeCloneService(user.id, id);
 
     if (error) {
       console.error('Erro ao deletar clone:', error);
@@ -349,6 +349,36 @@ export default function Editor() {
         </header>
 
         <main className="max-w-7xl mx-auto px-4 py-8 lg:px-8">
+          {/* Trial Status Banner */}
+          {profile?.subscription_status === 'trialing' && (
+            <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Clock className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <div>
+                  <h3 className="font-semibold text-blue-900 dark:text-blue-100">
+                    Período de Teste Gratuito
+                  </h3>
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    {(() => {
+                      const trialStatus = checkTrialStatus({
+                        subscription_status: profile.subscription_status,
+                        trial_started_at: profile.trial_started_at,
+                        created_at: profile.created_at
+                      });
+                      return `Você tem ${trialStatus.daysRemaining} ${trialStatus.daysRemaining === 1 ? 'dia restante' : 'dias restantes'} no seu período de teste. Aproveite todos os recursos do plano Starter!`;
+                    })()}
+                  </p>
+                </div>
+                <button
+                  onClick={() => window.location.href = '/escolher-plano'}
+                  className="ml-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
+                >
+                  Ver Planos
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Modal de escolha ao clonar site */}
           {cloneUrlToProcess !== null && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">

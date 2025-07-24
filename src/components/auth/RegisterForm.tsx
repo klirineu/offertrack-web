@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext'
+import { useAuth } from '../../context/AuthContext';
+import { AlertCircle } from 'lucide-react';
+import { formatPhone, validatePhone, cleanPhone } from '../../utils/phoneValidation';
 
 export function RegisterForm() {
   const [email, setEmail] = useState('');
@@ -9,46 +11,46 @@ export function RegisterForm() {
   const [loading, setLoading] = useState(false);
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   const [acceptTerms, setAcceptTerms] = useState(false);
   const navigate = useNavigate();
   const { signUp } = useAuth();
 
-  const formatPhone = (value: string) => {
-    // Remove tudo que não for número
-    const numbers = value.replace(/\D/g, '');
-
-    // Aplica a máscara (99) 99999-9999
-    if (numbers.length <= 11) {
-      if (numbers.length <= 2) {
-        return numbers.length === 0 ? '' : `(${numbers}`;
-      }
-      if (numbers.length <= 7) {
-        return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
-      }
-      return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`;
-    }
-
-    // Se tiver mais que 11 dígitos, corta
-    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
-  };
-
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatPhone(e.target.value);
     setPhone(formatted);
+
+    // Validar apenas se o campo não estiver vazio
+    if (formatted.length > 0) {
+      const error = validatePhone(formatted);
+      setPhoneError(error);
+    } else {
+      setPhoneError('');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!acceptTerms) {
       setError('Você precisa aceitar os termos de uso e política de privacidade para continuar.');
       return;
     }
+
+    // Validar telefone antes de enviar
+    const phoneValidationError = validatePhone(phone);
+    if (phoneValidationError) {
+      setPhoneError(phoneValidationError);
+      setError('Por favor, corrija os erros no formulário.');
+      return;
+    }
+
     try {
       setError('');
       setLoading(true);
       const { error: signUpError } = await signUp(email, password, {
         full_name: fullName,
-        phone: phone.replace(/\D/g, '') // Salva apenas os números
+        phone: cleanPhone(phone) // Salva apenas os números
       });
       if (signUpError) {
         setError('Falha ao criar conta. O email já está em uso ou é inválido.');
@@ -56,7 +58,8 @@ export function RegisterForm() {
         return;
       }
       navigate('/dashboard');
-    } catch (err) {
+    } catch (error) {
+      console.error('Erro no cadastro:', error);
       setError('Ocorreu um erro inesperado. Tente novamente.');
     } finally {
       setLoading(false);
@@ -94,15 +97,42 @@ export function RegisterForm() {
               <label htmlFor="phone" className="block text-sm font-medium text-gray-300">
                 Telefone/WhatsApp
               </label>
-              <input
-                id="phone"
-                type="tel"
-                required
-                className="mt-1 block w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="(99) 99999-9999"
-                value={phone}
-                onChange={handlePhoneChange}
-              />
+              <div className="relative">
+                <input
+                  id="phone"
+                  type="tel"
+                  required
+                  className={`mt-1 block w-full px-4 py-3 bg-gray-700 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent pr-10 ${phoneError
+                    ? 'border-red-500 focus:ring-red-500'
+                    : phone.length >= 14 && !phoneError
+                      ? 'border-green-500 focus:ring-green-500'
+                      : 'border-gray-600 focus:ring-blue-500'
+                    }`}
+                  placeholder="(11) 99999-9999"
+                  value={phone}
+                  onChange={handlePhoneChange}
+                />
+                {phoneError ? (
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <AlertCircle className="h-5 w-5 text-red-500" />
+                  </div>
+                ) : phone.length >= 14 && !phoneError ? (
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <svg className="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                ) : null}
+              </div>
+              {phoneError ? (
+                <p className="mt-1 text-sm text-red-500">
+                  {phoneError}
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-gray-400">
+                  Digite seu telefone com DDD. Ex: (11) 99999-9999
+                </p>
+              )}
             </div>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-300">

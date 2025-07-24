@@ -109,12 +109,9 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
   const [selectedTag, setSelectedTag] = useState('');
   const [bgColorInput, setBgColorInput] = useState('');
   const [colorInput, setColorInput] = useState('');
-  const [showScriptModal, setShowScriptModal] = useState(false);
-  const [scriptHead, setScriptHead] = useState('');
-  const [scriptBody, setScriptBody] = useState('');
-  const [showScriptManager, setShowScriptManager] = useState(false);
   const [headScriptsText, setHeadScriptsText] = useState('');
   const [bodyScriptsText, setBodyScriptsText] = useState('');
+  const [showScriptManager, setShowScriptManager] = useState(false);
   const [customLink, setCustomLink] = useState('');
 
   // Sincroniza atributos do elemento selecionado
@@ -399,64 +396,133 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
     }
   }
 
-  function handleAddScript() {
-    const iframe = document.querySelector('iframe');
-    if (!iframe) return;
-    const doc = iframe.contentDocument;
-    if (!doc) return;
-
-    try {
-      // Adiciona script no head exatamente como foi digitado
-      if (scriptHead.trim()) {
-        const range = doc.createRange();
-        const headFragment = range.createContextualFragment(scriptHead.trim());
-        doc.head.appendChild(headFragment);
-      }
-
-      // Adiciona script no body exatamente como foi digitado
-      if (scriptBody.trim()) {
-        const range = doc.createRange();
-        const bodyFragment = range.createContextualFragment(scriptBody.trim());
-        doc.body.appendChild(bodyFragment);
-      }
-
-      setShowScriptModal(false);
-      setScriptHead('');
-      setScriptBody('');
-      setSaveMsg('Script inserido com sucesso!');
-      setTimeout(() => setSaveMsg(''), 3000);
-    } catch (error) {
-      console.error('Erro ao adicionar script:', error);
-      setSaveMsg('Erro ao inserir script');
-      setTimeout(() => setSaveMsg(''), 3000);
-    }
-  }
-
   function openScriptManager() {
     const iframe = document.querySelector('iframe');
     if (!iframe) return;
     const doc = iframe.contentDocument;
     if (!doc) return;
 
-    // Função para formatar scripts com espaços
+    // Função melhorada para formatar scripts evitando duplicações e scripts dinâmicos
     const formatScripts = (scripts: Element[]) => {
-      return scripts
+      const processedScripts = new Set<string>();
+      const formattedScripts: string[] = [];
+
+      scripts
         .filter(isRelevantScript)
-        .map(s => s.outerHTML)
-        .join('\n\n'); // Adiciona linha em branco entre scripts
+        .forEach(script => {
+          const scriptEl = script as HTMLScriptElement;
+
+          // Filtra scripts que foram carregados dinamicamente pelo Facebook ou outros serviços
+          const isDynamicScript =
+            // Scripts do Facebook carregados dinamicamente
+            (scriptEl.src && scriptEl.src.includes('connect.facebook.net/signals/config')) ||
+            (scriptEl.src && scriptEl.src.includes('connect.facebook.net/en_US/fbevents.js') && !scriptEl.innerHTML) ||
+            // Scripts com atributos que indicam carregamento dinâmico
+            scriptEl.hasAttribute('data-fbq-loaded') ||
+            scriptEl.hasAttribute('data-gtm-loaded') ||
+            // Scripts sem innerHTML que foram carregados por src dinamicamente (exceto se foram adicionados pelo usuário)
+            (scriptEl.src && !scriptEl.innerHTML && !scriptEl.hasAttribute('data-editor-managed') && !scriptEl.hasAttribute('data-user-added'));
+
+          // Pula scripts dinâmicos
+          if (isDynamicScript) {
+            return;
+          }
+
+          let identifier: string;
+
+          // Cria identificador único para evitar duplicações
+          if (scriptEl.src) {
+            // Para scripts externos, usa a URL base como identificador
+            const url = new URL(scriptEl.src);
+            identifier = `${url.origin}${url.pathname}`;
+          } else {
+            // Para scripts inline, usa hash do conteúdo
+            identifier = btoa(scriptEl.innerHTML.trim()).substring(0, 20);
+          }
+
+          // Pula se já foi processado
+          if (processedScripts.has(identifier)) {
+            console.log('Script duplicado detectado, pulando:', identifier);
+            return;
+          }
+
+          processedScripts.add(identifier);
+
+          // Limpa e formata o HTML do script
+          let scriptHTML = script.outerHTML;
+
+          // Remove atributos desnecessários adicionados dinamicamente
+          scriptHTML = scriptHTML
+            .replace(/\s+data-editor-(added|managed)="true"/g, '')
+            .replace(/\s+data-user-added="true"/g, '')
+            .replace(/\s+async=""/g, ' async')
+            .replace(/\s+defer=""/g, ' defer')
+            .trim();
+
+          // Preserva comentários se existirem
+          const parentNode = script.parentNode;
+          if (parentNode) {
+            const previousNode = script.previousSibling;
+            const nextNode = script.nextSibling;
+
+            let fullHTML = scriptHTML;
+
+            // Adiciona comentário anterior se for um comentário relacionado
+            if (previousNode && previousNode.nodeType === Node.COMMENT_NODE) {
+              const comment = previousNode.textContent?.trim() || '';
+              if (comment.toLowerCase().includes('pixel') ||
+                comment.toLowerCase().includes('facebook') ||
+                comment.toLowerCase().includes('meta') ||
+                comment.toLowerCase().includes('analytics')) {
+                fullHTML = `<!--${comment}-->\n${scriptHTML}`;
+              }
+            }
+
+            // Adiciona comentário posterior se for um comentário relacionado
+            if (nextNode && nextNode.nodeType === Node.COMMENT_NODE) {
+              const comment = nextNode.textContent?.trim() || '';
+              if (comment.toLowerCase().includes('end') ||
+                comment.toLowerCase().includes('pixel') ||
+                comment.toLowerCase().includes('facebook') ||
+                comment.toLowerCase().includes('meta')) {
+                fullHTML = `${fullHTML}\n<!--${comment}-->`;
+              }
+            }
+
+            scriptHTML = fullHTML;
+          }
+
+          formattedScripts.push(scriptHTML);
+        });
+
+      return formattedScripts.join('\n\n');
     };
 
-    // Extrai scripts do head
-    const headScripts = formatScripts(Array.from(doc.head.querySelectorAll('script')));
-    const headNoScripts = formatScripts(Array.from(doc.head.querySelectorAll('noscript')));
+    // Extrai scripts do head (excluindo scripts do editor)
+    const headScripts = Array.from(doc.head.querySelectorAll('script:not([id="editor-script"]):not([id="editor-styles"])'));
+    const headNoScripts = Array.from(doc.head.querySelectorAll('noscript:not([data-editor-essential])'));
 
     // Extrai scripts do body
-    const bodyScripts = formatScripts(Array.from(doc.body.querySelectorAll('script')));
-    const bodyNoScripts = formatScripts(Array.from(doc.body.querySelectorAll('noscript')));
+    const bodyScripts = Array.from(doc.body.querySelectorAll('script'));
+    const bodyNoScripts = Array.from(doc.body.querySelectorAll('noscript'));
 
-    // Combina os scripts com espaços extras para melhor legibilidade
-    setHeadScriptsText([headScripts, headNoScripts].filter(Boolean).join('\n\n'));
-    setBodyScriptsText([bodyScripts, bodyNoScripts].filter(Boolean).join('\n\n'));
+    // Formata os scripts
+    const formattedHeadScripts = formatScripts(headScripts);
+    const formattedHeadNoScripts = formatScripts(headNoScripts);
+    const formattedBodyScripts = formatScripts(bodyScripts);
+    const formattedBodyNoScripts = formatScripts(bodyNoScripts);
+
+    // Combina os scripts com separação adequada
+    const headContent = [formattedHeadScripts, formattedHeadNoScripts]
+      .filter(content => content.trim())
+      .join('\n\n');
+
+    const bodyContent = [formattedBodyScripts, formattedBodyNoScripts]
+      .filter(content => content.trim())
+      .join('\n\n');
+
+    setHeadScriptsText(headContent);
+    setBodyScriptsText(bodyContent);
     setShowScriptManager(true);
   }
 
@@ -466,31 +532,171 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
     const doc = iframe.contentDocument;
     if (!doc) return;
 
-    // Remove scripts existentes
-    Array.from(doc.head.querySelectorAll('script, noscript')).forEach(s => s.remove());
-    Array.from(doc.body.querySelectorAll('script, noscript')).forEach(s => s.remove());
+    try {
+      // Preserva scripts essenciais do editor antes de remover
+      const editorScripts = Array.from(doc.head.querySelectorAll('script[id="editor-script"], script[id="editor-styles"]'));
+      const editorNoScripts = Array.from(doc.head.querySelectorAll('noscript[data-editor-essential]'));
 
-    // Função para inserir scripts mantendo a formatação
-    const insertScripts = (container: HTMLElement, scriptsText: string) => {
-      if (!scriptsText.trim()) return;
+      // Remove apenas scripts adicionados pelo usuário (não os do editor nem os dinâmicos)
+      Array.from(doc.head.querySelectorAll('script:not([id="editor-script"]):not([id="editor-styles"]), noscript:not([data-editor-essential])')).forEach(s => {
+        // Não remove scripts que foram carregados dinamicamente pelo Facebook
+        const scriptEl = s as HTMLScriptElement;
+        const isDynamicScript =
+          (scriptEl.src && scriptEl.src.includes('connect.facebook.net/signals/config')) ||
+          (scriptEl.src && scriptEl.src.includes('connect.facebook.net/en_US/fbevents.js') && !scriptEl.innerHTML) ||
+          scriptEl.hasAttribute('data-fbq-loaded') ||
+          scriptEl.hasAttribute('data-gtm-loaded');
 
-      // Divide por blocos de script (separados por linhas em branco)
-      const scriptBlocks = scriptsText.split(/\n\s*\n/).filter(Boolean);
-
-      scriptBlocks.forEach(block => {
-        const temp = doc.createElement('div');
-        temp.innerHTML = block.trim();
-        Array.from(temp.childNodes).forEach(node => container.appendChild(node));
+        if (!isDynamicScript) {
+          s.remove();
+        }
       });
-    };
 
-    // Insere scripts no head e body
-    insertScripts(doc.head, headScriptsText);
-    insertScripts(doc.body, bodyScriptsText);
+      Array.from(doc.body.querySelectorAll('script, noscript')).forEach(s => s.remove());
 
-    setShowScriptManager(false);
-    setSaveMsg('Scripts atualizados!');
-    setTimeout(() => setSaveMsg(''), 3000);
+      // Função para inserir scripts de forma segura
+      const insertScriptsSafely = (container: HTMLElement, scriptsText: string) => {
+        if (!scriptsText.trim()) return;
+
+        // Divide por blocos (incluindo comentários)
+        const blocks = scriptsText.split(/\n\s*\n/).filter(block => block.trim());
+
+        blocks.forEach(block => {
+          try {
+            // Verifica se o bloco contém comentários
+            const hasComments = block.includes('<!--') && block.includes('-->');
+
+            if (hasComments) {
+              // Processa bloco com comentários
+              const tempDiv = doc.createElement('div');
+              tempDiv.innerHTML = block.trim();
+
+              // Adiciona todos os nós (comentários e elementos)
+              Array.from(tempDiv.childNodes).forEach(node => {
+                if (node.nodeType === Node.COMMENT_NODE) {
+                  // Adiciona comentário
+                  container.appendChild(node.cloneNode(true));
+                } else if (node.nodeType === Node.ELEMENT_NODE) {
+                  const element = node as Element;
+                  if (element.tagName === 'SCRIPT') {
+                    const scriptEl = element as HTMLScriptElement;
+
+                    // Verifica duplicação
+                    const isDuplicate = scriptEl.src ?
+                      container.querySelector(`script[src="${scriptEl.src}"]`) :
+                      Array.from(container.querySelectorAll('script:not([src])')).some(s =>
+                        s.innerHTML.trim() === scriptEl.innerHTML.trim()
+                      );
+
+                    if (isDuplicate) {
+                      console.warn('Script duplicado detectado, pulando:', scriptEl.src || 'inline script');
+                      return;
+                    }
+
+                    // Cria novo elemento script
+                    const newScript = doc.createElement('script');
+
+                    // Copia atributos
+                    Array.from(scriptEl.attributes).forEach(attr => {
+                      newScript.setAttribute(attr.name, attr.value);
+                    });
+
+                    // Adiciona conteúdo
+                    if (scriptEl.src) {
+                      newScript.src = scriptEl.src;
+                    } else {
+                      newScript.innerHTML = scriptEl.innerHTML;
+                    }
+
+                    // Marca como adicionado pelo usuário
+                    newScript.setAttribute('data-user-added', 'true');
+                    container.appendChild(newScript);
+                  } else {
+                    // Para outros elementos
+                    const clonedElement = element.cloneNode(true) as Element;
+                    clonedElement.setAttribute('data-user-added', 'true');
+                    container.appendChild(clonedElement);
+                  }
+                }
+              });
+            } else {
+              // Processa bloco sem comentários (método original)
+              const tempDiv = doc.createElement('div');
+              tempDiv.innerHTML = block.trim();
+
+              Array.from(tempDiv.children).forEach(element => {
+                if (element.tagName === 'SCRIPT') {
+                  const scriptEl = element as HTMLScriptElement;
+
+                  // Verifica duplicação por src ou conteúdo
+                  const isDuplicate = scriptEl.src ?
+                    container.querySelector(`script[src="${scriptEl.src}"]`) :
+                    Array.from(container.querySelectorAll('script:not([src])')).some(s =>
+                      s.innerHTML.trim() === scriptEl.innerHTML.trim()
+                    );
+
+                  if (isDuplicate) {
+                    console.warn('Script duplicado detectado, pulando:', scriptEl.src || 'inline script');
+                    return;
+                  }
+
+                  // Cria novo elemento script
+                  const newScript = doc.createElement('script');
+
+                  // Copia atributos
+                  Array.from(scriptEl.attributes).forEach(attr => {
+                    newScript.setAttribute(attr.name, attr.value);
+                  });
+
+                  // Adiciona conteúdo
+                  if (scriptEl.src) {
+                    newScript.src = scriptEl.src;
+                  } else {
+                    newScript.innerHTML = scriptEl.innerHTML;
+                  }
+
+                  // Marca como adicionado pelo usuário
+                  newScript.setAttribute('data-user-added', 'true');
+                  container.appendChild(newScript);
+                } else {
+                  // Para outros elementos
+                  const clonedElement = element.cloneNode(true) as Element;
+                  clonedElement.setAttribute('data-user-added', 'true');
+                  container.appendChild(clonedElement);
+                }
+              });
+            }
+          } catch (blockError) {
+            console.error('Erro ao processar bloco de script:', blockError);
+          }
+        });
+      };
+
+      // Insere scripts no head e body
+      insertScriptsSafely(doc.head, headScriptsText);
+      insertScriptsSafely(doc.body, bodyScriptsText);
+
+      // Restaura scripts essenciais do editor no head se foram removidos
+      editorScripts.forEach(script => {
+        if (!doc.head.contains(script)) {
+          doc.head.appendChild(script);
+        }
+      });
+
+      editorNoScripts.forEach(noscript => {
+        if (!doc.head.contains(noscript)) {
+          doc.head.appendChild(noscript);
+        }
+      });
+
+      setShowScriptManager(false);
+      setSaveMsg('Scripts atualizados com sucesso!');
+      setTimeout(() => setSaveMsg(''), 3000);
+    } catch (error) {
+      console.error('Erro ao salvar scripts:', error);
+      setSaveMsg('Erro ao salvar scripts. Verifique a sintaxe.');
+      setTimeout(() => setSaveMsg(''), 3000);
+    }
   }
 
   // Função para envolver o elemento selecionado com <a href="...">
@@ -713,60 +919,84 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
           Remover elemento
         </button>
       )}
-      {showScriptModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
-          <div className="bg-gray-900 p-6 rounded-lg shadow-lg w-full max-w-lg relative">
-            <h3 className="text-lg font-bold mb-4 text-blue-400">Adicionar Script</h3>
-            <label className="block text-sm mb-1">Script para &lt;head&gt;:</label>
-            <textarea
-              className="w-full border border-gray-700 bg-gray-800 text-gray-100 rounded px-2 py-1 mb-4"
-              rows={4}
-              value={scriptHead}
-              onChange={e => setScriptHead(e.target.value)}
-              placeholder="&lt;script&gt;...&lt;/script&gt; ou &lt;script src=...&gt;&lt;/script&gt;"
-            />
-            <label className="block text-sm mb-1">Script para &lt;body&gt;:</label>
-            <textarea
-              className="w-full border border-gray-700 bg-gray-800 text-gray-100 rounded px-2 py-1 mb-4"
-              rows={4}
-              value={scriptBody}
-              onChange={e => setScriptBody(e.target.value)}
-              placeholder="&lt;script&gt;...&lt;/script&gt; ou &lt;script src=...&gt;&lt;/script&gt;"
-            />
-            <div className="flex gap-2 mt-2">
-              <button className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold" onClick={handleAddScript}>Salvar</button>
-              <button className="px-4 py-2 rounded bg-gray-700 hover:bg-gray-800 text-white font-bold" onClick={() => setShowScriptModal(false)}>Cancelar</button>
-            </div>
-          </div>
-        </div>
-      )}
       {showScriptManager && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
-          <div className="bg-gray-900 p-6 rounded-lg shadow-lg w-full max-w-2xl relative">
+          <div className="bg-gray-900 p-6 rounded-lg shadow-lg w-full max-w-4xl relative max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold mb-4 text-blue-400">Gerenciar Scripts</h3>
-            <div className="mb-4">
-              <h4 className="font-bold text-blue-300 mb-2">Scripts no &lt;head&gt;</h4>
-              <textarea
-                className="w-full border border-gray-700 bg-gray-800 text-gray-100 rounded px-2 py-1 mb-4"
-                rows={6}
-                value={headScriptsText}
-                onChange={e => setHeadScriptsText(e.target.value)}
-                placeholder="Cole aqui seus <script>...</script> ou <script src=...></script> para o <head>"
-              />
+
+            {/* Dicas de uso */}
+            <div className="mb-4 p-3 bg-blue-900/30 border border-blue-700 rounded text-sm text-blue-200">
+              <h4 className="font-semibold mb-2">💡 Dicas importantes:</h4>
+              <ul className="space-y-1 text-xs">
+                <li>• Scripts duplicados são automaticamente detectados e ignorados</li>
+                <li>• Use &lt;head&gt; para scripts de tracking (Facebook, Google Analytics)</li>
+                <li>• Use &lt;body&gt; para scripts que interagem com elementos da página</li>
+                <li>• Scripts do editor são protegidos e não aparecem aqui</li>
+                <li>• <strong>Scripts carregados dinamicamente</strong> (como configs do Facebook) são ocultados automaticamente</li>
+              </ul>
             </div>
-            <div className="mb-4">
-              <h4 className="font-bold text-blue-300 mb-2">Scripts no &lt;body&gt;</h4>
-              <textarea
-                className="w-full border border-gray-700 bg-gray-800 text-gray-100 rounded px-2 py-1 mb-4"
-                rows={6}
-                value={bodyScriptsText}
-                onChange={e => setBodyScriptsText(e.target.value)}
-                placeholder="Cole aqui seus <script>...</script> ou <script src=...></script> para o <body>"
-              />
+
+            {/* Aviso sobre scripts dinâmicos */}
+            <div className="mb-4 p-3 bg-green-900/30 border border-green-700 rounded text-sm text-green-200">
+              <h4 className="font-semibold mb-2">✅ Funcionamento Normal:</h4>
+              <p className="text-xs">
+                Quando você adiciona o Facebook Pixel, ele pode carregar scripts adicionais automaticamente
+                (como <code>signals/config</code> e <code>fbevents.js</code>). Esses scripts dinâmicos são
+                <strong> ocultados desta interface</strong> para evitar confusão, mas continuam funcionando normalmente.
+              </p>
             </div>
-            <div className="flex gap-2 mt-4">
-              <button className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold" onClick={handleSaveScripts}>Salvar Scripts</button>
-              <button className="px-4 py-2 rounded bg-gray-700 hover:bg-gray-800 text-white font-bold" onClick={() => setShowScriptManager(false)}>Cancelar</button>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div>
+                <h4 className="font-bold text-blue-300 mb-2 flex items-center gap-2">
+                  📄 Scripts no &lt;head&gt;
+                  <span className="text-xs text-gray-400">({headScriptsText.split('<script').length - 1} scripts)</span>
+                </h4>
+                <textarea
+                  className="w-full border border-gray-700 bg-gray-800 text-gray-100 rounded px-2 py-1 mb-4 font-mono text-xs"
+                  rows={10}
+                  value={headScriptsText}
+                  onChange={e => setHeadScriptsText(e.target.value)}
+                  placeholder={`Cole aqui seus scripts para o <head>
+
+Exemplo - Facebook Pixel:
+<script>
+  !function(f,b,e,v,n,t,s){...}
+  fbq('init', 'SEU_PIXEL_ID');
+  fbq('track', 'PageView');
+</script>`}
+                />
+              </div>
+
+              <div>
+                <h4 className="font-bold text-blue-300 mb-2 flex items-center gap-2">
+                  📄 Scripts no &lt;body&gt;
+                  <span className="text-xs text-gray-400">({bodyScriptsText.split('<script').length - 1} scripts)</span>
+                </h4>
+                <textarea
+                  className="w-full border border-gray-700 bg-gray-800 text-gray-100 rounded px-2 py-1 mb-4 font-mono text-xs"
+                  rows={10}
+                  value={bodyScriptsText}
+                  onChange={e => setBodyScriptsText(e.target.value)}
+                  placeholder={`Cole aqui seus scripts para o <body>
+
+Exemplo - Script de interação:
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Seu código aqui
+  });
+</script>`}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-4 justify-center">
+              <button className="px-6 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold" onClick={handleSaveScripts}>
+                💾 Salvar Scripts
+              </button>
+              <button className="px-6 py-2 rounded bg-gray-700 hover:bg-gray-800 text-white font-bold" onClick={() => setShowScriptManager(false)}>
+                Fechar
+              </button>
             </div>
           </div>
         </div>

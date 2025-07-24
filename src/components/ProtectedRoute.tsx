@@ -2,6 +2,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { checkTrialStatus } from '../utils/trialUtils';
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading, profile, refreshProfile } = useAuth();
@@ -34,22 +35,16 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Se estiver em trial, verificar se expirou
+      // Verificar trial de 7 dias
       if (profile.subscription_status === 'trialing') {
-        // Se não tiver data de expiração do trial, precisa escolher plano
-        if (!profile.trial_expires_at) {
-          if (isMounted) {
-            setRedirectUrl('/escolher-plano?message=choose');
-            setChecking(false);
-          }
-          return;
-        }
+        const trialStatus = checkTrialStatus({
+          subscription_status: profile.subscription_status,
+          trial_started_at: profile.trial_started_at,
+          created_at: profile.created_at
+        });
 
-        const trialExpires = new Date(profile.trial_expires_at);
-        const now = new Date();
-
-        // Se a data de expiração já passou
-        if (now > trialExpires) {
+        // Se o trial expirou, atualizar status e redirecionar
+        if (trialStatus.isTrialExpired) {
           // Atualizar status para expired
           if (profile.id) {
             await supabase.from('profiles')
@@ -62,6 +57,13 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
           }
           return;
         }
+
+        // Se o trial ainda está válido, usuário tem acesso
+        if (isMounted) {
+          setRedirectUrl(null);
+          setChecking(false);
+        }
+        return;
       }
 
       // Se tiver plano ativo, verificar se expirou
@@ -95,7 +97,8 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
       }
 
       // Se não estiver em trial nem com plano ativo, redirecionar
-      if (profile.subscription_status !== 'active' && profile.subscription_status !== 'trialing') {
+      const validStatuses = ['active', 'trialing'];
+      if (!validStatuses.includes(profile.subscription_status || '')) {
         if (isMounted) {
           setRedirectUrl('/escolher-plano?message=no_plan');
           setChecking(false);

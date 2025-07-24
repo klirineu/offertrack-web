@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useThemeStore } from '../store/themeStore';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { LogOut, Check, RefreshCw } from 'lucide-react';
 
 type Plan = {
   id: string;
@@ -21,8 +23,10 @@ export default function EscolherPlano() {
   const { theme } = useThemeStore();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [checkingPayment, setCheckingPayment] = useState(false);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { signOut, refreshProfile } = useAuth();
   const message = searchParams.get('message');
 
   useEffect(() => {
@@ -31,6 +35,71 @@ export default function EscolherPlano() {
       setLoading(false);
     });
   }, []);
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate('/login');
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+    }
+  };
+
+  const handleCheckPayment = async () => {
+    setCheckingPayment(true);
+    try {
+      // Atualizar o perfil do usuário
+      await refreshProfile?.();
+
+      // Aguardar um momento para o refresh
+      setTimeout(() => {
+        setCheckingPayment(false);
+        // Redirecionar para dashboard para verificar se o acesso foi liberado
+        navigate('/dashboard');
+      }, 2000);
+    } catch (error) {
+      console.error('Erro ao verificar pagamento:', error);
+      setCheckingPayment(false);
+    }
+  };
+
+  const formatPlanFeatures = (plan: Plan) => {
+    const features = [];
+
+    // Recursos baseados nos limites do plano
+    if (plan.max_clones > 0) {
+      features.push(`${plan.max_clones} ${plan.max_clones === 1 ? 'clone de site' : 'clones de sites'}`);
+    }
+
+    if (plan.max_anticlone > 0) {
+      features.push(`${plan.max_anticlone} ${plan.max_anticlone === 1 ? 'proteção anticlone' : 'proteções anticlone'}`);
+    }
+
+    if (plan.max_libraries > 0) {
+      features.push(`${plan.max_libraries} ${plan.max_libraries === 1 ? 'biblioteca' : 'bibliotecas'}`);
+    }
+
+    if (plan.max_quizzes && plan.max_quizzes > 0) {
+      features.push(`${plan.max_quizzes} ${plan.max_quizzes === 1 ? 'quiz' : 'quizzes'}`);
+    }
+
+    if (plan.max_cloaker_requests && plan.max_cloaker_requests > 0) {
+      features.push(`${plan.max_cloaker_requests} requisições de cloaker`);
+    }
+
+    // Adicionar recursos das features originais
+    if (plan.features && plan.features.length > 0) {
+      features.push(...plan.features);
+    }
+
+    // Recursos padrão sempre inclusos
+    features.push('Criptografia de texto');
+    features.push('Remoção de metadados');
+    features.push('Sistema de tracking');
+    features.push('Suporte técnico');
+
+    return features;
+  };
 
   const getMessageContent = () => {
     switch (message) {
@@ -83,6 +152,17 @@ export default function EscolherPlano() {
 
     return (
       <div className={theme === 'dark' ? 'min-h-screen bg-[#111827] text-white' : 'min-h-screen bg-white text-gray-900'}>
+        {/* Header com botão de logout */}
+        <div className="absolute top-4 right-4">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm"
+          >
+            <LogOut className="w-4 h-4" />
+            Sair
+          </button>
+        </div>
+
         <div className="max-w-2xl mx-auto py-16 px-4 text-center">
           <div className="mb-8">
             <div className="mx-auto w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mb-6">
@@ -145,14 +225,25 @@ export default function EscolherPlano() {
 
           <div className="space-y-4">
             <button
-              onClick={() => navigate('/login')}
-              className="w-full py-4 bg-green-600 text-white rounded-lg font-semibold text-lg hover:bg-green-700 transition-colors"
+              onClick={handleCheckPayment}
+              disabled={checkingPayment}
+              className="flex items-center justify-center gap-2 w-full py-4 bg-green-600 text-white rounded-lg font-semibold text-lg hover:bg-green-700 transition-colors disabled:opacity-50"
             >
-              ✅ Já realizei o pagamento
+              {checkingPayment ? (
+                <>
+                  <RefreshCw className="w-5 h-5 animate-spin" />
+                  Verificando pagamento...
+                </>
+              ) : (
+                <>
+                  <Check className="w-5 h-5" />
+                  ✅ Já realizei o pagamento
+                </>
+              )}
             </button>
 
             <p className={theme === 'dark' ? 'text-sm text-[#9ca3af]' : 'text-sm text-gray-500'}>
-              Após realizar o pagamento, clique no botão acima para acessar sua conta novamente.
+              Após realizar o pagamento, clique no botão acima para verificar o status da sua conta.
             </p>
           </div>
         </div>
@@ -162,6 +253,17 @@ export default function EscolherPlano() {
 
   return (
     <div className={theme === 'dark' ? 'min-h-screen bg-[#111827] text-white' : 'min-h-screen bg-white text-gray-900'}>
+      {/* Header com botão de logout */}
+      <div className="absolute top-4 right-4">
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm"
+        >
+          <LogOut className="w-4 h-4" />
+          Sair
+        </button>
+      </div>
+
       <div className="max-w-3xl mx-auto py-16 text-center">
         <h2 className={theme === 'dark' ? 'text-3xl md:text-4xl font-bold mb-4' : 'text-3xl md:text-4xl font-bold mb-4 text-gray-900'}>
           Escolha seu plano para continuar
@@ -174,6 +276,32 @@ export default function EscolherPlano() {
             }`}>
             <h3 className="text-lg font-medium">{messageContent.title}</h3>
             <p className="mt-2">{messageContent.description}</p>
+          </div>
+        )}
+
+        {/* Botão de verificar pagamento */}
+        {(message === 'trial_expired' || message === 'plan_expired' || message === 'past_due') && (
+          <div className="mb-8">
+            <button
+              onClick={handleCheckPayment}
+              disabled={checkingPayment}
+              className="flex items-center gap-2 mx-auto px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50"
+            >
+              {checkingPayment ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  Verificando pagamento...
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4" />
+                  Já realizei o pagamento
+                </>
+              )}
+            </button>
+            <p className="text-sm text-gray-500 mt-2">
+              Clique aqui se já realizou o pagamento para verificar o status da sua conta
+            </p>
           </div>
         )}
 
@@ -197,9 +325,9 @@ export default function EscolherPlano() {
                 <div className="text-3xl font-extrabold mb-2">R$ {plan.price},00 <span className="text-base font-normal">/ mês</span></div>
 
                 <ul className="text-left mb-6 space-y-2">
-                  {plan.features.map((feature, i) => (
+                  {formatPlanFeatures(plan).map((feature, i) => (
                     <li key={i} className="flex items-center gap-2">
-                      <span className="text-green-400">✔</span>
+                      <Check className="w-4 h-4 text-green-400" />
                       <span className="text-sm">{feature}</span>
                     </li>
                   ))}

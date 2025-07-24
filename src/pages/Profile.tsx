@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Mail, CreditCard, Circle, Wrench } from 'lucide-react';
+import { User, Mail, CreditCard, Circle, Wrench, AlertCircle } from 'lucide-react';
 import { useThemeStore } from '../store/themeStore';
 import { Sidebar, SidebarBody, SidebarLink } from '../components/ui/sidebar';
 import { Link } from 'react-router-dom';
@@ -10,6 +10,8 @@ import { format, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useState, useEffect } from 'react';
 import { differenceInCalendarDays } from 'date-fns';
+import { checkTrialStatus } from '../utils/trialUtils';
+import { formatPhone, validatePhone, cleanPhone } from '../utils/phoneValidation';
 
 import LogoBranco from '../assets/logo-branco.png';
 import IconBranco from '../assets/ico-branco.png';
@@ -50,6 +52,7 @@ export function Profile() {
   const [isEditing, setIsEditing] = useState(false);
   const [fullName, setFullName] = useState(profile?.full_name || '');
   const [phone, setPhone] = useState((profile as any)?.phone || '');
+  const [phoneError, setPhoneError] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [password, setPassword] = useState('');
@@ -61,30 +64,53 @@ export function Profile() {
   useEffect(() => {
     if (profile) {
       setFullName(profile.full_name || '');
-      setPhone((profile as any)?.phone || '');
+      const phoneNumber = (profile as any)?.phone || '';
+      // Se o telefone já está formatado, mantém; senão formata
+      setPhone(phoneNumber.includes('(') ? phoneNumber : formatPhone(phoneNumber));
     }
   }, [profile]);
 
   // Calcular início e expiração da assinatura
   let inicioAssinatura = null;
   let expiraEm = null;
-  if (profile?.subscription_renewed_at) {
+  let diasRestantes = null;
+  let statusInfo = '';
+
+  // Verificar se está em trial
+  if (profile?.subscription_status === 'trialing') {
+    const trialStatus = checkTrialStatus({
+      subscription_status: profile.subscription_status,
+      trial_started_at: profile.trial_started_at,
+      created_at: profile.created_at
+    });
+
+    if (trialStatus.isInTrial) {
+      diasRestantes = trialStatus.daysRemaining;
+      expiraEm = trialStatus.trialEndDate;
+      statusInfo = `Período de teste gratuito - ${diasRestantes} ${diasRestantes === 1 ? 'dia restante' : 'dias restantes'}`;
+    }
+  } else if (profile?.subscription_renewed_at) {
     inicioAssinatura = new Date(profile.subscription_renewed_at);
     expiraEm = addMonths(inicioAssinatura, 1);
-  }
 
-  // Calcular dias restantes
-  let diasRestantes = null;
-  if (expiraEm) {
-    const agora = new Date();
-    diasRestantes = differenceInCalendarDays(expiraEm, agora);
+    if (expiraEm) {
+      const agora = new Date();
+      diasRestantes = differenceInCalendarDays(expiraEm, agora);
+      statusInfo = `Sua assinatura é válida até: ${format(expiraEm, 'dd/MM/yyyy', { locale: ptBR })}`;
+
+      if (diasRestantes && diasRestantes > 0) {
+        statusInfo += ` - Faltam ${diasRestantes} dias para expirar.`;
+      } else {
+        statusInfo += ' - Sua assinatura expirou.';
+      }
+    }
   }
 
   // Status em português
   const statusPt = profile?.subscription_status
     ? {
       active: 'Ativa',
-      trialing: 'Em avaliação',
+      trialing: 'Período de Teste (7 dias grátis)',
       canceled: 'Cancelada',
       expired: 'Expirada',
       past_due: 'Pagamento em atraso',
@@ -119,20 +145,32 @@ export function Profile() {
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatPhone(e.target.value);
     setPhone(formatted);
+
+    // Validar apenas se o campo não estiver vazio
+    if (formatted.length > 0) {
+      const error = validatePhone(formatted);
+      setPhoneError(error);
+    } else {
+      setPhoneError('');
+    }
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validar telefone antes de salvar
+    if (phone && phoneError) {
+      setError('Por favor, corrija o número de telefone.');
+      return;
+    }
+
     try {
       setError(null);
       setSuccess(null);
 
-      // Remove formatação do telefone antes de salvar
-      const phoneNumbers = phone.replace(/\D/g, '');
-
       const { error } = await updateProfile({
         full_name: fullName,
-        phone: phoneNumbers
+        phone: phone ? cleanPhone(phone) : ''
       } as any);
 
       if (error) throw error;
@@ -303,14 +341,7 @@ export function Profile() {
                   <CreditCard className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
                   <div className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">
                     Status: <b>{profile ? statusPt : ''}</b><br />
-                    {expiraEm && profile ? (
-                      <>
-                        Sua assinatura é válida até: <b>{format(expiraEm, 'dd/MM/yyyy', { locale: ptBR })}</b><br />
-                        {diasRestantes && diasRestantes > 0
-                          ? `Faltam ${diasRestantes} dias para expirar.`
-                          : 'Sua assinatura expirou.'}
-                      </>
-                    ) : null}
+                    {statusInfo}
                   </div>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mt-4">
@@ -355,7 +386,9 @@ export function Profile() {
                       onClick={() => {
                         setIsEditing(false);
                         setFullName(profile?.full_name || '');
-                        setPhone((profile as any)?.phone || '');
+                        const phoneNumber = (profile as any)?.phone || '';
+                        // Se o telefone já está formatado, mantém; senão formata
+                        setPhone(phoneNumber.includes('(') ? phoneNumber : formatPhone(phoneNumber));
                       }}
                       className="w-full sm:w-auto text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 text-sm sm:text-base"
                     >
@@ -399,13 +432,36 @@ export function Profile() {
                     Telefone/WhatsApp
                   </label>
                   {isEditing ? (
-                    <input
-                      type="tel"
-                      value={phone}
-                      onChange={handlePhoneChange}
-                      placeholder="(99) 99999-9999"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm sm:text-base"
-                    />
+                    <div className="relative">
+                      <input
+                        type="tel"
+                        value={phone}
+                        onChange={handlePhoneChange}
+                        placeholder="(11) 99999-9999"
+                        className={`w-full px-3 py-2 pr-10 border rounded-md dark:bg-gray-700 dark:text-white text-sm sm:text-base ${phoneError
+                            ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
+                            : phone.length >= 14 && !phoneError
+                              ? 'border-green-500 focus:ring-green-500 focus:border-green-500'
+                              : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500'
+                          } focus:outline-none focus:ring-2`}
+                      />
+                      {phoneError ? (
+                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                          <AlertCircle className="h-4 w-4 text-red-500" />
+                        </div>
+                      ) : phone.length >= 14 && !phoneError ? (
+                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                          <svg className="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                      ) : null}
+                      {phoneError && (
+                        <p className="mt-1 text-sm text-red-500">
+                          {phoneError}
+                        </p>
+                      )}
+                    </div>
                   ) : (
                     <p className="text-gray-900 dark:text-white text-sm sm:text-base">
                       {(profile as any)?.phone ? formatPhone((profile as any).phone) : 'Não informado'}

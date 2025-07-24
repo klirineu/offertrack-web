@@ -49,7 +49,7 @@ interface Site {
   created_at: string;
 }
 
-const allowedEmails = ['naclisboa@gmail.com', 'klirineu.js@gmail.com', 'brunocezarmetzger@gmail.com'];
+// const allowedEmails = ['naclisboa@gmail.com', 'klirineu.js@gmail.com', 'brunocezarmetzger@gmail.com'];
 
 // Tradução dos tipos de eventos
 const eventTypeTranslations: Record<string, string> = {
@@ -640,13 +640,13 @@ export function Tracking() {
     }
   };
 
-  if (!user || !allowedEmails.includes(user.email ?? '')) {
-    return (
-      <div className="p-6">
-        <h1 className="text-2xl font-bold mb-4">Acesso não autorizado</h1>
-      </div>
-    );
-  }
+  // if (!user || !allowedEmails.includes(user.email ?? '')) {
+  //   return (
+  //     <div className="p-6">
+  //       <h1 className="text-2xl font-bold mb-4">Acesso não autorizado</h1>
+  //     </div>
+  //   );
+  // }
 
   const links = [
     {
