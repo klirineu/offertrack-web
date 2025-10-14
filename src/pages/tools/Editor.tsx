@@ -177,8 +177,8 @@ export default function Editor() {
 
   // Função para checar unicidade
   async function checkSubdomainUnique(sub: string) {
-    const { data: site } = await supabase.from("cloned_sites_subdomains").select("subdomain").eq("subdomain", sub).single();
-    const { data: quiz } = await supabase.from("cloned_quiz_subdomains").select("subdomain").eq("subdomain", sub).single();
+    const { data: site } = await supabase.from("cloned_sites").select("subdomain").eq("subdomain", sub).maybeSingle();
+    const { data: quiz } = await supabase.from("cloned_quiz").select("subdomain").eq("subdomain", sub).maybeSingle();
     return !site && !quiz;
   }
 

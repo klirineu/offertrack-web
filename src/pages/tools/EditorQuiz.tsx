@@ -134,8 +134,8 @@ export default function EditorQuiz() {
   }
 
   async function checkSubdomainUnique(sub: string) {
-    const { data: site } = await supabase.from("cloned_sites_subdomains").select("subdomain").eq("subdomain", sub).single();
-    const { data: quiz } = await supabase.from("cloned_quiz_subdomains").select("subdomain").eq("subdomain", sub).single();
+    const { data: site } = await supabase.from("cloned_sites").select("subdomain").eq("subdomain", sub).maybeSingle();
+    const { data: quiz } = await supabase.from("cloned_quiz").select("subdomain").eq("subdomain", sub).maybeSingle();
     return !site && !quiz;
   }
 
@@ -160,7 +160,16 @@ export default function EditorQuiz() {
         return;
       }
 
-      const url = `https://${subdomain}.clonup.site`;
+      // Chamar API para clonar o quiz
+      const res = await api.post('/api/clone/quiz/save', {
+        url: originalUrl,
+        subdomain: subdomain,
+        checkoutUrl: checkoutUrl
+      });
+      const data = res.data;
+      const url = data.url || `https://${subdomain}.clonup.site`;
+
+      // Salvar no banco de dados
       const { error } = await addQuizService(user.id, originalUrl, checkoutUrl, subdomain, url);
 
       if (error) {
