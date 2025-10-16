@@ -178,7 +178,7 @@ export default function Editor() {
   // Função para checar unicidade
   async function checkSubdomainUnique(sub: string) {
     const { data: site } = await supabase.from("cloned_sites").select("subdomain").eq("subdomain", sub).maybeSingle();
-    const { data: quiz } = await supabase.from("cloned_quiz").select("subdomain").eq("subdomain", sub).maybeSingle();
+    const { data: quiz } = await supabase.from("quizzes").select("slug").eq("slug", sub).maybeSingle();
     return !site && !quiz;
   }
 
@@ -426,7 +426,8 @@ export default function Editor() {
                       <><Edit className="w-5 h-5" /> Editor</>
                     )}
                   </button>
-                  <button
+                  {/* Botão de download temporariamente removido */}
+                  {/* <button
                     className="w-full px-4 py-2 bg-green-600 text-white 
                     rounded-lg hover:bg-green-700 disabled:opacity-50 
                     disabled:cursor-not-allowed flex items-center 
@@ -454,7 +455,7 @@ export default function Editor() {
                     ) : (
                       <><Download className="w-5 h-5" /> Baixar ZIP</>
                     )}
-                  </button>
+                  </button> */}
                 </div>
                 <button
                   className="text-gray-500 hover:text-gray-700 
@@ -576,7 +577,8 @@ export default function Editor() {
                             <Edit className="w-4 h-4" />
                           </button>
                         )}
-                        {clone.url && (
+                        {/* Botão de download temporariamente removido */}
+                        {/* {clone.url && (
                           <button
                             onClick={() => handleZipDownload(clone)}
                             disabled={actionLoading === 'zip'}
@@ -585,7 +587,7 @@ export default function Editor() {
                           >
                             {actionLoading === 'zip' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                           </button>
-                        )}
+                        )} */}
                         <button
                           onClick={() => handleDeleteClone(clone.id)}
                           disabled={deleteLoadingId === clone.id}

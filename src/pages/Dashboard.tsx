@@ -173,6 +173,22 @@ export function Dashboard() {
             </div>
           )}
 
+          {/* Aviso de Lançamento do Editor de Quiz */}
+          <div className="mb-6 flex flex-col gap-3 sm:gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 px-4 py-3 sm:py-2 rounded-lg bg-gradient-to-r from-green-100 to-blue-100 border border-green-300 text-green-900 font-semibold text-sm shadow-lg">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-1">
+                <span className="inline-flex items-center"><Wrench className="w-4 h-4 mr-2 text-green-700" /> 🚀 NOVO LANÇAMENTO</span>
+                <span className="text-xs font-normal text-green-800">Editor de Quiz Avançado disponível! Acesse em Ferramentas → Clonar Quiz</span>
+              </div>
+              <button
+                onClick={() => window.open('https://quiz.clonup.pro', '_blank')}
+                className="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition text-xs font-medium whitespace-nowrap"
+              >
+                Acessar Quiz Editor
+              </button>
+            </div>
+          </div>
+
           <Board />
         </main>
       </div>

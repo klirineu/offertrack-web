@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Wrench, Plus, Download, Loader2, Trash2 } from 'lucide-react';
+import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Wrench, Plus, Loader2, Trash2, Edit } from 'lucide-react';
 import { SidebarBody, SidebarLink, Sidebar } from '../../components/ui/sidebar';
 import { useThemeStore } from '../../store/themeStore';
 import { useAuth } from '../../context/AuthContext';
-import { fetchQuizzesService, addQuizService, removeQuizService, ClonedQuiz } from '../../services/quizzesService';
-import api from '../../services/api';
+import { fetchQuizzesService, removeQuizService, Quiz } from '../../services/quizzesService';
+import { cloneQuizWithAuth } from '../../services/api';
 import { supabase } from '../../lib/supabase';
 
 import LogoBranco from '../../assets/logo-branco.png';
@@ -45,16 +45,16 @@ export default function EditorQuiz() {
   const { theme } = useThemeStore();
   const { user, profile } = useAuth();
   const [open, setOpen] = useState(false);
-  const [quizzes, setQuizzes] = useState<ClonedQuiz[]>([]);
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [quizzesLoading, setQuizzesLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [originalUrl, setOriginalUrl] = useState('');
-  const [checkoutUrl, setCheckoutUrl] = useState('');
   const [actionLoading, setActionLoading] = useState<'zip' | 'save' | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [deleteLoadingId, setDeleteLoadingId] = useState<string | null>(null);
   const [subdomain, setSubdomain] = useState("");
   const [subdomainError, setSubdomainError] = useState<string | null>(null);
+  const [slugModified, setSlugModified] = useState<string | null>(null);
 
   const links = [
     {
@@ -135,7 +135,7 @@ export default function EditorQuiz() {
 
   async function checkSubdomainUnique(sub: string) {
     const { data: site } = await supabase.from("cloned_sites").select("subdomain").eq("subdomain", sub).maybeSingle();
-    const { data: quiz } = await supabase.from("cloned_quiz").select("subdomain").eq("subdomain", sub).maybeSingle();
+    const { data: quiz } = await supabase.from("quizzes").select("slug").eq("slug", sub).maybeSingle();
     return !site && !quiz;
   }
 
@@ -153,30 +153,47 @@ export default function EditorQuiz() {
         return;
       }
 
-      const unique = await checkSubdomainUnique(subdomain);
-      if (!unique) {
-        setSubdomainError("Este nome já está em uso.");
+      // Verificar se o slug já existe e gerar um único se necessário
+      let finalSubdomain = subdomain;
+      let attempts = 0;
+      const maxAttempts = 10;
+
+      while (attempts < maxAttempts) {
+        const unique = await checkSubdomainUnique(finalSubdomain);
+        if (unique) {
+          break; // Slug é único, pode usar
+        }
+
+        // Gerar novo slug com ID único
+        const timestamp = Date.now().toString().slice(-6); // Últimos 6 dígitos do timestamp
+        finalSubdomain = `${subdomain}-${timestamp}`;
+        attempts++;
+      }
+
+      if (attempts >= maxAttempts) {
+        setSubdomainError("Não foi possível gerar um nome único. Tente outro nome.");
         setActionLoading(null);
         return;
       }
 
-      // Chamar API para clonar o quiz
-      const res = await api.post('/api/clone/quiz/save', {
-        url: originalUrl,
-        subdomain: subdomain,
-        checkoutUrl: checkoutUrl
-      });
-      const data = res.data;
-      const url = data.url || `https://${subdomain}.clonup.site`;
+      // Se o slug foi modificado, informar ao usuário
+      if (finalSubdomain !== subdomain) {
+        console.log(`Slug modificado de "${subdomain}" para "${finalSubdomain}"`);
+        setSlugModified(`Nome "${subdomain}" já estava em uso. Usando "${finalSubdomain}" automaticamente.`);
+        setSubdomain(finalSubdomain); // Atualizar o campo para mostrar o slug final
+      }
 
-      // Salvar no banco de dados
-      const { error } = await addQuizService(user.id, originalUrl, checkoutUrl, subdomain, url);
+      // Chamar API para clonar o quiz com autenticação JWT
+      const res = await cloneQuizWithAuth(originalUrl, finalSubdomain);
+      const responseData = res.data;
 
-      if (error) {
-        setErrorMsg(error.message);
+      if (!responseData.success) {
+        setErrorMsg('Erro ao clonar quiz: ' + (responseData.message || 'Erro desconhecido'));
         setActionLoading(null);
         return;
       }
+
+      // A API já salvou no banco de dados, não precisamos fazer nada aqui
 
       const { data: quizzesData, error: quizzesError } = await fetchQuizzesService(user.id);
       if (quizzesError) console.error('Erro ao carregar quizzes:', quizzesError);
@@ -184,9 +201,9 @@ export default function EditorQuiz() {
 
       setModalOpen(false);
       setOriginalUrl('');
-      setCheckoutUrl('');
       setSubdomain('');
       setSubdomainError(null);
+      setSlugModified(null);
 
     } catch (error) {
       console.error('Erro ao adicionar quiz:', error);
@@ -196,14 +213,14 @@ export default function EditorQuiz() {
     }
   };
 
-  const handleDeleteQuiz = async (quiz: ClonedQuiz) => {
+  const handleDeleteQuiz = async (quiz: Quiz) => {
     if (!user) return;
     if (!window.confirm('Tem certeza que deseja excluir este quiz?')) return;
 
     setDeleteLoadingId(quiz.id);
 
     try {
-      await removeQuizService(user.id, quiz.id, quiz.subdomain || quiz.id);
+      await removeQuizService(user.id, quiz.id, quiz.slug);
       const { data: quizzesData, error: quizzesError } = await fetchQuizzesService(user.id);
       if (quizzesError) console.error('Erro ao carregar quizzes:', quizzesError);
       if (quizzesData) setQuizzes(quizzesData);
@@ -215,25 +232,31 @@ export default function EditorQuiz() {
     }
   };
 
-  const handleDownloadZip = async (quiz: ClonedQuiz) => {
-    if (!quiz.url) return;
+  // Função de download temporariamente removida
+  // const handleDownloadZip = async (quiz: Quiz) => {
+  //   const quizUrl = `https://quiz.clonup.pro/${quiz.slug}`;
+  //   
+  //   setActionLoading('zip');
+  //   try {
+  //     const response = await api.post('/api/clone/zip', { url: quizUrl }, { responseType: 'blob' });
+  //     const blob = response.data;
+  //     const link = document.createElement('a');
+  //     link.href = window.URL.createObjectURL(blob);
+  //     link.download = `${quiz.slug}.zip`;
+  //     document.body.appendChild(link);
+  //     link.click();
+  //     document.body.removeChild(link);
+  //   } catch (error) {
+  //     console.error('Erro ao baixar ZIP:', error);
+  //     alert('Erro ao baixar o arquivo ZIP');
+  //   } finally {
+  //     setActionLoading(null);
+  //   }
+  // };
 
-    setActionLoading('zip');
-    try {
-      const response = await api.post('/api/clone/zip', { url: quiz.url }, { responseType: 'blob' });
-      const blob = response.data;
-      const link = document.createElement('a');
-      link.href = window.URL.createObjectURL(blob);
-      link.download = `${quiz.subdomain}.zip`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (error) {
-      console.error('Erro ao baixar ZIP:', error);
-      alert('Erro ao baixar o arquivo ZIP');
-    } finally {
-      setActionLoading(null);
-    }
+  const handleEditQuiz = (quiz: Quiz) => {
+    // Usar o ID do quiz para editar
+    window.open(`https://quiz.clonup.pro/quiz/${quiz.id}`, '_blank');
   };
 
   return (
@@ -298,13 +321,17 @@ export default function EditorQuiz() {
         <main className="max-w-7xl mx-auto px-4 py-8 lg:px-8">
           {/* Aviso de BETA e clone de quiz inlead */}
           <div className="mb-6 flex flex-col gap-3 sm:gap-2">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 px-4 py-3 sm:py-2 rounded-lg bg-yellow-100 border border-yellow-300 text-yellow-900 font-semibold text-sm shadow">
-              <span className="inline-flex items-center"><Wrench className="w-4 h-4 mr-2 text-yellow-700" /> Ferramenta em BETA</span>
-              <span className="text-xs font-normal text-yellow-800">Pode conter bugs ou instabilidades.</span>
-            </div>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 px-4 py-3 sm:py-2 rounded-lg bg-blue-100 border border-blue-300 text-blue-900 font-semibold text-sm shadow">
-              <span className="inline-flex items-center"><Circle className="w-3 h-3 mr-2 text-blue-700" /> Clone de Quiz Inlead</span>
-              <span className="text-xs font-normal text-blue-800">Esta ferramenta é inspirada e compatível com quizzes do Inlead.</span>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 px-4 py-3 sm:py-2 rounded-lg bg-gradient-to-r from-green-100 to-blue-100 border border-green-300 text-green-900 font-semibold text-sm shadow-lg">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-1">
+                <span className="inline-flex items-center"><Wrench className="w-4 h-4 mr-2 text-green-700" /> 🚀 NOVO LANÇAMENTO</span>
+                <span className="text-xs font-normal text-green-800">Editor de Quiz Avançado - Você será redirecionado para nossa plataforma completa!</span>
+              </div>
+              <button
+                onClick={() => window.open('https://quiz.clonup.pro', '_blank')}
+                className="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition text-xs font-medium whitespace-nowrap"
+              >
+                Acessar Quiz Editor
+              </button>
             </div>
           </div>
 
@@ -321,13 +348,6 @@ export default function EditorQuiz() {
                   className="w-full px-3 py-2 sm:px-4 sm:py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base"
                 />
                 <input
-                  type="url"
-                  placeholder="URL do checkout do quiz"
-                  value={checkoutUrl}
-                  onChange={e => setCheckoutUrl(e.target.value)}
-                  className="w-full px-3 py-2 sm:px-4 sm:py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base"
-                />
-                <input
                   type="text"
                   placeholder="Nome do quiz (subdomínio)"
                   value={subdomain}
@@ -339,11 +359,12 @@ export default function EditorQuiz() {
                   className="w-full px-3 py-2 sm:px-4 sm:py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base"
                 />
                 {subdomainError && <div className="text-red-500 text-xs sm:text-sm">{subdomainError}</div>}
+                {slugModified && <div className="text-blue-600 dark:text-blue-400 text-xs sm:text-sm bg-blue-50 dark:bg-blue-900/20 p-2 rounded border border-blue-200 dark:border-blue-800">{slugModified}</div>}
                 {errorMsg && <div className="text-red-500 text-xs sm:text-sm">{errorMsg}</div>}
                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full">
                   <button
                     onClick={handleAddQuiz}
-                    disabled={actionLoading === 'save' || !originalUrl || !checkoutUrl || !subdomain || !!subdomainError}
+                    disabled={actionLoading === 'save' || !originalUrl || !subdomain || !!subdomainError}
                     className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
                   >
                     {actionLoading === 'save' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
@@ -353,9 +374,9 @@ export default function EditorQuiz() {
                     onClick={() => {
                       setModalOpen(false);
                       setOriginalUrl('');
-                      setCheckoutUrl('');
                       setSubdomain('');
                       setSubdomainError(null);
+                      setSlugModified(null);
                       setErrorMsg(null);
                     }}
                     className="w-full px-4 py-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white text-sm sm:text-base"
@@ -380,38 +401,43 @@ export default function EditorQuiz() {
                   <div key={quiz.id} className="px-4 py-4 sm:px-6 hover:bg-gray-50 dark:hover:bg-gray-900 transition">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        {quiz.url ? (
-                          <a
-                            href={quiz.url}
-                            className="text-blue-600 dark:text-blue-400 underline break-all text-sm sm:text-base"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            {quiz.url}
-                          </a>
-                        ) : (
-                          <span className="text-gray-500 dark:text-gray-400 text-sm sm:text-base">(Sem URL hospedada)</span>
-                        )}
-                        {quiz.original_url && (
+                        <a
+                          href={`https://quiz.clonup.pro/${quiz.slug}`}
+                          className="text-blue-600 dark:text-blue-400 underline break-all text-sm sm:text-base"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          https://quiz.clonup.pro/{quiz.slug}
+                        </a>
+                        <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 break-all">
+                          <span className="font-semibold">Título:</span> {quiz.title}
+                        </div>
+                        {quiz.description && (
                           <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 break-all">
-                            <span className="font-semibold">Original:</span> {quiz.original_url}
+                            <span className="font-semibold">Descrição:</span> {quiz.description}
                           </div>
                         )}
                         <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 break-all">
-                          <span className="font-semibold">Checkout:</span> {quiz.checkout_url}
+                          <span className="font-semibold">Status:</span> {quiz.status || 'published'}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {quiz.url && (
-                          <button
-                            onClick={() => handleDownloadZip(quiz)}
-                            disabled={actionLoading === 'zip'}
-                            className="p-2 text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 disabled:opacity-50"
-                            title="Baixar ZIP"
-                          >
-                            {actionLoading === 'zip' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleEditQuiz(quiz)}
+                          className="p-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                          title="Editar Quiz"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        {/* Botão de download temporariamente removido */}
+                        {/* <button
+                          onClick={() => handleDownloadZip(quiz)}
+                          disabled={actionLoading === 'zip'}
+                          className="p-2 text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 disabled:opacity-50"
+                          title="Baixar ZIP"
+                        >
+                          {actionLoading === 'zip' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                        </button> */}
                         <button
                           onClick={() => handleDeleteQuiz(quiz)}
                           disabled={deleteLoadingId === quiz.id}

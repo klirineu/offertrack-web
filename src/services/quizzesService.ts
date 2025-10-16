@@ -1,47 +1,33 @@
 import { supabase } from "../lib/supabase";
 import api from "./api";
 
-export interface ClonedQuiz {
+export interface Quiz {
   id: string;
   user_id: string;
-  original_url: string;
-  checkout_url: string;
-  subdomain?: string | null;
-  url?: string | null;
+  title: string;
+  description?: string | null;
+  slug: string;
+  data: any; // JSONB com a estrutura do quiz
+  status?: string | null;
+  is_public?: boolean | null;
+  allow_indexing?: boolean | null;
   created_at: string;
+  updated_at: string;
 }
 
 export async function fetchQuizzesService(userId: string) {
   const { data, error } = await supabase
-    .from("cloned_quiz")
-    .select("id, original_url, checkout_url, subdomain, url, created_at")
+    .from("quizzes")
+    .select(
+      "id, title, description, slug, data, status, is_public, allow_indexing, created_at, updated_at"
+    )
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
   if (error) return { data: null, error };
-  return { data: data as ClonedQuiz[], error: null };
+  return { data: data as Quiz[], error: null };
 }
 
-export async function addQuizService(
-  userId: string,
-  originalUrl: string,
-  checkoutUrl: string,
-  subdomain: string,
-  url?: string | null
-) {
-  const { data, error } = await supabase
-    .from("cloned_quiz")
-    .insert({
-      user_id: userId,
-      original_url: originalUrl,
-      checkout_url: checkoutUrl,
-      subdomain,
-      url,
-    })
-    .select("id, original_url, checkout_url, subdomain, url, created_at")
-    .single();
-  if (error) return { error, data: null };
-  return { data, error: null };
-}
+// Função removida - a API já salva na tabela quizzes
 
 export async function getQuizLimitForUser(userId: string) {
   // Buscar plano do usuário
@@ -74,17 +60,17 @@ export async function getQuizLimitForUser(userId: string) {
 export async function removeQuizService(
   userId: string,
   id: string,
-  subdomain: string
+  slug: string
 ) {
   // Primeiro remove no backend
   try {
-    await api.delete("/api/clone/quiz", { data: { subdomain } });
+    await api.delete("/api/clone/quiz", { data: { subdomain: slug } });
   } catch (error) {
     return { error };
   }
   // Só depois remove do supabase
   const { error } = await supabase
-    .from("cloned_quiz")
+    .from("quizzes")
     .delete()
     .eq("id", id)
     .eq("user_id", userId);
