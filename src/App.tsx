@@ -27,6 +27,7 @@ import ResetPassword from './pages/ResetPassword';
 import { Admin } from './pages/Admin';
 import { Tracking } from './pages/tools/Tracking';
 import SiteBuilder from './pages/tools/SiteBuilder';
+import EscalatedOffers from './pages/EscalatedOffers';
 
 // Componente para proteger rotas de admin
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
@@ -115,6 +116,7 @@ function App() {
         <Route path="/tools/clonequiz" element={<ProtectedRoute><EditorQuiz /></ProtectedRoute>} />
         <Route path="/tools/site-builder" element={<ProtectedRoute><SiteBuilder /></ProtectedRoute>} />
         <Route path="/offers/:offerId/metrics" element={<ProtectedRoute><OfferMetrics /></ProtectedRoute>} />
+        <Route path="/escalated-offers" element={<ProtectedRoute><EscalatedOffers /></ProtectedRoute>} />
         {/* Admin Routes */}
         <Route path="/admin" element={<ProtectedRoute><AdminRoute><Admin /></AdminRoute></ProtectedRoute>} />
         {/* Static Pages */}

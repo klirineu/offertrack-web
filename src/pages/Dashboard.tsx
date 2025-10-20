@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Board } from '../components/Board';
 import { useThemeStore } from '../store/themeStore';
 import { Link } from 'react-router-dom';
-import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Wrench, Users, Clock } from 'lucide-react';
+import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Wrench, Users, Clock, Star } from 'lucide-react';
 import { SidebarBody, SidebarLink, Sidebar } from '../components/ui/sidebar';
 import { useAuth } from '../context/AuthContext';
 import { checkTrialStatus } from '../utils/trialUtils';
@@ -45,6 +45,14 @@ export function Dashboard() {
         <Layout className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
       ),
     },
+    // Adicionar link de Ofertas Escaladas apenas para usuários autorizados
+    ...(profile?.email === 'klirineu.js@gmail.com' || profile?.email === 'naclisboa@gmail.com' ? [{
+      label: "Ofertas Escaladas",
+      href: "/escalated-offers",
+      icon: (
+        <Star className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
+      ),
+    }] : []),
     // {
     //   label: "Filtro de Tráfego",
     //   href: "#",

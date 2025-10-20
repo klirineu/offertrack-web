@@ -1,9 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Wrench, Edit, Trash2, Plus, Download, Loader2, Clock } from 'lucide-react';
-import { SidebarBody, SidebarLink, Sidebar } from '../../components/ui/sidebar';
+import { Edit, Trash2, Plus, Loader2, Clock, Wrench } from 'lucide-react';
+import { StandardNavigation } from '../../components/StandardNavigation';
 import { useThemeStore } from '../../store/themeStore';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
@@ -18,44 +16,11 @@ declare global {
   }
 }
 
-import LogoBranco from '../../assets/logo-branco.png';
-import IconBranco from '../../assets/ico-branco.png';
-
-const Logo = () => {
-  return (
-    <Link
-      to="/"
-      className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
-    >
-      <img src={LogoBranco} alt="" />
-      <motion.span
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="font-medium text-black dark:text-white whitespace-pre"
-      >
-        Clonup
-      </motion.span>
-    </Link>
-  );
-};
-
-const LogoIcon = () => {
-  return (
-    <Link
-      to="/"
-      className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
-    >
-      <img src={IconBranco} alt="" />
-    </Link>
-  );
-};
 
 export default function Editor() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { theme } = useThemeStore();
-  const [open, setOpen] = useState(false);
-
   const urlParam = searchParams.get('url');
 
   const { user, profile } = useAuth();
@@ -87,73 +52,9 @@ export default function Editor() {
       setCloneUrlToProcess(urlParam);
     }
 
-  }, []);
+  }, [urlParam]);
 
-  const links = [
-    {
-      label: "Dashboard",
-      href: "/dashboard",
-      icon: (
-        <Layout className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
 
-    // {
-    //   label: "Filtro de Tráfego",
-    //   href: "#",
-    //   icon: (
-    //     <svg className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" ><path d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z" /></svg>
-    //   ),
-    //   subLinks: [
-    //     { label: "Requisições", href: "/traffic-filter/requests", icon: <Circle className="h-4 w-4" /> },
-    //     { label: "Domínios", href: "/traffic-filter/domains", icon: <Circle className="h-4 w-4" /> },
-    //     { label: "Relatórios", href: "/traffic-filter/reports", icon: <Circle className="h-4 w-4" /> },
-    //     { label: "Campanha", href: "/traffic-filter/campaigns", icon: <Circle className="h-4 w-4" /> },
-    //   ],
-    // },
-    {
-      label: "Ferramentas",
-      href: "#",
-      icon: <Wrench className="text-neutral-700 dark:text-neutral-200 h-5 w-5" />,
-      subLinks: [
-        { label: "Criptografar Texto", href: "/tools/encrypt", icon: <Circle className="h-4 w-4" /> },
-        { label: "Remover Metadados", href: "/tools/removemetadados", icon: <Circle className="h-4 w-4" /> },
-        { label: "Trackeamento", href: "/tools/trackeamento", icon: <Circle className="h-4 w-4" /> },
-        { label: "Anticlone", href: "/tools/anticlone", icon: <Circle className="h-4 w-4" /> },
-        { label: "Clonar Sites", href: "/tools/clonesites", icon: <Circle className="h-4 w-4" /> },
-        { label: "Clonar Quiz", href: "/tools/clonequiz", icon: <Circle className="h-4 w-4" /> },
-      ],
-    },
-    {
-      label: "Profile",
-      href: "/profile",
-      icon: (
-        <UserCog className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-    {
-      label: "Settings",
-      href: "/settings",
-      icon: (
-        <SettingsIcon className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-    {
-      label: "Logout",
-      href: "#",
-      icon: (
-        <LogOut className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-  ];
-
-  const getDomainFromUrl = (url: string) => {
-    try {
-      return new URL(url).hostname.replace(/^www\./, '');
-    } catch {
-      return 'landing-page';
-    }
-  };
 
   // Função utilitária para extrair o subdomínio
   function getSubdomainFromUrl(url: string): string {
@@ -182,28 +83,6 @@ export default function Editor() {
     return !site && !quiz;
   }
 
-  const handleZipDownload = async (clone: CloneSite) => {
-    if (!clone.url) return;
-
-    setActionLoading('zip');
-    try {
-      const response = await api.post('/download-zip', { url: clone.url });
-      const downloadUrl = response.data.url;
-
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = `${getDomainFromUrl(clone.original_url || clone.url)}.zip`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-    } catch (error) {
-      console.error('Erro ao baixar ZIP:', error);
-      alert('Erro ao baixar o arquivo ZIP');
-    } finally {
-      setActionLoading(null);
-    }
-  };
 
   const handleDeleteClone = async (id: string) => {
     if (!window.confirm('Tem certeza que deseja excluir este clone?')) return;
@@ -262,8 +141,8 @@ export default function Editor() {
           }
         } else if ('error' in err && err.error && typeof err.error === 'object' && 'message' in err.error && typeof err.error.message === 'string') {
           msg = err.error.message;
-        } else if ('message' in err && typeof (err as any).message === 'string') {
-          msg = (err as any).message;
+        } else if ('message' in err && typeof (err as Error).message === 'string') {
+          msg = (err as Error).message;
         }
       }
       setErrorModal(msg);
@@ -277,44 +156,8 @@ export default function Editor() {
   console.log(clones);
 
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
-      {/* Mobile overlay */}
-      {open && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
-          onClick={() => setOpen(false)}
-        />
-      )}
-
-      <Sidebar open={open} setOpen={setOpen}>
-        <SidebarBody className={`w-64 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border-r h-screen fixed left-0 top-0 z-40`}>
-          <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
-            {open ? <Logo /> : <LogoIcon />}
-            <div className="mt-8 flex flex-col gap-2">
-              {links.map((link, idx) => (
-                <SidebarLink key={idx} link={link} />
-              ))}
-            </div>
-          </div>
-          <div>
-            <SidebarLink
-              link={{
-                label: profile?.full_name || user?.email || 'Usuário',
-                href: "/profile",
-                icon: (
-                  <img
-                    src={profile?.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(profile?.full_name || user?.email || 'U')}
-                    className="h-7 w-7 flex-shrink-0 rounded-full"
-                    alt="Avatar"
-                  />
-                ),
-              }}
-            />
-          </div>
-        </SidebarBody>
-      </Sidebar>
-
-      <div className={`${open ? 'lg:pl-72' : 'lg:pl-24'} transition-all duration-300 px-4 py-8 lg:px-0 pt-16 lg:pt-0`}>
+    <StandardNavigation>
+      <div className="px-4 py-8 lg:px-0 pt-16 lg:pt-0">
         <header className={`${theme === 'dark' ? 'bg-gray-800 border-b border-gray-700' : 'bg-white shadow-sm'} px-4 py-4 lg:px-8`}>
           <div className="max-w-7xl mx-auto">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -331,12 +174,12 @@ export default function Editor() {
                 >
                   <Plus className="w-4 h-4" /> Clonar Site
                 </button>
-                <button
+                {/* <button
                   onClick={() => navigate('/tools/site-builder')}
                   className="w-full sm:w-auto flex items-center justify-center gap-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-sm"
                 >
                   <Wrench className="w-4 h-4" /> Construir Site
-                </button>
+                </button> */}
                 <button
                   onClick={() => navigate('/tools/clonequiz')}
                   className="w-full sm:w-auto flex items-center justify-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm"
@@ -444,7 +287,7 @@ export default function Editor() {
                       const blob = res.data;
                       const a = document.createElement('a');
                       a.href = window.URL.createObjectURL(blob);
-                      const domain = getDomainFromUrl(cloneUrlToProcess);
+                      const domain = new URL(cloneUrlToProcess).hostname.replace(/^www\./, '');
                       a.download = `${domain}.zip`;
                       a.click();
                       setCloneUrlToProcess(null);
@@ -605,6 +448,6 @@ export default function Editor() {
           </div>
         </main>
       </div>
-    </div>
+    </StandardNavigation>
   );
 } 

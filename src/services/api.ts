@@ -8,7 +8,11 @@ const api = axios.create({
 });
 
 // Função específica para clonar quiz com autenticação JWT
-export const cloneQuizWithAuth = async (url: string, subdomain: string) => {
+export const cloneQuizWithAuth = async (
+  url: string,
+  subdomain: string,
+  endpoint: string = "/api/clone/quiz"
+) => {
   // Obter o token JWT do Supabase Auth
   const {
     data: { session },
@@ -20,7 +24,7 @@ export const cloneQuizWithAuth = async (url: string, subdomain: string) => {
 
   // Fazer a requisição com autenticação JWT
   const response = await api.post(
-    "/api/clone/quiz",
+    endpoint,
     {
       url,
       subdomain,

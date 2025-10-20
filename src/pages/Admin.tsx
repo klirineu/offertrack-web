@@ -1,38 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Users, Wrench, CreditCard, Home, X, Search, AlertTriangle, TrendingUp } from 'lucide-react';
-import { SidebarBody, SidebarLink, Sidebar } from '../components/ui/sidebar';
+import { useNavigate } from 'react-router-dom';
+import { Users, CreditCard, Home, X, Search, AlertTriangle, TrendingUp, FileText, Globe } from 'lucide-react';
+import { StandardNavigation } from '../components/StandardNavigation';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-import LogoBranco from '../assets/logo-branco.png';
-import LogoIconImage from '../assets/ico-branco.png';
-
-const Logo = () => {
-  return (
-    <Link
-      to="/"
-      className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
-    >
-      <img src={LogoBranco} alt="" />
-      <span className="font-medium text-black dark:text-white whitespace-pre opacity-100 transition-opacity duration-200">
-        Clonup
-      </span>
-    </Link>
-  );
-};
-
-const LogoIcon = () => {
-  return (
-    <Link
-      to="/"
-      className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
-    >
-      <img src={LogoIconImage} alt="" />
-    </Link>
-  );
-};
 
 interface Profile {
   id: string;
@@ -274,9 +247,12 @@ export function Admin() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [users, setUsers] = useState<Profile[]>([]);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'content'>('dashboard');
+  const [allQuizzes, setAllQuizzes] = useState<any[]>([]);
+  const [allClonedSites, setAllClonedSites] = useState<any[]>([]);
+  const [allSites, setAllSites] = useState<any[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [userResources, setUserResources] = useState<UserResources>({
@@ -755,21 +731,33 @@ export function Admin() {
     try {
       setLoading(true);
 
-      // Load profiles and plans in parallel
-      const [profilesResponse, plansResponse] = await Promise.all([
+      // Load profiles, plans, quizzes, cloned sites, and sites in parallel
+      const [profilesResponse, plansResponse, quizzesResponse, clonedSitesResponse, sitesResponse] = await Promise.all([
         supabase.from('profiles').select('*'),
-        supabase.from('plans').select('*')
+        supabase.from('plans').select('*'),
+        supabase.from('quizzes').select('*').limit(1000),
+        supabase.from('cloned_sites').select('*').limit(1000),
+        supabase.from('sites').select('*')
       ]);
 
       if (profilesResponse.error) throw profilesResponse.error;
       if (plansResponse.error) throw plansResponse.error;
+      if (quizzesResponse.error) throw quizzesResponse.error;
+      if (clonedSitesResponse.error) throw clonedSitesResponse.error;
+      if (sitesResponse.error) throw sitesResponse.error;
 
       const profiles = profilesResponse.data;
       const plans = plansResponse.data;
+      const quizzes = quizzesResponse.data;
+      const clonedSites = clonedSitesResponse.data;
+      const sites = sitesResponse.data;
 
       if (!profiles) return;
 
       setPlans(plans);
+      setAllQuizzes(quizzes || []);
+      setAllClonedSites(clonedSites || []);
+      setAllSites(sites || []);
 
       const users = profiles.map((profile: DatabaseProfile) => ({
         id: profile.id,
@@ -796,49 +784,6 @@ export function Admin() {
     }
   };
 
-  const links = [
-    {
-      label: "Dashboard",
-      href: "/dashboard",
-      icon: (
-        <Layout className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-    {
-      label: "Ferramentas",
-      href: "#",
-      icon: <Wrench className="text-neutral-700 dark:text-neutral-200 h-5 w-5" />,
-      subLinks: [
-        { label: "Criptografar Texto", href: "/tools/encrypt", icon: <Circle className="h-4 w-4" /> },
-        { label: "Remover Metadados", href: "/tools/removemetadados", icon: <Circle className="h-4 w-4" /> },
-        { label: "Trackeamento", href: "/tools/trackeamento", icon: <Circle className="h-4 w-4" /> },
-        { label: "Anticlone", href: "/tools/anticlone", icon: <Circle className="h-4 w-4" /> },
-        { label: "Clonar Sites", href: "/tools/clonesites", icon: <Circle className="h-4 w-4" /> },
-        { label: "Clonar Quiz", href: "/tools/clonequiz", icon: <Circle className="h-4 w-4" /> },
-      ],
-    },
-    {
-      label: "Profile",
-      href: "/profile",
-      icon: (
-        <UserCog className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-    {
-      label: "Settings",
-      href: "/settings",
-      icon: (
-        <SettingsIcon className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-    {
-      label: "Logout",
-      href: "#",
-      icon: (
-        <LogOut className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-  ];
 
   const EvolutionCharts = () => (
     <div className="space-y-6">
@@ -1047,44 +992,8 @@ export function Admin() {
   );
 
   return (
-    <div className={`min-h-screen ${isDarkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
-      {/* Mobile overlay */}
-      {open && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
-          onClick={() => setOpen(false)}
-        />
-      )}
-
-      <Sidebar open={open} setOpen={setOpen}>
-        <SidebarBody className={`w-64 ${isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border-r h-screen fixed left-0 top-0 z-40`}>
-          <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
-            {open ? <Logo /> : <LogoIcon />}
-            <div className="mt-8 flex flex-col gap-2">
-              {links.map((link, idx) => (
-                <SidebarLink key={idx} link={link} />
-              ))}
-            </div>
-          </div>
-          <div>
-            <SidebarLink
-              link={{
-                label: profile?.full_name || user?.email || 'Usuário',
-                href: "/profile",
-                icon: (
-                  <img
-                    src={profile?.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(profile?.full_name || user?.email || 'U')}
-                    className="h-7 w-7 flex-shrink-0 rounded-full"
-                    alt="Avatar"
-                  />
-                ),
-              }}
-            />
-          </div>
-        </SidebarBody>
-      </Sidebar>
-
-      <main className={`${open ? 'lg:pl-72' : 'lg:pl-24'} transition-all duration-300 px-4 py-8 lg:px-8 pt-16 lg:pt-8`}>
+    <StandardNavigation>
+      <main className="px-4 py-8 lg:px-8 pt-16 lg:pt-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-8 gap-4">
             <h1 className={`text-xl sm:text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
@@ -1113,6 +1022,16 @@ export function Admin() {
               >
                 <Users className="h-4 w-4 sm:h-5 sm:w-5" />
                 Usuários
+              </button>
+              <button
+                onClick={() => setActiveTab('content')}
+                className={`px-3 py-2 sm:px-4 sm:py-2 rounded-lg flex items-center gap-2 text-sm sm:text-base ${activeTab === 'content'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                  }`}
+              >
+                <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
+                Conteúdo
               </button>
             </div>
           </div>
@@ -1475,6 +1394,311 @@ export function Admin() {
 
               {/* Evolution Charts */}
               <EvolutionCharts />
+            </div>
+          ) : activeTab === 'content' ? (
+            <div className="space-y-4">
+              {/* Content Stats */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Quizzes (tabela quizzes)</p>
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-2">
+                        {allQuizzes.length}
+                      </h3>
+                    </div>
+                    <FileText className="h-8 w-8 text-blue-600" />
+                  </div>
+                </div>
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Sites Clonados (cloned_sites)</p>
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-2">
+                        {allClonedSites.length}
+                      </h3>
+                    </div>
+                    <Globe className="h-8 w-8 text-green-600" />
+                  </div>
+                </div>
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Sites (tabela sites)</p>
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-2">
+                        {allSites.length}
+                      </h3>
+                    </div>
+                    <Globe className="h-8 w-8 text-purple-600" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Quizzes Table */}
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                    Quizzes (tabela quizzes) - {allQuizzes.length} total
+                  </h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-900">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Título
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Slug
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          URL Original
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Usuário
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Criado em
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                      {allQuizzes.map((quiz) => {
+                        const user = users.find(u => u.id === quiz.user_id);
+                        const originalUrl = quiz.data?.originalUrl || quiz.original_url || 'N/A';
+                        const truncatedUrl = originalUrl.length > 50 ? originalUrl.substring(0, 50) + '...' : originalUrl;
+
+                        return (
+                          <tr key={quiz.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                              {quiz.title || 'Sem título'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <a
+                                href={`https://quiz.clonup.pro/${quiz.slug}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
+                              >
+                                {quiz.slug}
+                              </a>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              {originalUrl !== 'N/A' ? (
+                                <a
+                                  href={originalUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
+                                  title={originalUrl}
+                                >
+                                  {truncatedUrl}
+                                </a>
+                              ) : (
+                                <span className="text-gray-500 dark:text-gray-400">N/A</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                              {user ? (
+                                <div>
+                                  <div className="font-medium text-gray-900 dark:text-white">
+                                    {user.full_name || 'Sem nome'}
+                                  </div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                                    {user.email}
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-gray-500 dark:text-gray-400">Usuário não encontrado</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                              <span className={`px-2 py-1 text-xs rounded-full ${quiz.status === 'published' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                                quiz.status === 'draft' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                                  'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                                }`}>
+                                {quiz.status || 'N/A'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                              {new Date(quiz.created_at).toLocaleDateString('pt-BR')}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Cloned Sites Table */}
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                    Sites Clonados (tabela cloned_sites) - {allClonedSites.length} total
+                  </h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-900">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Subdomínio
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          URL Original
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Usuário
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Criado em
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                      {allClonedSites.map((site) => {
+                        const user = users.find(u => u.id === site.user_id);
+                        const truncatedUrl = site.original_url && site.original_url.length > 50 ?
+                          site.original_url.substring(0, 50) + '...' : site.original_url;
+
+                        return (
+                          <tr key={site.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <a
+                                href={`https://${site.subdomain}.clonup.pro`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline font-medium"
+                              >
+                                {site.subdomain}
+                              </a>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              {site.original_url ? (
+                                <a
+                                  href={site.original_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
+                                  title={site.original_url}
+                                >
+                                  {truncatedUrl}
+                                </a>
+                              ) : (
+                                <span className="text-gray-500 dark:text-gray-400">N/A</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                              {user ? (
+                                <div>
+                                  <div className="font-medium text-gray-900 dark:text-white">
+                                    {user.full_name || 'Sem nome'}
+                                  </div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                                    {user.email}
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-gray-500 dark:text-gray-400">Usuário não encontrado</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                              {new Date(site.created_at).toLocaleDateString('pt-BR')}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Sites Table */}
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                    Sites (tabela sites) - {allSites.length} total
+                  </h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-900">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Subdomínio
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          URL Original
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Usuário
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Criado em
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                      {allSites.map((site) => {
+                        const user = users.find(u => u.id === site.user_id);
+                        const truncatedUrl = site.original_url && site.original_url.length > 50 ?
+                          site.original_url.substring(0, 50) + '...' : site.original_url;
+
+                        return (
+                          <tr key={site.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <a
+                                href={`https://${site.subdomain}.clonup.pro`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline font-medium"
+                              >
+                                {site.subdomain}
+                              </a>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              {site.original_url ? (
+                                <a
+                                  href={site.original_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
+                                  title={site.original_url}
+                                >
+                                  {truncatedUrl}
+                                </a>
+                              ) : (
+                                <span className="text-gray-500 dark:text-gray-400">N/A</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                              {user ? (
+                                <div>
+                                  <div className="font-medium text-gray-900 dark:text-white">
+                                    {user.full_name || 'Sem nome'}
+                                  </div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                                    {user.email}
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-gray-500 dark:text-gray-400">Usuário não encontrado</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                              {new Date(site.created_at).toLocaleDateString('pt-BR')}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           ) : activeTab === 'users' ? (
             <div className="space-y-4">
@@ -2055,6 +2279,6 @@ export function Admin() {
           </div>
         </div>
       )}
-    </div>
+    </StandardNavigation>
   );
 } 

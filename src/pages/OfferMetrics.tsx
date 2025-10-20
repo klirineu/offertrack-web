@@ -1,11 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useEffect, useState, useCallback } from 'react';
+import { useParams } from 'react-router-dom';
 import { Line } from 'react-chartjs-2';
 import { Chart, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
-import { motion } from 'framer-motion';
-import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Wrench, TrendingUp, TrendingDown, ArrowRight, RefreshCw } from 'lucide-react';
-import { Sidebar, SidebarBody, SidebarLink } from '../components/ui/sidebar';
-import { useAuth } from '../context/AuthContext';
+import { TrendingUp, TrendingDown, ArrowRight, RefreshCw, Layout } from 'lucide-react';
+import { StandardNavigation } from '../components/StandardNavigation';
 import { useThemeStore } from '../store/themeStore';
 
 Chart.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
@@ -38,38 +36,7 @@ const PERIODS = [
 
 type PeriodValue = (typeof PERIODS)[number]['value'];
 
-import LogoBranco from '../assets/logo-branco.png';
-import IconBranco from '../assets/ico-branco.png';
 import { supabase } from '../lib/supabase';
-
-const Logo = () => {
-  return (
-    <Link
-      to="/"
-      className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
-    >
-      <img src={LogoBranco} alt="" />
-      <motion.span
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="font-medium text-black dark:text-white whitespace-pre"
-      >
-        Clonup
-      </motion.span>
-    </Link>
-  );
-};
-
-const LogoIcon = () => {
-  return (
-    <Link
-      to="/"
-      className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
-    >
-      <img src={IconBranco} alt="" />
-    </Link>
-  );
-};
 
 export default function OfferMetrics() {
   const { offerId } = useParams();
@@ -79,9 +46,7 @@ export default function OfferMetrics() {
   const [error, setError] = useState('');
   const [period, setPeriod] = useState<PeriodValue>(7);
   const [refreshing, setRefreshing] = useState(false);
-  const [open, setOpen] = React.useState(false);
   const { theme } = useThemeStore();
-  const { user, profile } = useAuth();
 
   // Função para buscar dados da oferta
   useEffect(() => {
@@ -103,7 +68,7 @@ export default function OfferMetrics() {
   }, [offerId]);
 
   // Função para buscar métricas
-  const fetchMetrics = async () => {
+  const fetchMetrics = useCallback(async () => {
     if (!offerId) return;
     setRefreshing(true);
     setError('');
@@ -130,11 +95,11 @@ export default function OfferMetrics() {
     else setMetrics(data || []);
     setRefreshing(false);
     setLoading(false);
-  };
+  }, [offerId, period]);
 
   useEffect(() => {
     fetchMetrics();
-  }, [offerId, period]);
+  }, [offerId, period, fetchMetrics]);
 
   // Cálculos de métricas
   const lastMetric = metrics[metrics.length - 1]?.count || 0;
@@ -147,8 +112,17 @@ export default function OfferMetrics() {
     labels: metrics.map(m => {
       const date = new Date(m.checked_at);
       return typeof period === 'number' && period <= 1
-        ? date.toLocaleTimeString()
-        : date.toLocaleDateString();
+        ? date.toLocaleString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+        : date.toLocaleDateString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: '2-digit'
+        });
     }),
     datasets: [
       {
@@ -162,103 +136,9 @@ export default function OfferMetrics() {
     ],
   };
 
-  const links = [
-    {
-      label: "Dashboard",
-      href: "/dashboard",
-      icon: (
-        <Layout className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-
-    // {
-    //   label: "Filtro de Tráfego",
-    //   href: "#",
-    //   icon: (
-    //     <svg className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z" /></svg>
-    //   ),
-    //   subLinks: [
-    //     { label: "Requisições", href: "/traffic-filter/requests", icon: <Circle className="h-4 w-4" /> },
-    //     { label: "Domínios", href: "/traffic-filter/domains", icon: <Circle className="h-4 w-4" /> },
-    //     { label: "Relatórios", href: "/traffic-filter/reports", icon: <Circle className="h-4 w-4" /> },
-    //     { label: "Campanha", href: "/traffic-filter/campaigns", icon: <Circle className="h-4 w-4" /> },
-    //   ],
-    // },
-    {
-      label: "Ferramentas",
-      href: "#",
-      icon: <Wrench className="text-neutral-700 dark:text-neutral-200 h-5 w-5" />,
-      subLinks: [
-        { label: "Criptografar Texto", href: "/tools/encrypt", icon: <Circle className="h-4 w-4" /> },
-        { label: "Remover Metadados", href: "/tools/removemetadados", icon: <Circle className="h-4 w-4" /> },
-        { label: "Trackeamento", href: "/tools/trackeamento", icon: <Circle className="h-4 w-4" /> },
-        { label: "Anticlone", href: "/tools/anticlone", icon: <Circle className="h-4 w-4" /> },
-        { label: "Clonar Sites", href: "/tools/clonesites", icon: <Circle className="h-4 w-4" /> },
-        { label: "Clonar Quiz", href: "/tools/clonequiz", icon: <Circle className="h-4 w-4" /> },
-      ],
-    },
-    {
-      label: "Profile",
-      href: "/profile",
-      icon: (
-        <UserCog className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-    {
-      label: "Settings",
-      href: "/settings",
-      icon: (
-        <SettingsIcon className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-    {
-      label: "Logout",
-      href: "#",
-      icon: (
-        <LogOut className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-  ];
-
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
-      {/* Mobile overlay */}
-      {open && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
-          onClick={() => setOpen(false)}
-        />
-      )}
-
-      <Sidebar open={open} setOpen={setOpen}>
-        <SidebarBody className={`w-64 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border-r h-screen fixed left-0 top-0 z-40`}>
-          <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
-            {open ? <Logo /> : <LogoIcon />}
-            <div className="mt-8 flex flex-col gap-2">
-              {links.map((link, idx) => (
-                <SidebarLink key={idx} link={link} />
-              ))}
-            </div>
-          </div>
-          <div>
-            <SidebarLink
-              link={{
-                label: profile?.full_name || user?.email || 'Usuário',
-                href: "/profile",
-                icon: (
-                  <img
-                    src={profile?.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(profile?.full_name || user?.email || 'U')}
-                    className="h-7 w-7 flex-shrink-0 rounded-full"
-                    alt="Avatar"
-                  />
-                ),
-              }}
-            />
-          </div>
-        </SidebarBody>
-      </Sidebar>
-
-      <div className={`${open ? 'lg:pl-72' : 'lg:pl-24'} transition-all duration-300 px-4 py-8 lg:px-0 pt-16 lg:pt-0`}>
+    <StandardNavigation>
+      <div className="px-4 py-8 lg:px-0 pt-16 lg:pt-0">
         <header className={`${theme === 'dark' ? 'bg-gray-800 border-b border-gray-700' : 'bg-white shadow-sm'} px-4 py-4 lg:px-8`}>
           <div className="max-w-7xl mx-auto">
             <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
@@ -466,6 +346,6 @@ export default function OfferMetrics() {
           )}
         </main>
       </div>
-    </div>
+    </StandardNavigation>
   );
 } 

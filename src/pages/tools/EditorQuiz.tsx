@@ -1,50 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Wrench, Plus, Loader2, Trash2, Edit } from 'lucide-react';
-import { SidebarBody, SidebarLink, Sidebar } from '../../components/ui/sidebar';
+import { Plus, Loader2, Trash2, Edit, Circle, Wrench } from 'lucide-react';
+import { StandardNavigation } from '../../components/StandardNavigation';
 import { useThemeStore } from '../../store/themeStore';
 import { useAuth } from '../../context/AuthContext';
 import { fetchQuizzesService, removeQuizService, Quiz } from '../../services/quizzesService';
 import { cloneQuizWithAuth } from '../../services/api';
 import { supabase } from '../../lib/supabase';
 
-import LogoBranco from '../../assets/logo-branco.png';
-import IconBranco from '../../assets/ico-branco.png';
-
-const Logo = () => {
-  return (
-    <Link
-      to="/"
-      className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
-    >
-      <img src={LogoBranco} alt="" />
-      <motion.span
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="font-medium text-black dark:text-white whitespace-pre"
-      >
-        Clonup
-      </motion.span>
-    </Link>
-  );
-};
-
-const LogoIcon = () => {
-  return (
-    <Link
-      to="/"
-      className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
-    >
-      <img src={IconBranco} alt="" />
-    </Link>
-  );
-};
 
 export default function EditorQuiz() {
   const { theme } = useThemeStore();
-  const { user, profile } = useAuth();
-  const [open, setOpen] = useState(false);
+  const { user } = useAuth();
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [quizzesLoading, setQuizzesLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -55,64 +21,8 @@ export default function EditorQuiz() {
   const [subdomain, setSubdomain] = useState("");
   const [subdomainError, setSubdomainError] = useState<string | null>(null);
   const [slugModified, setSlugModified] = useState<string | null>(null);
+  const [quizType, setQuizType] = useState<'inlead' | 'xquiz'>('inlead');
 
-  const links = [
-    {
-      label: "Dashboard",
-      href: "/dashboard",
-      icon: (
-        <Layout className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-
-    // {
-    //   label: "Filtro de Tráfego",
-    //   href: "#",
-    //   icon: (
-    //     <svg className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" ><path d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z" /></svg>
-    //   ),
-    //   subLinks: [
-    //     { label: "Requisições", href: "/traffic-filter/requests", icon: <Circle className="h-4 w-4" /> },
-    //     { label: "Domínios", href: "/traffic-filter/domains", icon: <Circle className="h-4 w-4" /> },
-    //     { label: "Relatórios", href: "/traffic-filter/reports", icon: <Circle className="h-4 w-4" /> },
-    //     { label: "Campanha", href: "/traffic-filter/campaigns", icon: <Circle className="h-4 w-4" /> },
-    //   ],
-    // },
-    {
-      label: "Ferramentas",
-      href: "#",
-      icon: <Wrench className="text-neutral-700 dark:text-neutral-200 h-5 w-5" />,
-      subLinks: [
-        { label: "Criptografar Texto", href: "/tools/encrypt", icon: <Circle className="h-4 w-4" /> },
-        { label: "Remover Metadados", href: "/tools/removemetadados", icon: <Circle className="h-4 w-4" /> },
-        { label: "Trackeamento", href: "/tools/trackeamento", icon: <Circle className="h-4 w-4" /> },
-        { label: "Anticlone", href: "/tools/anticlone", icon: <Circle className="h-4 w-4" /> },
-        { label: "Clonar Sites", href: "/tools/clonesites", icon: <Circle className="h-4 w-4" /> },
-        { label: "Clonar Quiz", href: "/tools/clonequiz", icon: <Circle className="h-4 w-4" /> },
-      ],
-    },
-    {
-      label: "Profile",
-      href: "/profile",
-      icon: (
-        <UserCog className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-    {
-      label: "Settings",
-      href: "/settings",
-      icon: (
-        <SettingsIcon className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-    {
-      label: "Logout",
-      href: "#",
-      icon: (
-        <LogOut className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-  ];
 
   useEffect(() => {
     const loadQuizzes = async () => {
@@ -184,7 +94,8 @@ export default function EditorQuiz() {
       }
 
       // Chamar API para clonar o quiz com autenticação JWT
-      const res = await cloneQuizWithAuth(originalUrl, finalSubdomain);
+      // Usar apenas rota do Inlead por enquanto (XQuiz bloqueado)
+      const res = await cloneQuizWithAuth(originalUrl, finalSubdomain, '/api/clone/quiz');
       const responseData = res.data;
 
       if (!responseData.success) {
@@ -204,6 +115,7 @@ export default function EditorQuiz() {
       setSubdomain('');
       setSubdomainError(null);
       setSlugModified(null);
+      setQuizType('inlead');
 
     } catch (error) {
       console.error('Erro ao adicionar quiz:', error);
@@ -260,44 +172,8 @@ export default function EditorQuiz() {
   };
 
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
-      {/* Mobile overlay */}
-      {open && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
-          onClick={() => setOpen(false)}
-        />
-      )}
-
-      <Sidebar open={open} setOpen={setOpen}>
-        <SidebarBody className={`w-64 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border-r h-screen fixed left-0 top-0 z-40`}>
-          <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
-            {open ? <Logo /> : <LogoIcon />}
-            <div className="mt-8 flex flex-col gap-2">
-              {links.map((link, idx) => (
-                <SidebarLink key={idx} link={link} />
-              ))}
-            </div>
-          </div>
-          <div>
-            <SidebarLink
-              link={{
-                label: profile?.full_name || user?.email || 'Usuário',
-                href: "/profile",
-                icon: (
-                  <img
-                    src={profile?.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(profile?.full_name || user?.email || 'U')}
-                    className="h-7 w-7 flex-shrink-0 rounded-full"
-                    alt="Avatar"
-                  />
-                ),
-              }}
-            />
-          </div>
-        </SidebarBody>
-      </Sidebar>
-
-      <div className={`${open ? 'lg:pl-72' : 'lg:pl-24'} transition-all duration-300 px-4 py-8 lg:px-0 pt-16 lg:pt-0`}>
+    <StandardNavigation>
+      <div className="px-4 py-8 lg:px-0 pt-16 lg:pt-0">
         <header className={`${theme === 'dark' ? 'bg-gray-800 border-b border-gray-700' : 'bg-white shadow-sm'} px-4 py-4 lg:px-8`}>
           <div className="max-w-7xl mx-auto">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -340,6 +216,23 @@ export default function EditorQuiz() {
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 sm:p-8 flex flex-col gap-4 sm:gap-6 items-center w-full max-w-md">
                 <h2 className="text-xl sm:text-2xl font-bold text-center text-gray-900 dark:text-white">Clonar Quiz</h2>
+
+                {/* Campo de seleção do tipo de quiz */}
+                <div className="w-full">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Tipo de Quiz
+                  </label>
+                  <select
+                    value={quizType}
+                    onChange={e => setQuizType(e.target.value as 'inlead' | 'xquiz')}
+                    className="w-full px-3 py-2 sm:px-4 sm:py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base"
+                    disabled
+                  >
+                    <option value="inlead">Inlead</option>
+                    <option value="xquiz" disabled>XQuiz (Em breve)</option>
+                  </select>
+                </div>
+
                 <input
                   type="url"
                   placeholder="URL do site do quiz"
@@ -347,6 +240,7 @@ export default function EditorQuiz() {
                   onChange={e => setOriginalUrl(e.target.value)}
                   className="w-full px-3 py-2 sm:px-4 sm:py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base"
                 />
+
                 <input
                   type="text"
                   placeholder="Nome do quiz (subdomínio)"
@@ -368,7 +262,7 @@ export default function EditorQuiz() {
                     className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
                   >
                     {actionLoading === 'save' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                    {actionLoading === 'save' ? 'Clonando...' : 'Clonar'}
+                    {actionLoading === 'save' ? 'Clonando...' : 'Clonar Quiz'}
                   </button>
                   <button
                     onClick={() => {
@@ -378,6 +272,7 @@ export default function EditorQuiz() {
                       setSubdomainError(null);
                       setSlugModified(null);
                       setErrorMsg(null);
+                      setQuizType('inlead');
                     }}
                     className="w-full px-4 py-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white text-sm sm:text-base"
                   >
@@ -455,6 +350,6 @@ export default function EditorQuiz() {
           </div>
         </main>
       </div>
-    </div>
+    </StandardNavigation>
   );
 } 

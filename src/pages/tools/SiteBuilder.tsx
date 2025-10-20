@@ -2890,7 +2890,7 @@ export default function SiteBuilder() {
       >
         <div className="flex min-h-screen bg-gray-900">
           {/* Sidebar com componentes */}
-          <div className="w-80 bg-gray-800 border-r border-gray-700 p-6 flex flex-col gap-6 overflow-y-auto">
+          <div className="w-64 bg-gray-800 border-r border-gray-700 p-6 flex flex-col gap-6 overflow-y-auto">
             {/* Tabs de navegação */}
             <div className="flex border-b border-gray-700">
               <button
@@ -3043,7 +3043,7 @@ export default function SiteBuilder() {
 
           {/* Painel de propriedades */}
           {selectedBlock && (
-            <div className="w-80 bg-gray-800 border-l border-gray-700 flex flex-col min-h-screen">
+            <div className="w-96 bg-gray-800 border-l border-gray-700 flex flex-col min-h-screen">
               <div className="flex border-b border-gray-700">
                 <button
                   className={`flex-1 px-4 py-3 text-sm font-medium ${activeTab === 'content' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-400'}`}
