@@ -11,7 +11,6 @@ import {
 } from '../services/escalatedOffersService';
 import {
   TrendingUp,
-  Search,
   Filter,
   ExternalLink,
   Plus,
@@ -26,10 +25,8 @@ import {
 } from 'lucide-react';
 
 interface FilterOptions {
-  status: string;
-  margin: string;
+  escalationLevel: string;
   minAds: string;
-  search: string;
 }
 
 export default function EscalatedOffers() {
@@ -45,10 +42,8 @@ export default function EscalatedOffers() {
   const [editTitle, setEditTitle] = useState('');
   const [editTags, setEditTags] = useState<string[]>([]);
   const [filters, setFilters] = useState<FilterOptions>({
-    status: 'all',
-    margin: 'all',
-    minAds: '10',
-    search: ''
+    escalationLevel: 'all',
+    minAds: '10'
   });
 
   // Verificar se o usuário tem acesso
@@ -142,11 +137,16 @@ export default function EscalatedOffers() {
   };
 
   const filteredOffers = offers.filter(offer => {
-    if (filters.status !== 'all' && offer.status !== filters.status) return false;
-    if (filters.margin === 'positive' && !offer.margin_positive) return false;
-    if (filters.margin === 'negative' && offer.margin_positive) return false;
+    // Filtro por nível de escalação
+    if (filters.escalationLevel !== 'all') {
+      if (filters.escalationLevel === 'escalando' && offer.active_ads_count > 15) return false;
+      if (filters.escalationLevel === 'escalada' && (offer.active_ads_count <= 15 || offer.active_ads_count > 50)) return false;
+      if (filters.escalationLevel === 'escaladissima' && offer.active_ads_count <= 50) return false;
+    }
+    
+    // Filtro por mínimo de anúncios
     if (parseInt(filters.minAds) > 0 && offer.active_ads_count < parseInt(filters.minAds)) return false;
-    if (filters.search && !offer.title.toLowerCase().includes(filters.search.toLowerCase())) return false;
+    
     return true;
   });
 
@@ -241,54 +241,21 @@ export default function EscalatedOffers() {
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Filtros</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Busca */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Nível de Escalação */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Buscar
-              </label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Título da oferta..."
-                  value={filters.search}
-                  onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
-              </div>
-            </div>
-
-            {/* Status */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Status
+                Nível de Escalação
               </label>
               <select
-                value={filters.status}
-                onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                value={filters.escalationLevel}
+                onChange={(e) => setFilters(prev => ({ ...prev, escalationLevel: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               >
-                <option value="all">Todos</option>
-                <option value="active">Ativo</option>
-                <option value="inactive">Inativo</option>
-                <option value="archived">Arquivado</option>
-              </select>
-            </div>
-
-            {/* Margem */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Margem
-              </label>
-              <select
-                value={filters.margin}
-                onChange={(e) => setFilters(prev => ({ ...prev, margin: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              >
-                <option value="all">Todas</option>
-                <option value="positive">Positiva</option>
-                <option value="negative">Negativa</option>
+                <option value="all">Todos os Níveis</option>
+                <option value="escalando">🔥 Escalando (até 15 anúncios)</option>
+                <option value="escalada">🚀 Escalada (16 a 50 anúncios)</option>
+                <option value="escaladissima">💥 Escaladíssima (mais de 50 anúncios)</option>
               </select>
             </div>
 
