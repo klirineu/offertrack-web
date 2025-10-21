@@ -242,15 +242,43 @@ interface UserResources {
   anticloneSites: UserAnticloneSite[];
 }
 
+interface Quiz {
+  id: string;
+  user_id: string;
+  title: string;
+  slug: string;
+  status: string;
+  created_at: string;
+  data?: {
+    originalUrl?: string;
+  };
+  original_url?: string;
+}
+
+interface ClonedSite {
+  id: string;
+  user_id: string;
+  subdomain: string;
+  original_url: string;
+  created_at: string;
+}
+
+interface Site {
+  id: string;
+  user_id: string;
+  subdomain: string;
+  original_url: string;
+  created_at: string;
+}
+
 export function Admin() {
-  const [open, setOpen] = useState(false);
-  const { user, profile } = useAuth();
+  const { profile } = useAuth();
   const navigate = useNavigate();
   const [users, setUsers] = useState<Profile[]>([]);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'content'>('dashboard');
-  const [allQuizzes, setAllQuizzes] = useState<any[]>([]);
-  const [allClonedSites, setAllClonedSites] = useState<any[]>([]);
-  const [allSites, setAllSites] = useState<any[]>([]);
+  const [allQuizzes, setAllQuizzes] = useState<Quiz[]>([]);
+  const [allClonedSites, setAllClonedSites] = useState<ClonedSite[]>([]);
+  const [allSites, setAllSites] = useState<Site[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
@@ -325,6 +353,7 @@ export function Admin() {
     // Check if dark mode is enabled
     const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     setIsDarkMode(isDark);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // This will run once on mount
 
   // Update filtered users when search term changes
@@ -333,6 +362,7 @@ export function Admin() {
       const filteredUsers = getFilteredUsers();
       updateStats(filteredUsers);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearchTerm, loading, users]);
 
   // Load user resources when modal opens
