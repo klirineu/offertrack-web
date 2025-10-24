@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Loader2, Trash2, Edit, Circle, Wrench } from 'lucide-react';
+import { Plus, Loader2, Trash2, Edit, Circle, Wrench, CheckCircle, Copy } from 'lucide-react';
 import { StandardNavigation } from '../../components/StandardNavigation';
 import { useThemeStore } from '../../store/themeStore';
 import { useAuth } from '../../context/AuthContext';
@@ -22,6 +22,15 @@ export default function EditorQuiz() {
   const [subdomainError, setSubdomainError] = useState<string | null>(null);
   const [slugModified, setSlugModified] = useState<string | null>(null);
   const [quizType, setQuizType] = useState<'inlead' | 'xquiz'>('inlead');
+  const [successModalOpen, setSuccessModalOpen] = useState(false);
+  const [clonedQuizData, setClonedQuizData] = useState<{
+    id: string;
+    slug: string;
+    url: string;
+    title: string;
+    originalUrl?: string;
+    steps?: unknown[];
+  } | null>(null);
 
 
   useEffect(() => {
@@ -94,8 +103,9 @@ export default function EditorQuiz() {
       }
 
       // Chamar API para clonar o quiz com autenticação JWT
-      // Usar apenas rota do Inlead por enquanto (XQuiz bloqueado)
-      const res = await cloneQuizWithAuth(originalUrl, finalSubdomain, '/api/clone/quiz');
+      // Usar rota baseada no tipo de quiz selecionado
+      const apiRoute = quizType === 'xquiz' ? '/api/clone/xquiz' : '/api/clone/quiz';
+      const res = await cloneQuizWithAuth(originalUrl, finalSubdomain, apiRoute);
       const responseData = res.data;
 
       if (!responseData.success) {
@@ -110,12 +120,18 @@ export default function EditorQuiz() {
       if (quizzesError) console.error('Erro ao carregar quizzes:', quizzesError);
       if (quizzesData) setQuizzes(quizzesData);
 
+      // Salvar dados do quiz clonado para mostrar no modal de sucesso
+      setClonedQuizData(responseData.data);
+
       setModalOpen(false);
       setOriginalUrl('');
       setSubdomain('');
       setSubdomainError(null);
       setSlugModified(null);
       setQuizType('inlead');
+
+      // Abrir modal de sucesso
+      setSuccessModalOpen(true);
 
     } catch (error) {
       console.error('Erro ao adicionar quiz:', error);
@@ -226,11 +242,17 @@ export default function EditorQuiz() {
                     value={quizType}
                     onChange={e => setQuizType(e.target.value as 'inlead' | 'xquiz')}
                     className="w-full px-3 py-2 sm:px-4 sm:py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base"
-                    disabled
                   >
                     <option value="inlead">Inlead</option>
-                    <option value="xquiz" disabled>XQuiz (Em breve)</option>
+                    <option value="xquiz">XQuiz (BETA) 🚀</option>
                   </select>
+                  {quizType === 'xquiz' && (
+                    <div className="mt-2 px-3 py-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                      <p className="text-xs text-yellow-800 dark:text-yellow-200">
+                        ⚠️ <strong>BETA:</strong> Esta funcionalidade está em fase de testes. Pode haver instabilidades.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <input
@@ -277,6 +299,117 @@ export default function EditorQuiz() {
                     className="w-full px-4 py-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white text-sm sm:text-base"
                   >
                     Cancelar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modal de Sucesso */}
+          {successModalOpen && clonedQuizData && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 sm:p-8 w-full max-w-lg">
+                {/* Header com ícone de sucesso */}
+                <div className="flex flex-col items-center mb-6">
+                  <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mb-4">
+                    <CheckCircle className="w-10 h-10 text-green-600 dark:text-green-400" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white text-center">
+                    Quiz Clonado com Sucesso! 🎉
+                  </h2>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 text-center">
+                    Seu quiz está pronto para ser usado
+                  </p>
+                </div>
+
+                {/* Informações do Quiz */}
+                <div className="space-y-4 mb-6">
+                  {/* Título */}
+                  <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                    <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                      Título
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-white mt-1 break-words">
+                      {clonedQuizData.title}
+                    </p>
+                  </div>
+
+                  {/* URL do Quiz */}
+                  <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                    <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                      URL do Quiz
+                    </label>
+                    <div className="flex items-center gap-2 mt-2">
+                      <input
+                        type="text"
+                        value={clonedQuizData.url}
+                        readOnly
+                        className="flex-1 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-900 dark:text-white"
+                      />
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(clonedQuizData.url);
+                          alert('URL copiada!');
+                        }}
+                        className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                        title="Copiar URL"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* URL Original */}
+                  {clonedQuizData.originalUrl && (
+                    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                      <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                        URL Original
+                      </label>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 break-all">
+                        {clonedQuizData.originalUrl}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Informações Adicionais */}
+                  {clonedQuizData.steps && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                      <p className="text-sm text-blue-800 dark:text-blue-200">
+                        📊 <strong>{clonedQuizData.steps.length}</strong> etapas clonadas com sucesso
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Botões de Ação */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={() => {
+                      window.open(`https://quiz.clonup.pro/quiz/${clonedQuizData.id}`, '_blank');
+                    }}
+                    className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition flex items-center justify-center gap-2 font-medium"
+                  >
+                    <Edit className="w-5 h-5" />
+                    Editar Quiz
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(clonedQuizData.url);
+                      alert('URL copiada!');
+                    }}
+                    className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-2 font-medium"
+                  >
+                    <Copy className="w-5 h-5" />
+                    Copiar URL
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSuccessModalOpen(false);
+                      setClonedQuizData(null);
+                    }}
+                    className="flex-1 px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition font-medium"
+                  >
+                    Fechar
                   </button>
                 </div>
               </div>
