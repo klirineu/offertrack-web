@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { ForgotPasswordModal } from './ForgotPasswordModal';
 
 export function LoginForm() {
   const [email, setEmail] = useState('');
@@ -10,6 +11,7 @@ export function LoginForm() {
   const navigate = useNavigate();
   const location = useLocation();
   const [submitting, setSubmitting] = useState(false);
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
 
   // Redireciona para o dashboard quando o user for preenchido
   useEffect(() => {
@@ -65,9 +67,18 @@ export function LoginForm() {
               />
             </div>
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-300">
-                Senha
-              </label>
+              <div className="flex justify-between items-center mb-1">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-300">
+                  Senha
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setForgotPasswordOpen(true)}
+                  className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                >
+                  Esqueci a senha
+                </button>
+              </div>
               <input
                 id="password"
                 type="password"
@@ -103,6 +114,12 @@ export function LoginForm() {
           </div>
         </div>
       </div>
+
+      {/* Modal de Esqueci a Senha */}
+      <ForgotPasswordModal
+        isOpen={forgotPasswordOpen}
+        onClose={() => setForgotPasswordOpen(false)}
+      />
     </div>
   );
 } 

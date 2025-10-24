@@ -3,6 +3,10 @@ import { useEffect, useState } from 'react';
 import api from '../../services/api';
 import { useLocation } from 'react-router-dom';
 import { nanoid } from 'nanoid';
+import { ContentSelectionModal } from '../../components/modals/ContentSelectionModal';
+import { ImageGalleryModal } from '../../components/modals/ImageGalleryModal';
+import { EmojiSelectorModal } from '../../components/modals/EmojiSelectorModal';
+import { UrlInputModal } from '../../components/modals/UrlInputModal';
 
 function getElementByOtId(doc: Document | null, otId: string | null): HTMLElement | null {
   if (!doc || !otId) return null;
@@ -113,6 +117,12 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
   const [bodyScriptsText, setBodyScriptsText] = useState('');
   const [showScriptManager, setShowScriptManager] = useState(false);
   const [customLink, setCustomLink] = useState('');
+
+  // Estados dos modais de imagem
+  const [contentModalOpen, setContentModalOpen] = useState(false);
+  const [galleryModalOpen, setGalleryModalOpen] = useState(false);
+  const [emojiModalOpen, setEmojiModalOpen] = useState(false);
+  const [urlModalOpen, setUrlModalOpen] = useState(false);
 
   // Sincroniza atributos do elemento selecionado
   useEffect(() => {
@@ -821,7 +831,26 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
         {selectedElement.startsWith('img') && (
           <>
             <label className="block text-sm mb-1">Imagem (src):</label>
-            <input type="text" className="w-full border border-gray-700 bg-gray-800 text-gray-100 rounded px-2 py-1 mb-2" value={src} onChange={e => { setSrc(e.target.value); updateAttr('src', e.target.value); }} />
+            <div className="flex gap-2 mb-2">
+              <input
+                type="text"
+                className="flex-1 border border-gray-700 bg-gray-800 text-gray-100 rounded px-2 py-1"
+                value={src}
+                onChange={e => {
+                  setSrc(e.target.value);
+                  updateAttr('src', e.target.value);
+                }}
+                placeholder="URL da imagem"
+              />
+              <button
+                type="button"
+                onClick={() => setContentModalOpen(true)}
+                className="px-3 py-1 rounded bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold whitespace-nowrap"
+                title="Selecionar imagem"
+              >
+                🖼️
+              </button>
+            </div>
             <label className="block text-sm mb-1">Alt:</label>
             <input type="text" className="w-full border border-gray-700 bg-gray-800 text-gray-100 rounded px-2 py-1 mb-2" value={alt} onChange={e => { setAlt(e.target.value); updateAttr('alt', e.target.value); }} />
           </>
@@ -1001,6 +1030,66 @@ Exemplo - Script de interação:
           </div>
         </div>
       )}
+
+      {/* Modais de Seleção de Imagem */}
+      <ContentSelectionModal
+        isOpen={contentModalOpen}
+        onClose={() => setContentModalOpen(false)}
+        onSelectImage={() => {
+          setContentModalOpen(false);
+          setGalleryModalOpen(true);
+        }}
+        onSelectUrl={() => {
+          setContentModalOpen(false);
+          setUrlModalOpen(true);
+        }}
+        onSelectEmoji={() => {
+          setContentModalOpen(false);
+          setEmojiModalOpen(true);
+        }}
+      />
+
+      <ImageGalleryModal
+        isOpen={galleryModalOpen}
+        onClose={() => setGalleryModalOpen(false)}
+        onSelectImage={(imageUrl) => {
+          setSrc(imageUrl);
+          updateAttr('src', imageUrl);
+          setGalleryModalOpen(false);
+        }}
+      />
+
+      <EmojiSelectorModal
+        isOpen={emojiModalOpen}
+        onClose={() => setEmojiModalOpen(false)}
+        onSelectEmoji={(emoji) => {
+          // Converter emoji para data URI
+          const canvas = document.createElement('canvas');
+          canvas.width = 128;
+          canvas.height = 128;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.font = '100px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(emoji, 64, 64);
+            const dataUrl = canvas.toDataURL();
+            setSrc(dataUrl);
+            updateAttr('src', dataUrl);
+          }
+          setEmojiModalOpen(false);
+        }}
+      />
+
+      <UrlInputModal
+        isOpen={urlModalOpen}
+        onClose={() => setUrlModalOpen(false)}
+        onSubmit={(imageUrl) => {
+          setSrc(imageUrl);
+          updateAttr('src', imageUrl);
+          setUrlModalOpen(false);
+        }}
+      />
     </aside>
   );
 };

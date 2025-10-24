@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Edit, Trash2, Plus, Loader2, Clock, Wrench, Download } from 'lucide-react';
+import { Edit, Trash2, Plus, Loader2, Clock, Download, Upload } from 'lucide-react';
 import { StandardNavigation } from '../../components/StandardNavigation';
 import { useThemeStore } from '../../store/themeStore';
 import { useAuth } from '../../context/AuthContext';
@@ -34,6 +34,12 @@ export default function Editor() {
   const [errorModal, setErrorModal] = useState<string | null>(null);
   const [subdomainInput, setSubdomainInput] = useState("");
   const [subdomainError, setSubdomainError] = useState<string | null>(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadZipFile, setUploadZipFile] = useState<File | null>(null);
+  const [uploadSubdomain, setUploadSubdomain] = useState("");
+  const [uploadSubdomainError, setUploadSubdomainError] = useState<string | null>(null);
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState<{ subdomain: string; siteUrl: string } | null>(null);
 
   useEffect(() => {
     const loadClones = async () => {
@@ -108,6 +114,181 @@ export default function Editor() {
     setDeleteLoadingId(null);
   };
 
+  const handleZipDownload = async (clone: CloneSite) => {
+    // Verificar se o usuário tem plano ativo (não pode estar em trial)
+    if (!profile) {
+      setErrorModal('Erro ao verificar perfil do usuário');
+      return;
+    }
+
+    if (profile.subscription_status === 'trialing') {
+      setErrorModal('O download de sites não está disponível durante o período de teste. Assine um plano para desbloquear esta funcionalidade.');
+      return;
+    }
+
+    if (profile.subscription_status !== 'active') {
+      setErrorModal('Você precisa de um plano ativo para baixar sites. Assine um plano para continuar.');
+      return;
+    }
+
+    // Extrair subdomínio da URL do clone
+    const subdomain = getSubdomainFromUrl(clone.url);
+    if (!subdomain) {
+      setErrorModal('Não foi possível identificar o subdomínio do site');
+      return;
+    }
+
+    setActionLoading('zip');
+    try {
+      // Obter token do Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      const supabaseToken = session?.access_token;
+
+      if (!supabaseToken) {
+        setErrorModal('Erro de autenticação. Faça login novamente.');
+        return;
+      }
+
+      // Fazer requisição para baixar o site usando a instância api
+      const response = await api.post('/api/download-site',
+        { subdomain: subdomain },
+        {
+          headers: {
+            'Authorization': `Bearer ${supabaseToken}`,
+            'Content-Type': 'application/json'
+          },
+          responseType: 'blob' // Importante para receber o arquivo ZIP
+        }
+      );
+
+      // Obter o blob do arquivo ZIP
+      const blob = response.data;
+
+      // Criar link para download
+      const a = document.createElement('a');
+      a.href = window.URL.createObjectURL(blob);
+      a.download = `${subdomain}.zip`;
+      a.click();
+
+      // Limpar o objeto URL após o download
+      setTimeout(() => window.URL.revokeObjectURL(a.href), 100);
+
+    } catch (err) {
+      console.error('Erro ao baixar ZIP:', err);
+      let errorMessage = 'Erro ao baixar o site. Tente novamente.';
+
+      // Tratar erros do axios
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosError = err as { response?: { data?: { message?: string } } };
+        if (axiosError.response?.data?.message) {
+          errorMessage = axiosError.response.data.message;
+        }
+      }
+
+      setErrorModal(errorMessage);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleZipUpload = async () => {
+    if (!uploadZipFile || !uploadSubdomain || !user) return;
+
+    // Validar subdomínio
+    const validationError = validateSubdomain(uploadSubdomain.toLowerCase());
+    if (validationError) {
+      setUploadSubdomainError(validationError);
+      return;
+    }
+
+    // Verificar se o subdomínio está disponível
+    const isUnique = await checkSubdomainUnique(uploadSubdomain.toLowerCase());
+    if (!isUnique) {
+      setUploadSubdomainError('Este nome já está em uso.');
+      return;
+    }
+
+    // Verificar limite de clones
+    const limit = await checkCloneLimit(user.id);
+    if (!limit.allowed) {
+      setErrorModal(limit.error?.message || 'Limite de clones atingido.');
+      return;
+    }
+
+    setUploadLoading(true);
+    setUploadSubdomainError(null);
+
+    try {
+      // Obter token do Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      const supabaseToken = session?.access_token;
+
+      if (!supabaseToken) {
+        setErrorModal('Erro de autenticação. Faça login novamente.');
+        return;
+      }
+
+      // Criar FormData
+      const formData = new FormData();
+      formData.append('zip', uploadZipFile);
+      formData.append('subdomain', uploadSubdomain.toLowerCase());
+
+      // Enviar para a API usando a instância api
+      const response = await api.post('/api/zip-upload', formData, {
+        headers: {
+          'Authorization': `Bearer ${supabaseToken}`,
+        }
+      });
+
+      const result = response.data;
+
+      if (!result.success) {
+        setErrorModal(result.message || 'Erro ao processar o ZIP');
+        return;
+      }
+
+      // Adicionar à lista de clones no Supabase
+      const siteUrl = result.data.siteUrl;
+      const { error } = await addCloneService(user.id, 'upload-zip', siteUrl, uploadSubdomain.toLowerCase());
+
+      if (error) {
+        console.error('Erro ao salvar clone:', error);
+      }
+
+      // Atualizar lista de clones
+      const { data: clonesData, error: clonesError } = await fetchClonesService(user.id);
+      if (clonesError) console.error('Erro ao carregar clones:', clonesError);
+      if (clonesData) setClones(clonesData);
+
+      // Mostrar sucesso
+      setUploadSuccess({
+        subdomain: result.data.subdomain,
+        siteUrl: result.data.siteUrl
+      });
+
+      // Limpar formulário
+      setUploadZipFile(null);
+      setUploadSubdomain('');
+      setShowUploadModal(false);
+
+    } catch (err) {
+      console.error('Erro ao fazer upload do ZIP:', err);
+      let errorMessage = 'Erro ao fazer upload do ZIP. Tente novamente.';
+
+      // Tratar erros do axios
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosError = err as { response?: { data?: { message?: string } } };
+        if (axiosError.response?.data?.message) {
+          errorMessage = axiosError.response.data.message;
+        }
+      }
+
+      setErrorModal(errorMessage);
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+
   // Função específica para clonar para o editor
   async function handleCloneToEditor(url: string, subdomainCorreto: string) {
     if (!user) return;
@@ -174,12 +355,12 @@ export default function Editor() {
                 >
                   <Plus className="w-4 h-4" /> Clonar Site
                 </button>
-                {/* <button
-                  onClick={() => navigate('/tools/site-builder')}
+                <button
+                  onClick={() => setShowUploadModal(true)}
                   className="w-full sm:w-auto flex items-center justify-center gap-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-sm"
                 >
-                  <Wrench className="w-4 h-4" /> Construir Site
-                </button> */}
+                  <Upload className="w-4 h-4" /> Hospedar Site
+                </button>
                 <button
                   onClick={() => navigate('/tools/clonequiz')}
                   className="w-full sm:w-auto flex items-center justify-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm"
@@ -370,9 +551,240 @@ export default function Editor() {
             </div>
           )}
 
+          {/* Modal de Upload de ZIP */}
+          {showUploadModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 sm:p-8 flex flex-col gap-4 sm:gap-6 w-full max-w-md">
+                <h2 className="text-xl sm:text-2xl font-bold text-center text-gray-900 dark:text-white">Hospedar Site</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
+                  Faça upload de um arquivo ZIP contendo seu site (HTML, CSS, JS, imagens, etc.)
+                </p>
+
+                {/* Input de arquivo */}
+                <div className="w-full">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Arquivo ZIP
+                  </label>
+                  <input
+                    type="file"
+                    accept=".zip"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        if (file.size > 50 * 1024 * 1024) { // 50MB limit
+                          setErrorModal('O arquivo ZIP deve ter no máximo 50MB');
+                          e.target.value = '';
+                          return;
+                        }
+                        setUploadZipFile(file);
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                  />
+                  {uploadZipFile && (
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                      ✓ {uploadZipFile.name} ({(uploadZipFile.size / 1024 / 1024).toFixed(2)} MB)
+                    </p>
+                  )}
+                </div>
+
+                {/* Input de subdomínio */}
+                <div className="w-full">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Nome do site (subdomínio)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="meusite"
+                    value={uploadSubdomain}
+                    maxLength={20}
+                    onChange={(e) => {
+                      setUploadSubdomain(e.target.value);
+                      setUploadSubdomainError(validateSubdomain(e.target.value));
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Seu site ficará em: {uploadSubdomain || 'meusite'}.clonup.site
+                  </p>
+                  {uploadSubdomainError && (
+                    <p className="text-xs text-red-500 mt-1">{uploadSubdomainError}</p>
+                  )}
+                </div>
+
+                {/* Botões */}
+                <div className="flex flex-col sm:flex-row gap-3 w-full">
+                  <button
+                    onClick={handleZipUpload}
+                    disabled={!uploadZipFile || !uploadSubdomain || uploadLoading || !!uploadSubdomainError}
+                    className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {uploadLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Processando...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4" />
+                        Hospedar
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowUploadModal(false);
+                      setUploadZipFile(null);
+                      setUploadSubdomain('');
+                      setUploadSubdomainError(null);
+                    }}
+                    disabled={uploadLoading}
+                    className="w-full px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modal de Sucesso do Upload */}
+          {uploadSuccess && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-600 p-6 sm:p-8 flex flex-col gap-4 sm:gap-6 w-full max-w-md">
+                {/* Success Icon */}
+                <div className="flex flex-col items-center">
+                  <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4">
+                    <svg
+                      className="w-8 h-8 text-green-600 dark:text-green-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  </div>
+                  <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-white mb-2">
+                    🎉 Site Hospedado!
+                  </h2>
+                  <p className="text-center text-gray-600 dark:text-gray-400 text-sm">
+                    Seu site foi hospedado com sucesso e já está disponível online!
+                  </p>
+                </div>
+
+                {/* URL Display */}
+                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+                    URL do Site
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={uploadSuccess.siteUrl}
+                      readOnly
+                      className="flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+                    />
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(uploadSuccess.siteUrl);
+                        const btn = event?.target as HTMLButtonElement;
+                        const originalText = btn.innerHTML;
+                        btn.innerHTML = '✓';
+                        setTimeout(() => {
+                          btn.innerHTML = originalText;
+                        }, 2000);
+                      }}
+                      className="p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                      title="Copiar URL"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-col gap-3 w-full">
+                  <button
+                    onClick={() => {
+                      navigate(`/tools/editor-studio?id=${uploadSuccess.subdomain}`);
+                      setUploadSuccess(null);
+                    }}
+                    className="w-full px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 font-medium"
+                  >
+                    <Edit className="w-5 h-5" />
+                    Abrir Editor
+                  </button>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(uploadSuccess.siteUrl);
+                        alert('✓ URL copiada para a área de transferência!');
+                      }}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                      Copiar URL
+                    </button>
+                    <button
+                      onClick={() => window.open(uploadSuccess.siteUrl, '_blank')}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 text-sm"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                      Abrir Site
+                    </button>
+                  </div>
+                </div>
+
+                {/* Close Button */}
+                <button
+                  onClick={() => setUploadSuccess(null)}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-sm font-medium transition-colors"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Lista de clones */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
             <h3 className="text-base sm:text-lg font-semibold px-4 py-4 sm:px-6 sm:pt-6 sm:pb-2 text-gray-900 dark:text-white">Sites Clonados</h3>
+
+            {/* Aviso para usuários em trial */}
+            {profile?.subscription_status === 'trialing' && clones.length > 0 && (
+              <div className="mx-4 mb-4 sm:mx-6 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <Download className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200 font-medium">
+                      Download bloqueado durante o teste
+                    </p>
+                    <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                      O download de sites em ZIP está disponível apenas para assinantes.
+                      <button
+                        onClick={() => navigate('/escolher-plano')}
+                        className="underline font-medium ml-1 hover:text-yellow-900 dark:hover:text-yellow-100"
+                      >
+                        Assine agora
+                      </button>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="divide-y divide-gray-200 dark:divide-gray-700">
               {clonesLoading ? (
                 <div className="px-4 py-4 sm:px-6 text-gray-500 dark:text-gray-400 text-sm sm:text-base">Carregando...</div>
@@ -419,17 +831,25 @@ export default function Editor() {
                             <Edit className="w-4 h-4" />
                           </button>
                         )}
-                        {/* Botão de download temporariamente removido */}
-                        {/* {clone.url && (
+                        {clone.url && (
                           <button
                             onClick={() => handleZipDownload(clone)}
-                            disabled={actionLoading === 'zip'}
-                            className="p-2 text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 disabled:opacity-50"
-                            title="Baixar ZIP"
+                            disabled={actionLoading === 'zip' || profile?.subscription_status === 'trialing' || profile?.subscription_status !== 'active'}
+                            className={`p-2 disabled:opacity-50 ${profile?.subscription_status === 'trialing' || profile?.subscription_status !== 'active'
+                              ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                              : 'text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300'
+                              }`}
+                            title={
+                              profile?.subscription_status === 'trialing'
+                                ? 'Download bloqueado durante o período de teste. Assine um plano para desbloquear.'
+                                : profile?.subscription_status !== 'active'
+                                  ? 'Você precisa de um plano ativo para baixar sites'
+                                  : 'Baixar ZIP'
+                            }
                           >
                             {actionLoading === 'zip' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                           </button>
-                        )} */}
+                        )}
                         <button
                           onClick={() => handleDeleteClone(clone.id)}
                           disabled={deleteLoadingId === clone.id}
