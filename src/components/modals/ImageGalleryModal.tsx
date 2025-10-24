@@ -61,6 +61,7 @@ export const ImageGalleryModal: React.FC<ImageGalleryModalProps> = ({
   };
 
   const selectAll = () => {
+    if (!imageFiles || imageFiles.length === 0) return;
     const allImageIds = imageFiles.map((img: any) => img.id);
     setSelectedImages(new Set(allImageIds));
   };
@@ -175,7 +176,7 @@ export const ImageGalleryModal: React.FC<ImageGalleryModalProps> = ({
             <div className="flex items-center justify-center h-32">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
-          ) : imageFiles.length === 0 ? (
+          ) : !imageFiles || imageFiles.length === 0 ? (
             <div className="text-center py-12">
               <svg
                 className="w-16 h-16 text-gray-400 mx-auto mb-4"
@@ -233,8 +234,8 @@ export const ImageGalleryModal: React.FC<ImageGalleryModalProps> = ({
                     {isSelectionMode ? (
                       <div
                         className={`w-6 h-6 rounded border-2 flex items-center justify-center ${selectedImages.has(image.id)
-                            ? 'bg-blue-500 border-blue-500'
-                            : 'bg-white border-gray-300'
+                          ? 'bg-blue-500 border-blue-500'
+                          : 'bg-white border-gray-300'
                           }`}
                       >
                         {selectedImages.has(image.id) && (

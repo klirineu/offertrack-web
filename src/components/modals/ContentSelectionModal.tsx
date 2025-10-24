@@ -21,15 +21,18 @@ export const ContentSelectionModal: React.FC<ContentSelectionModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  // Se não foi passada posição específica, centraliza na tela
+  const shouldCenter = position.x === 0 && position.y === 0;
+
   return (
-    <div className="fixed inset-0 z-50" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30" onClick={onClose}>
       <div
-        className="absolute bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-600 p-4 w-72"
-        style={{
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-600 p-4 w-72 max-w-[288px]"
+        style={!shouldCenter ? {
+          position: 'absolute',
           left: Math.min(position.x, window.innerWidth - 288),
-          top: Math.min(position.y, window.innerHeight - 200),
-          maxWidth: '288px',
-        }}
+          top: Math.min(position.y, window.innerHeight - 400),
+        } : undefined}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

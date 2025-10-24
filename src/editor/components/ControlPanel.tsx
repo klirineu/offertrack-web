@@ -834,13 +834,11 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
             <div className="flex gap-2 mb-2">
               <input
                 type="text"
-                className="flex-1 border border-gray-700 bg-gray-800 text-gray-100 rounded px-2 py-1"
+                className="flex-1 border border-gray-700 bg-gray-800 text-gray-100 rounded px-2 py-1 cursor-not-allowed opacity-75"
                 value={src}
-                onChange={e => {
-                  setSrc(e.target.value);
-                  updateAttr('src', e.target.value);
-                }}
-                placeholder="URL da imagem"
+                readOnly
+                placeholder="Clique no botão ao lado para selecionar"
+                title="Use o botão ao lado para selecionar uma imagem"
               />
               <button
                 type="button"
