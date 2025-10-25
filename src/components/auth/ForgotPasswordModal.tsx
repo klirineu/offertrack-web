@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { X } from 'lucide-react';
+import LogoIcon from '../../assets/favicon.png';
 
 interface ForgotPasswordModalProps {
   isOpen: boolean;
@@ -28,12 +30,11 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
         redirectTo: `${window.location.origin}/reset-password`,
       });
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
       setSuccess(true);
-      setEmail('');
-
-      // Fechar modal após 3 segundos
       setTimeout(() => {
         onClose();
         setSuccess(false);
@@ -48,56 +49,35 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-600 p-6 w-full max-w-md">
+    <div className="modal-overlay">
+      <div className="modal-content max-w-md">
         {/* Header */}
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-            🔑 Recuperar Senha
-          </h3>
+        <div className="app-modal-header">
+          <div className="flex items-center gap-3">
+            <div className="logo-icon" style={{ background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px' }}>
+              <img src={LogoIcon} alt="ClonUp" style={{ width: '32px', height: '32px' }} />
+            </div>
+            <h3 className="modal-title">
+              🔑 Recuperar Senha
+            </h3>
+          </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            className="modal-close"
             disabled={loading}
           >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Success Message */}
         {success && (
-          <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-            <div className="flex items-start gap-3">
-              <svg
-                className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              <div>
-                <p className="text-sm font-medium text-green-800 dark:text-green-200">
-                  Email enviado com sucesso!
-                </p>
-                <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                  Verifique sua caixa de entrada e siga as instruções para redefinir sua senha.
-                </p>
+          <div className="alert alert-success mb-4">
+            <span className="alert-icon">✅</span>
+            <div className="alert-content">
+              <div className="alert-title">Email enviado com sucesso!</div>
+              <div className="alert-message">
+                Verifique sua caixa de entrada e siga as instruções para redefinir sua senha.
               </div>
             </div>
           </div>
@@ -105,91 +85,59 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
 
         {/* Error Message */}
         {error && (
-          <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-            <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+          <div className="alert alert-error mb-4">
+            <span className="alert-icon">❌</span>
+            <div className="alert-content">
+              <div className="alert-title">Erro ao enviar email</div>
+              <div className="alert-message">{error}</div>
+            </div>
           </div>
-        )}
-
-        {/* Description */}
-        {!success && (
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-            Digite seu email cadastrado e enviaremos um link para você redefinir sua senha.
-          </p>
         )}
 
         {/* Form */}
         {!success && (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
-                required
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 text-gray-900 dark:text-white dark:bg-gray-700"
-                disabled={loading}
-              />
-            </div>
+          <div className="app-modal-body">
+            <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
+              Digite seu email cadastrado e enviaremos um link para você redefinir sua senha.
+            </p>
 
-            {/* Buttons */}
-            <div className="flex gap-3 pt-2">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={loading}
-                className="flex-1 px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={loading || !email}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-              >
-                {loading ? (
-                  <>
-                    <svg
-                      className="animate-spin h-4 w-4 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                      ></path>
-                    </svg>
-                    Enviando...
-                  </>
-                ) : (
-                  'Enviar Link'
-                )}
-              </button>
-            </div>
-          </form>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="form-field-wrapper">
+                <label className="form-field-label">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  required
+                  className="form-input"
+                  placeholder="seu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="app-modal-footer">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="secondary-button"
+                  disabled={loading}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading || !email}
+                  className="cta-button"
+                >
+                  {loading ? 'Enviando...' : 'Enviar Email'}
+                </button>
+              </div>
+            </form>
+          </div>
         )}
-
-        {/* Help Text */}
-        <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-600">
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            💡 <strong>Dica:</strong> Verifique também sua pasta de spam caso não encontre o email na caixa de entrada.
-          </p>
-        </div>
       </div>
     </div>
   );
 };
-

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useThemeStore } from '../../store/themeStore';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, BarChart2, TrendingUp, Users, MousePointerClick, Wrench } from 'lucide-react';
+import { Layout, UserCog, Settings as SettingsIcon, Circle, BarChart2, TrendingUp, Users, MousePointerClick, Wrench } from 'lucide-react';
 import { SidebarBody, SidebarLink, Sidebar } from '../../components/ui/sidebar';
 import { Bar } from 'react-chartjs-2';
 import {
@@ -139,13 +139,6 @@ export function Reports() {
         { label: "Anticlone", href: "/tools/anticlone", icon: <Circle className="h-4 w-4" /> },
         { label: "Clonar Sites", href: "/tools/clonesites", icon: <Circle className="h-4 w-4" /> },
       ],
-    },
-    {
-      label: "Logout",
-      href: "#",
-      icon: (
-        <LogOut className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
     },
   ];
 

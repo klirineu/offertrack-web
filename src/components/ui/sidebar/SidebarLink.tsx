@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 
@@ -21,6 +21,11 @@ interface SidebarLinkProps {
 export function SidebarLink({ link }: SidebarLinkProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { signOut } = useAuth();
+  const location = useLocation();
+
+  // Verificar se a rota atual está ativa
+  const isActive = location.pathname === link.href ||
+    (link.subLinks && link.subLinks.some(subLink => location.pathname === subLink.href));
 
   const handleClick = async (e: React.MouseEvent) => {
     if (link.label === 'Logout') {
@@ -35,15 +40,46 @@ export function SidebarLink({ link }: SidebarLinkProps) {
     }
   };
 
+  const linkStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '0.875rem 1.5rem',
+    color: 'var(--text-secondary)',
+    textDecoration: 'none',
+    transition: 'all 0.3s ease',
+    borderLeft: '3px solid transparent',
+    fontWeight: 500,
+    fontSize: '0.95rem'
+  };
+
+  const activeLinkStyle: React.CSSProperties = {
+    ...linkStyle,
+    background: 'var(--bg-card-hover)',
+    color: 'var(--accent)',
+    borderLeftColor: 'var(--accent)'
+  };
+
   return (
     <div>
       {link.label === 'Logout' ? (
         <button
           onClick={handleClick}
-          className="flex items-center justify-between w-full px-4 py-2 text-sm text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+          className="w-full"
+          style={linkStyle}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--bg-card-hover)';
+            e.currentTarget.style.color = 'var(--accent)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.color = 'var(--text-secondary)';
+          }}
         >
-          <div className="flex items-center gap-2">
-            {link.icon}
+          <div className="flex items-center gap-3">
+            <span style={{ fontSize: '1.25rem', width: '24px', textAlign: 'center' }}>
+              {link.icon}
+            </span>
             <span>{link.label}</span>
           </div>
         </button>
@@ -51,10 +87,24 @@ export function SidebarLink({ link }: SidebarLinkProps) {
         <Link
           to={link.href}
           onClick={handleClick}
-          className="flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+          style={isActive ? activeLinkStyle : linkStyle}
+          onMouseEnter={(e) => {
+            if (!isActive) {
+              e.currentTarget.style.background = 'var(--bg-card-hover)';
+              e.currentTarget.style.color = 'var(--accent)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!isActive) {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = 'var(--text-secondary)';
+            }
+          }}
         >
-          <div className="flex items-center gap-2">
-            {link.icon}
+          <div className="flex items-center gap-3">
+            <span style={{ fontSize: '1.25rem', width: '24px', textAlign: 'center' }}>
+              {link.icon}
+            </span>
             <span>{link.label}</span>
           </div>
           {link.subLinks && (
@@ -71,10 +121,24 @@ export function SidebarLink({ link }: SidebarLinkProps) {
             <Link
               key={idx}
               to={subLink.href}
-              className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+              style={{
+                ...linkStyle,
+                paddingLeft: '2.5rem',
+                fontSize: '0.875rem'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--bg-card-hover)';
+                e.currentTarget.style.color = 'var(--accent)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = 'var(--text-secondary)';
+              }}
             >
-              {subLink.icon}
-              <span>{subLink.label}</span>
+              <div className="flex items-center gap-2">
+                {subLink.icon}
+                <span>{subLink.label}</span>
+              </div>
             </Link>
           ))}
         </div>

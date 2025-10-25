@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ForgotPasswordModal } from './ForgotPasswordModal';
+import LogoIcon from '../../assets/favicon.png';
 
 export function LoginForm() {
   const [email, setEmail] = useState('');
@@ -40,35 +41,51 @@ export function LoginForm() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-900">
+    <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(135deg, rgba(11, 15, 25, 0.95), rgba(30, 41, 59, 0.9))' }}>
       <div className="flex-1 flex items-center justify-center">
-        <div className="w-full max-w-md px-8 py-12 bg-gray-800 rounded-lg shadow-xl">
-          <h2 className="text-3xl font-bold text-center text-white mb-8">
-            Entrar
+        <div className="w-full max-w-md px-8 py-12 rounded-lg shadow-xl" style={{
+          background: 'linear-gradient(135deg, rgba(11, 15, 25, 0.95), rgba(30, 41, 59, 0.9))',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(37, 99, 235, 0.3)',
+          boxShadow: '0 0 30px rgba(37, 99, 235, 0.2)'
+        }}>
+          <div className="flex items-center justify-center mb-8">
+            <div className="logo" style={{ fontSize: '1.5rem', padding: '0.5rem' }}>
+              <div className="logo-icon" style={{ background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px' }}>
+                <img src={LogoIcon} alt="ClonUp" style={{ width: '40px', height: '40px' }} />
+              </div>
+              ClonUp
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold text-center text-white mb-2" style={{ textShadow: '0 0 10px rgba(37, 99, 235, 0.5)' }}>
+            Bem-vindo(a) ao ClonUp
           </h2>
+          <p className="text-1xl text-gray-300 mb-8 text-center" style={{ textShadow: '0 0 10px rgba(37, 99, 235, 0.4)' }}>
+            Entre na sua conta para continuar
+          </p>
           {error && (
             <div className="mb-4 p-4 bg-red-500/10 border border-red-500 rounded text-red-500">
               {error}
             </div>
           )}
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-300">
+            <div className="form-field-wrapper">
+              <label htmlFor="email" className="form-field-label">
                 Email
               </label>
               <input
                 id="email"
                 type="email"
                 required
-                className="mt-1 block w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="form-input"
                 placeholder="seu@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <label htmlFor="password" className="block text-sm font-medium text-gray-300">
+            <div className="form-field-wrapper">
+              <div className="flex justify-between items-center mb-2">
+                <label htmlFor="password" className="form-field-label">
                   Senha
                 </label>
                 <button
@@ -83,7 +100,7 @@ export function LoginForm() {
                 id="password"
                 type="password"
                 required
-                className="mt-1 block w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="form-input"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -92,7 +109,7 @@ export function LoginForm() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+              className="cta-button w-full"
             >
               {submitting ? 'Loading...' : 'Entrar'}
             </button>

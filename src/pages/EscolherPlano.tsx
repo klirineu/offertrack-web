@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useThemeStore } from '../store/themeStore';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, Check, RefreshCw } from 'lucide-react';
+import { Check, RefreshCw } from 'lucide-react';
 
 type Plan = {
   id: string;
@@ -26,7 +26,7 @@ export default function EscolherPlano() {
   const [checkingPayment, setCheckingPayment] = useState(false);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { signOut, refreshProfile } = useAuth();
+  const { refreshProfile } = useAuth();
   const message = searchParams.get('message');
 
   useEffect(() => {
@@ -36,14 +36,6 @@ export default function EscolherPlano() {
     });
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      await signOut();
-      navigate('/login');
-    } catch (error) {
-      console.error('Erro ao fazer logout:', error);
-    }
-  };
 
   const handleCheckPayment = async () => {
     setCheckingPayment(true);
@@ -152,16 +144,6 @@ export default function EscolherPlano() {
 
     return (
       <div className={theme === 'dark' ? 'min-h-screen bg-[#111827] text-white' : 'min-h-screen bg-white text-gray-900'}>
-        {/* Header com botão de logout */}
-        <div className="absolute top-4 right-4">
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm"
-          >
-            <LogOut className="w-4 h-4" />
-            Sair
-          </button>
-        </div>
 
         <div className="max-w-2xl mx-auto py-16 px-4 text-center">
           <div className="mb-8">
@@ -253,16 +235,6 @@ export default function EscolherPlano() {
 
   return (
     <div className={theme === 'dark' ? 'min-h-screen bg-[#111827] text-white' : 'min-h-screen bg-white text-gray-900'}>
-      {/* Header com botão de logout */}
-      <div className="absolute top-4 right-4">
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm"
-        >
-          <LogOut className="w-4 h-4" />
-          Sair
-        </button>
-      </div>
 
       <div className="max-w-3xl mx-auto py-16 text-center">
         <h2 className={theme === 'dark' ? 'text-3xl md:text-4xl font-bold mb-4' : 'text-3xl md:text-4xl font-bold mb-4 text-gray-900'}>

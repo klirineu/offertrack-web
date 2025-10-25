@@ -1,13 +1,9 @@
 import { useState } from 'react';
-import { useThemeStore } from '../../store/themeStore';
 import { StandardNavigation } from '../../components/StandardNavigation';
-import { useAuth } from '../../context/AuthContext';
+import { Circle } from 'lucide-react';
 
 
 export function EncryptText() {
-  const { theme } = useThemeStore();
-  const { user, profile } = useAuth();
-  const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [output, setOutput] = useState('');
 
@@ -59,48 +55,54 @@ export function EncryptText() {
 
   return (
     <StandardNavigation>
-      <div className="px-4 py-8 lg:px-0 pt-16 lg:pt-0">
-        <header className={`${theme === 'dark' ? 'bg-gray-800 border-b border-gray-700' : 'bg-white shadow-sm'} px-4 py-4 lg:px-8`}>
-          <div className="max-w-7xl mx-auto">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Criptografar Texto</h1>
-              </div>
+      {(sidebarOpen) => (
+        <>
+          <header className={`page-header ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`} style={{ zIndex: 10 }}>
+            <div className="page-header-icon">
+              <Circle className="w-6 h-6" />
             </div>
-          </div>
-        </header>
+            <div className="page-header-content">
+              <h1 className="page-header-title">Criptografar Texto</h1>
+              <p className="page-header-subtitle">Proteja seus textos com criptografia</p>
+            </div>
+          </header>
 
-        <main className="max-w-3xl mx-auto px-4 py-8 lg:px-8">
-          <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Texto para criptografar:</label>
-                <textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  className={`w-full px-3 py-2 sm:px-4 sm:py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'} focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base`}
-                  rows={4}
-                  placeholder="Digite seu texto aqui..."
-                />
-              </div>
-
-              <button
-                onClick={encryptText}
-                className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Criptografar
-              </button>
-
-              {output && (
-                <div>
-                  <label className="block text-sm font-medium mb-2">Resultado:</label>
-                  <div className="p-3 sm:p-4 bg-gray-100 dark:bg-gray-700 rounded-lg break-all text-sm sm:text-base">{output}</div>
+          <main className="px-4 py-8 lg:px-8" style={{ marginTop: '100px' }}>
+            <div className="dashboard-card">
+              <div className="space-y-6">
+                <div className="form-field-wrapper">
+                  <label className="form-field-label">Texto para Criptografar</label>
+                  <textarea
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    className="form-input"
+                    rows={4}
+                    placeholder="Digite seu texto aqui..."
+                  />
                 </div>
-              )}
+
+                <div className="flex justify-center">
+                  <button
+                    onClick={encryptText}
+                    className="cta-button"
+                  >
+                    Criptografar
+                  </button>
+                </div>
+
+                {output && (
+                  <div className="form-field-wrapper">
+                    <label className="form-field-label">Resultado</label>
+                    <div className="form-input" style={{ background: 'var(--bg-card-hover)' }}>
+                      {output}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </main>
-      </div>
+          </main>
+        </>
+      )}
     </StandardNavigation>
   );
 }

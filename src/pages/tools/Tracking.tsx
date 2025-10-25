@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useThemeStore } from '../../store/themeStore';
-import { Plus, Copy, BarChart2, Trash2, RotateCw } from 'lucide-react';
+import { Plus, Copy, BarChart2, Trash2, RotateCw, X, Loader2 } from 'lucide-react';
 import { StandardNavigation } from '../../components/StandardNavigation';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
@@ -146,37 +146,6 @@ const getConnectionType = (userAgent: string): string => {
   return hasMobileIndicator ? 'Dados Móveis' : 'Wi-Fi';
 };
 
-import LogoBranco from '../../assets/logo-branco.png';
-import IconBranco from '../../assets/ico-branco.png';
-
-const Logo = () => {
-  return (
-    <Link
-      to="/"
-      className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
-    >
-      <img src={LogoBranco} alt="" />
-      <motion.span
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="font-medium text-black dark:text-white whitespace-pre"
-      >
-        Clonup
-      </motion.span>
-    </Link>
-  );
-};
-
-const LogoIcon = () => {
-  return (
-    <Link
-      to="/"
-      className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
-    >
-      <img src={IconBranco} alt="" />
-    </Link>
-  );
-};
 
 interface SiteTableRowProps {
   site: Site;
@@ -186,7 +155,7 @@ interface SiteTableRowProps {
   theme: string;
 }
 
-const SiteTableRow = ({ site, onDelete, onSelect, getScriptUrl, theme }: SiteTableRowProps) => {
+const SiteTableRow = ({ site, onDelete, onSelect, getScriptUrl }: SiteTableRowProps) => {
   const [eventCount, setEventCount] = useState<number>(0);
 
   useEffect(() => {
@@ -212,43 +181,67 @@ const SiteTableRow = ({ site, onDelete, onSelect, getScriptUrl, theme }: SiteTab
   }, [site.id]);
 
   return (
-    <tr className={`border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-      <td className="px-6 py-4">{site.original_url}</td>
-      <td className="px-6 py-4">{new Date(site.created_at).toLocaleDateString()}</td>
-      <td className="px-6 py-4">{eventCount}</td>
-      <td className="px-6 py-4">
+    <div className="p-6 hover:bg-opacity-50 transition" style={{ background: 'transparent' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-card-hover)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+      <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="badge badge-success">📊 Rastreado</span>
+            <a
+              href={site.original_url}
+              className="text-sm font-semibold hover:opacity-80 transition truncate"
+              style={{ color: 'var(--accent)' }}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {site.original_url}
+            </a>
+          </div>
+          <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--text-secondary)' }}>
+            <span>📅 {new Date(site.created_at).toLocaleDateString('pt-BR')}</span>
+            <span>📈 {eventCount} eventos</span>
+          </div>
+        </div>
+
+        {/* Actions */}
         <div className="flex items-center gap-2">
           <button
             onClick={() => {
               navigator.clipboard.writeText(getScriptUrl(site.id));
               alert('Script copiado para a área de transferência!');
             }}
-            className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+            className="secondary-button"
+            style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
             title="Copiar Script"
           >
-            <Copy className="w-5 h-5" />
+            <Copy className="w-4 h-4" />
+            Script
           </button>
           <button
             onClick={() => onSelect(site.id)}
-            className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+            className="cta-button"
+            style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
             title="Ver Detalhes"
           >
-            <BarChart2 className="w-5 h-5" />
+            <BarChart2 className="w-4 h-4" />
+            Detalhes
           </button>
           <button
             onClick={() => onDelete(site.id)}
-            className="p-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+            className="p-2 rounded-lg transition-colors hover:bg-red-500/10"
+            style={{ color: 'var(--error)' }}
             title="Excluir"
           >
-            <Trash2 className="w-5 h-5" />
+            <Trash2 className="w-4 h-4" />
           </button>
         </div>
-      </td>
-    </tr>
+      </div>
+    </div>
   );
 };
 
-// Componente de card para mobile
+// Componente de card para mobile (não utilizado)
+/*
 const SiteCard = ({ site, onDelete, onSelect, getScriptUrl, theme }: SiteTableRowProps) => {
   const [eventCount, setEventCount] = useState<number>(0);
 
@@ -325,11 +318,11 @@ const SiteCard = ({ site, onDelete, onSelect, getScriptUrl, theme }: SiteTableRo
     </div>
   );
 };
+*/
 
 export function Tracking() {
   const { theme } = useThemeStore();
-  const { user, profile } = useAuth();
-  const [open, setOpen] = useState(false);
+  const { user } = useAuth();
   const [sites, setSites] = useState<Site[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSite, setSelectedSite] = useState<string | null>(null);
@@ -475,7 +468,7 @@ export function Tracking() {
       y: {
         ticks: {
           font: { size: 11 },
-          callback: function (this: Scale<CoreScaleOptions>, tickValue: string | number, index: number) {
+          callback: function (this: Scale<CoreScaleOptions>, _tickValue: string | number, index: number) {
             return eventNameChartData.labels[index];
           }
         }
@@ -648,82 +641,114 @@ export function Tracking() {
 
   return (
     <StandardNavigation>
-      <div className="px-4 py-8 lg:px-0 pt-16 lg:pt-0">
-        <header className={`${theme === 'dark' ? 'bg-gray-800 border-b border-gray-700' : 'bg-white shadow-sm'} px-4 py-4 lg:px-8`}>
-          <div className="max-w-7xl mx-auto">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <BarChart2 className="w-6 h-6 text-blue-600" />
-                <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Tracking
-                </h1>
+      {(sidebarOpen) => (
+        <>
+          <header className={`page-header ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`} style={{ zIndex: 10 }}>
+            <div className="page-header-icon">
+              <BarChart2 className="w-6 h-6" />
+            </div>
+            <div className="page-header-content flex-1">
+              <h1 className="page-header-title">Tracking</h1>
+              <p className="page-header-subtitle">Rastreie e analise o desempenho de seus sites</p>
+            </div>
+            <button
+              onClick={() => setShowNewSiteForm(true)}
+              className="cta-button"
+              style={{ padding: '0.6rem 1rem', fontSize: '0.875rem' }}
+            >
+              <Plus className="w-4 h-4" />
+              Novo Site
+            </button>
+          </header>
+
+          <main className="max-w-7xl mx-auto px-4 py-8 lg:px-8" style={{ paddingTop: '100px' }}>
+            {error && (
+              <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">
+                {error}
               </div>
-              <button
-                onClick={() => setShowNewSiteForm(true)}
-                className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
-              >
-                <Plus className="w-5 h-5" />
-                Novo Site
-              </button>
-            </div>
-          </div>
-        </header>
+            )}
 
-        <main className="max-w-7xl mx-auto px-4 py-8 lg:px-8">
-          {error && (
-            <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">
-              {error}
-            </div>
-          )}
-
-          {showNewSiteForm && (
-            <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-6 mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              <h2 className="text-lg font-semibold mb-4">Novo Site</h2>
-              <form onSubmit={handleAddSite} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">URL do Site*</label>
-                  <input
-                    type="url"
-                    value={newSiteUrl}
-                    onChange={(e) => setNewSiteUrl(e.target.value)}
-                    placeholder="https://meusite.com"
-                    required
-                    className={`w-full px-3 py-2 sm:px-4 sm:py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
-                  />
+            {showNewSiteForm && (
+              <div className="modal-overlay">
+                <div className="modal-content max-w-2xl">
+                  <div className="app-modal-header">
+                    <h2 className="modal-title">Novo Site</h2>
+                    <button
+                      onClick={() => setShowNewSiteForm(false)}
+                      className="modal-close"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="app-modal-body">
+                    <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
+                      Adicione um site para começar o rastreamento
+                    </p>
+                    <div className="form-field-wrapper">
+                      <label className="form-field-label">URL do Site*</label>
+                      <input
+                        type="url"
+                        value={newSiteUrl}
+                        onChange={(e) => setNewSiteUrl(e.target.value)}
+                        placeholder="https://meusite.com"
+                        required
+                        className="form-input"
+                      />
+                    </div>
+                  </div>
+                  <div className="app-modal-footer">
+                    <button
+                      type="button"
+                      onClick={() => setShowNewSiteForm(false)}
+                      className="secondary-button"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="cta-button"
+                      onClick={handleAddSite}
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Salvando...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="w-4 h-4" />
+                          Salvar
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
-                <div className="flex flex-col sm:flex-row sm:justify-end gap-3 sm:gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowNewSiteForm(false)}
-                    className="w-full sm:w-auto px-4 py-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {loading ? 'Salvando...' : 'Salvar'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
+              </div>
+            )}
 
-          {/* Desktop Table */}
-          <div className={`hidden lg:block bg-white dark:bg-gray-800 rounded-lg shadow-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className={`text-left ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                    <th className="px-6 py-3">URL Original</th>
-                    <th className="px-6 py-3">Data Cadastro</th>
-                    <th className="px-6 py-3">Total Eventos</th>
-                    <th className="px-6 py-3">Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
+            {/* Lista de Sites */}
+            <div className="dashboard-card">
+              <div className="flex items-center justify-between p-6 border-b" style={{ borderColor: 'var(--border)' }}>
+                <h3 className="text-xl font-bold" style={{ color: 'var(--text)' }}>Sites Rastreados</h3>
+                <span className="badge badge-info">{sites.length} {sites.length === 1 ? 'site' : 'sites'}</span>
+              </div>
+
+              {loading ? (
+                <div className="p-12 text-center">
+                  <div className="loader mx-auto mb-4"></div>
+                  <p style={{ color: 'var(--text-secondary)' }}>Carregando sites...</p>
+                </div>
+              ) : sites.length === 0 ? (
+                <div className="p-12 text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ background: 'var(--bg-card-hover)' }}>
+                    <BarChart2 className="w-8 h-8" style={{ color: 'var(--text-secondary)' }} />
+                  </div>
+                  <p className="text-lg font-semibold mb-2" style={{ color: 'var(--text)' }}>Nenhum site rastreado ainda</p>
+                  <p style={{ color: 'var(--text-secondary)' }}>Adicione um site para começar o rastreamento</p>
+                </div>
+              ) : (
+                <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
                   {sites.map((site: Site) => (
                     <SiteTableRow
                       key={site.id}
@@ -734,197 +759,207 @@ export function Tracking() {
                       theme={theme}
                     />
                   ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Mobile Cards */}
-          <div className="lg:hidden space-y-4">
-            {sites.map((site: Site) => (
-              <SiteCard
-                key={site.id}
-                site={site}
-                onDelete={handleDeleteSite}
-                onSelect={setSelectedSite}
-                getScriptUrl={getScriptUrl}
-                theme={theme}
-              />
-            ))}
-          </div>
-
-          {selectedSite && (
-            <div className="mt-8">
-              <div className="flex flex-col gap-4 mb-4">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                  <label className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>Período:</label>
-                  <select
-                    value={period}
-                    onChange={e => setPeriod(e.target.value as 'today' | '7d' | '30d' | 'custom')}
-                    className={`px-3 py-2 rounded-lg border text-sm ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-gray-100' : 'bg-white border-gray-300 text-gray-900'}`}
-                  >
-                    <option value="today">Hoje</option>
-                    <option value="7d">Últimos 7 dias</option>
-                    <option value="30d">Últimos 30 dias</option>
-                    <option value="custom">Personalizado</option>
-                  </select>
-                </div>
-
-                {period === 'custom' && (
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                    <input
-                      type="date"
-                      value={customRange.start}
-                      onChange={e => setCustomRange(r => ({ ...r, start: e.target.value }))}
-                      className={`px-3 py-2 rounded-lg border text-sm ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-gray-100' : 'bg-white border-gray-300 text-gray-900'}`}
-                    />
-                    <span className="text-sm">a</span>
-                    <input
-                      type="date"
-                      value={customRange.end}
-                      onChange={e => setCustomRange(r => ({ ...r, end: e.target.value }))}
-                      className={`px-3 py-2 rounded-lg border text-sm ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-gray-100' : 'bg-white border-gray-300 text-gray-900'}`}
-                    />
-                  </div>
-                )}
-
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                  <label className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>Tipo de Evento:</label>
-                  <select
-                    value={selectedEventType}
-                    onChange={e => setSelectedEventType(e.target.value)}
-                    className={`px-3 py-2 rounded-lg border text-sm ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-gray-100' : 'bg-white border-gray-300 text-gray-900'}`}
-                  >
-                    <option value="all">Todos</option>
-                    {Object.keys(eventTypeTranslations).map(type => (
-                      <option key={type} value={type}>{eventTypeTranslations[type]}</option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={handleRefresh}
-                    disabled={refreshing || loading}
-                    className={`p-2 rounded-lg transition-colors ${theme === 'dark'
-                      ? 'hover:bg-gray-700 text-gray-200'
-                      : 'hover:bg-gray-100 text-gray-700'
-                      } ${(refreshing || loading) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    title="Atualizar eventos"
-                  >
-                    <RotateCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
-                  </button>
-                </div>
-              </div>
-
-              {loading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="mt-2 text-sm text-gray-500">Carregando eventos...</p>
-                </div>
-              ) : (
-                <div>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 shadow-sm">
-                      <div className="h-64 sm:h-80">
-                        <Bar options={eventNameChartOptions} data={eventNameChartData} />
-                      </div>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 shadow-sm">
-                      <div className="h-64 sm:h-80 relative">
-                        <Pie
-                          data={pieData}
-                          options={{
-                            maintainAspectRatio: false,
-                            responsive: true,
-                            plugins: {
-                              legend: {
-                                position: 'bottom' as const,
-                                labels: {
-                                  boxWidth: 12,
-                                  font: { size: 10 }
-                                }
-                              }
-                            }
-                          }}
-                        />
-                      </div>
-                      <div className="mt-2 text-xs sm:text-sm text-center">Distribuição por Tipo de Evento</div>
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    {Object.entries(eventsByIp).map(([ip, data]) => (
-                      <div key={ip} className={`border rounded-lg overflow-hidden ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-                        <div
-                          className={`p-4 cursor-pointer ${theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-gray-50 hover:bg-gray-100'}`}
-                          onClick={() => toggleIpExpansion(ip)}
-                        >
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                            <div className="flex-1">
-                              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                                <span className="font-medium text-sm sm:text-base">{ip}</span>
-                                <span className="text-xs sm:text-sm text-gray-500">
-                                  {String(data.location.ip_city || '-')}, {String(data.location.ip_country || '-')}
-                                </span>
-                              </div>
-                              <div className="text-xs sm:text-sm text-gray-500 mt-1">
-                                {data.totalEvents} eventos • {data.eventTypes.size} tipos • {getConnectionType(Array.from(data.userAgents)[0] || '')}
-                              </div>
-                            </div>
-                            <div className="text-xs sm:text-sm text-gray-500">
-                              <div className="sm:hidden">
-                                {new Date(data.firstSeen).toLocaleDateString()} → {new Date(data.lastSeen).toLocaleDateString()}
-                              </div>
-                              <div className="hidden sm:block">
-                                {new Date(data.firstSeen).toLocaleString()} → {new Date(data.lastSeen).toLocaleString()}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        {expandedIps.has(ip) && (
-                          <div className="overflow-x-auto">
-                            {data.events.map(ev => (
-                              <div key={ev.id} className="p-4 border-t border-gray-200 dark:border-gray-700">
-                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
-                                  <div className="font-medium text-sm sm:text-base">
-                                    {formatEventName(ev)}
-                                  </div>
-                                  <span className="text-xs sm:text-sm text-gray-500">
-                                    {new Date(ev.created_at).toLocaleString()}
-                                  </span>
-                                </div>
-
-                                {/* Mostrar link clicado se for um evento de clique */}
-                                {ev.event_type === 'link_click' && ev.event_link && (
-                                  <div className="text-xs sm:text-sm text-blue-500 dark:text-blue-400 mt-1 break-all">
-                                    Link: {ev.event_link}
-                                  </div>
-                                )}
-
-                                {/* UTMs formatados */}
-                                {ev.utms && Object.keys(ev.utms).length > 0 && (
-                                  <div className="mt-2 text-xs sm:text-sm">
-                                    <div className="font-medium mb-1">Dados da Campanha:</div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                                      {formatUtm(ev.utms)?.map(({ label, value }, idx) => (
-                                        <div key={idx} className="bg-gray-100 dark:bg-gray-700 p-2 rounded">
-                                          <div className="font-medium text-xs text-gray-500 dark:text-gray-400">{label}</div>
-                                          <div className="break-all text-xs sm:text-sm">{value}</div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
                 </div>
               )}
             </div>
-          )}
-        </main>
-      </div>
+
+            {selectedSite && (
+              <div className="mt-8">
+                <div className="dashboard-card mb-6">
+                  <div className="p-6">
+                    <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text)' }}>Filtros de Análise</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="form-field-wrapper">
+                        <label className="form-field-label">Período</label>
+                        <select
+                          value={period}
+                          onChange={e => setPeriod(e.target.value as 'today' | '7d' | '30d' | 'custom')}
+                          className="form-input"
+                        >
+                          <option value="today">Hoje</option>
+                          <option value="7d">Últimos 7 dias</option>
+                          <option value="30d">Últimos 30 dias</option>
+                          <option value="custom">Personalizado</option>
+                        </select>
+                      </div>
+
+                      {period === 'custom' && (
+                        <>
+                          <div className="form-field-wrapper">
+                            <label className="form-field-label">Data Inicial</label>
+                            <input
+                              type="date"
+                              value={customRange.start}
+                              onChange={e => setCustomRange(r => ({ ...r, start: e.target.value }))}
+                              className="form-input"
+                            />
+                          </div>
+                          <div className="form-field-wrapper">
+                            <label className="form-field-label">Data Final</label>
+                            <input
+                              type="date"
+                              value={customRange.end}
+                              onChange={e => setCustomRange(r => ({ ...r, end: e.target.value }))}
+                              className="form-input"
+                            />
+                          </div>
+                        </>
+                      )}
+
+                      <div className="form-field-wrapper">
+                        <label className="form-field-label">Tipo de Evento</label>
+                        <select
+                          value={selectedEventType}
+                          onChange={e => setSelectedEventType(e.target.value)}
+                          className="form-input"
+                        >
+                          <option value="all">Todos</option>
+                          {Object.keys(eventTypeTranslations).map(type => (
+                            <option key={type} value={type}>{eventTypeTranslations[type]}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="form-field-wrapper">
+                        <label className="form-field-label">Ações</label>
+                        <button
+                          onClick={handleRefresh}
+                          disabled={refreshing || loading}
+                          className="secondary-button w-full"
+                          title="Atualizar eventos"
+                        >
+                          <RotateCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                          {refreshing ? 'Atualizando...' : 'Atualizar'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {loading ? (
+                  <div className="dashboard-card">
+                    <div className="p-12 text-center">
+                      <div className="loader mx-auto mb-4"></div>
+                      <p style={{ color: 'var(--text-secondary)' }}>Carregando eventos...</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                      <div className="dashboard-card">
+                        <div className="p-6">
+                          <h4 className="text-lg font-semibold mb-4" style={{ color: 'var(--text)' }}>Eventos Mais Comuns</h4>
+                          <div className="h-80">
+                            <Bar options={eventNameChartOptions} data={eventNameChartData} />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="dashboard-card">
+                        <div className="p-6">
+                          <h4 className="text-lg font-semibold mb-4" style={{ color: 'var(--text)' }}>Distribuição por Tipo</h4>
+                          <div className="h-80 relative">
+                            <Pie
+                              data={pieData}
+                              options={{
+                                maintainAspectRatio: false,
+                                responsive: true,
+                                plugins: {
+                                  legend: {
+                                    position: 'bottom' as const,
+                                    labels: {
+                                      boxWidth: 12,
+                                      font: { size: 10 }
+                                    }
+                                  }
+                                }
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="dashboard-card">
+                      <div className="p-6 border-b" style={{ borderColor: 'var(--border)' }}>
+                        <h4 className="text-lg font-semibold" style={{ color: 'var(--text)' }}>Eventos por IP</h4>
+                      </div>
+                      <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
+                        {Object.entries(eventsByIp).map(([ip, data]) => (
+                          <div key={ip} className="p-6 hover:bg-opacity-50 transition" style={{ background: 'transparent' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-card-hover)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                            <div
+                              className="cursor-pointer"
+                              onClick={() => toggleIpExpansion(ip)}
+                            >
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                <div className="flex-1">
+                                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                                    <span className="font-medium text-sm sm:text-base" style={{ color: 'var(--text)' }}>{ip}</span>
+                                    <span className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
+                                      {String(data.location.ip_city || '-')}, {String(data.location.ip_country || '-')}
+                                    </span>
+                                  </div>
+                                  <div className="text-xs sm:text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+                                    {data.totalEvents} eventos • {data.eventTypes.size} tipos • {getConnectionType(Array.from(data.userAgents)[0] || '')}
+                                  </div>
+                                </div>
+                                <div className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
+                                  <div className="sm:hidden">
+                                    {new Date(data.firstSeen).toLocaleDateString()} → {new Date(data.lastSeen).toLocaleDateString()}
+                                  </div>
+                                  <div className="hidden sm:block">
+                                    {new Date(data.firstSeen).toLocaleString()} → {new Date(data.lastSeen).toLocaleString()}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            {expandedIps.has(ip) && (
+                              <div className="overflow-x-auto">
+                                {data.events.map(ev => (
+                                  <div key={ev.id} className="p-4 border-t border-gray-200 dark:border-gray-700">
+                                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+                                      <div className="font-medium text-sm sm:text-base">
+                                        {formatEventName(ev)}
+                                      </div>
+                                      <span className="text-xs sm:text-sm text-gray-500">
+                                        {new Date(ev.created_at).toLocaleString()}
+                                      </span>
+                                    </div>
+
+                                    {/* Mostrar link clicado se for um evento de clique */}
+                                    {ev.event_type === 'link_click' && ev.event_link && (
+                                      <div className="text-xs sm:text-sm text-blue-500 dark:text-blue-400 mt-1 break-all">
+                                        Link: {ev.event_link}
+                                      </div>
+                                    )}
+
+                                    {/* UTMs formatados */}
+                                    {ev.utms && Object.keys(ev.utms).length > 0 && (
+                                      <div className="mt-2 text-xs sm:text-sm">
+                                        <div className="font-medium mb-1">Dados da Campanha:</div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                          {formatUtm(ev.utms)?.map(({ label, value }, idx) => (
+                                            <div key={idx} className="bg-gray-100 dark:bg-gray-700 p-2 rounded">
+                                              <div className="font-medium text-xs text-gray-500 dark:text-gray-400">{label}</div>
+                                              <div className="break-all text-xs sm:text-sm">{value}</div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </main>
+        </>
+      )}
     </StandardNavigation>
   );
 } 

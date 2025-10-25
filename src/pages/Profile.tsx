@@ -174,221 +174,234 @@ export function Profile() {
 
   return (
     <StandardNavigation>
-      <div className="px-4 py-8 lg:px-0 pt-16 lg:pt-0">
-        <header className={`${theme === 'dark' ? 'bg-gray-800 border-b border-gray-700' : 'bg-white shadow-sm'} px-4 py-4 lg:px-8`}>
-          <div className="max-w-7xl mx-auto">
-            <div className="flex items-center gap-2">
-              <User className="w-6 h-6 text-blue-600" />
-              <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Profile
-              </h1>
+      {(sidebarOpen) => (
+        <>
+          <header className={`page-header ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`} style={{ zIndex: 10 }}>
+            <div className="page-header-icon">
+              <User className="w-6 h-6" />
             </div>
-          </div>
-        </header>
+            <div className="page-header-content">
+              <h1 className="page-header-title">Profile</h1>
+              <p className="page-header-subtitle">Gerencie suas informações pessoais</p>
+            </div>
+          </header>
 
-        <main className="max-w-7xl mx-auto px-4 py-8 lg:px-8">
-          <div className="max-w-3xl mx-auto">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 mb-6 sm:p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
-                <img
-                  src={profile?.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(profile?.full_name || user?.email || 'U')}
-                  alt={profile?.full_name || user?.email || 'Usuário'}
-                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-full mx-auto sm:mx-0"
-                />
-                <div className="text-center sm:text-left">
-                  <h2 className="text-lg sm:text-xl font-semibold dark:text-white">{profile?.full_name || user?.email || 'Usuário'}</h2>
-                  <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">{user?.email}</p>
-                  {user?.created_at && (
-                    <p className="text-gray-500 text-xs sm:text-sm mt-1">Cadastrado em: {format(new Date(user.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <Mail className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                  <span className="text-gray-600 dark:text-gray-400 text-sm sm:text-base break-all">{user?.email}</span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <CreditCard className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
-                  <div className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">
-                    Status: <b>{profile ? statusPt : ''}</b><br />
-                    {statusInfo}
+          <main className="px-4 py-8 lg:px-8" style={{ marginTop: '100px' }}>
+            <div className="max-w-3xl mx-auto">
+              <div className="dashboard-card mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
+                  <img
+                    src={profile?.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(profile?.full_name || user?.email || 'U')}
+                    alt={profile?.full_name || user?.email || 'Usuário'}
+                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-full mx-auto sm:mx-0"
+                  />
+                  <div className="text-center sm:text-left">
+                    <h2 className="text-lg sm:text-xl font-semibold dark:text-white">{profile?.full_name || user?.email || 'Usuário'}</h2>
+                    <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">{user?.email}</p>
+                    {user?.created_at && (
+                      <p className="text-gray-500 text-xs sm:text-sm mt-1">Cadastrado em: {format(new Date(user.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
+                    )}
+                    {/* Tag do Plano */}
+                    <div className="mt-2">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${profile?.subscription_status === 'active'
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                        : profile?.subscription_status === 'trialing'
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                          : 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
+                        }`}>
+                        {profile?.subscription_status === 'active' ? 'Premium' :
+                          profile?.subscription_status === 'trialing' ? 'Trial' : 'Free'}
+                      </span>
+                    </div>
                   </div>
                 </div>
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mt-4">
-                  <button
-                    onClick={handleManage}
-                    className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm sm:text-base"
-                  >
-                    Gerenciar Assinatura
-                  </button>
-                  {/* <button
+
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <Mail className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                    <span className="text-gray-600 dark:text-gray-400 text-sm sm:text-base break-all">{user?.email}</span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <CreditCard className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+                    <div className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">
+                      Status: <b>{profile ? statusPt : ''}</b><br />
+                      {statusInfo}
+                    </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mt-4">
+                    <button
+                      onClick={handleManage}
+                      className="cta-button w-full sm:w-auto"
+                    >
+                      Gerenciar Assinatura
+                    </button>
+                    {/* <button
                     onClick={handleCancel}
                     disabled={cancelLoading || !!(profile && profile.subscription_status === 'canceled')}
                     className="w-full sm:w-auto px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-60 text-sm sm:text-base"
                   >
                     {cancelLoading ? 'Cancelando...' : 'Cancelar Assinatura'}
                   </button> */}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 mb-6 sm:p-6">
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
-                <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
-                  Informações do Perfil
-                </h2>
-                {!isEditing ? (
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="w-full sm:w-auto text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm sm:text-base"
-                  >
-                    Editar
-                  </button>
-                ) : (
-                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
+              <div className="dashboard-card mb-6">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
+                  <h2 className="text-lg sm:text-xl font-bold" style={{ color: 'var(--text)' }}>
+                    Informações do Perfil
+                  </h2>
+                  {!isEditing ? (
                     <button
-                      onClick={handleSaveProfile}
-                      className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm sm:text-base"
+                      onClick={() => setIsEditing(true)}
+                      className="secondary-button w-full sm:w-auto"
                     >
-                      Salvar
+                      Editar
                     </button>
-                    <button
-                      onClick={() => {
-                        setIsEditing(false);
-                        setFullName(profile?.full_name || '');
-                        const phoneNumber = (profile as any)?.phone || '';
-                        // Se o telefone já está formatado, mantém; senão formata
-                        setPhone(phoneNumber.includes('(') ? phoneNumber : formatPhone(phoneNumber));
-                      }}
-                      className="w-full sm:w-auto text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 text-sm sm:text-base"
-                    >
-                      Cancelar
-                    </button>
+                  ) : (
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
+                      <button
+                        onClick={handleSaveProfile}
+                        className="cta-button w-full sm:w-auto"
+                      >
+                        Salvar
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsEditing(false);
+                          setFullName(profile?.full_name || '');
+                          const phoneNumber = (profile as any)?.phone || '';
+                          // Se o telefone já está formatado, mantém; senão formata
+                          setPhone(phoneNumber.includes('(') ? phoneNumber : formatPhone(phoneNumber));
+                        }}
+                        className="secondary-button w-full sm:w-auto"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {error && (
+                  <div className="mb-4 p-3 sm:p-4 bg-red-500/10 border border-red-500 rounded text-red-500 text-sm sm:text-base">
+                    {error}
                   </div>
                 )}
+
+                {success && (
+                  <div className="mb-4 p-3 sm:p-4 bg-green-500/10 border border-green-500 rounded text-green-500 text-sm sm:text-base">
+                    {success}
+                  </div>
+                )}
+
+                <form onSubmit={handleSaveProfile} className="space-y-6">
+                  <div className="form-field-wrapper">
+                    <label className="form-field-label">
+                      Nome Completo
+                    </label>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        className="form-input"
+                      />
+                    ) : (
+                      <p className="text-sm" style={{ color: 'var(--text)' }}>{profile?.full_name || 'Não informado'}</p>
+                    )}
+                  </div>
+
+                  <div className="form-field-wrapper">
+                    <label className="form-field-label">
+                      Telefone/WhatsApp
+                    </label>
+                    {isEditing ? (
+                      <div className="relative">
+                        <input
+                          type="tel"
+                          value={phone}
+                          onChange={handlePhoneChange}
+                          placeholder="(11) 99999-9999"
+                          className={`form-input pr-10 ${phoneError
+                            ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
+                            : phone.length >= 14 && !phoneError
+                              ? 'border-green-500 focus:ring-green-500 focus:border-green-500'
+                              : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500'
+                            } focus:outline-none focus:ring-2`}
+                        />
+                        {phoneError ? (
+                          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <AlertCircle className="h-4 w-4 text-red-500" />
+                          </div>
+                        ) : phone.length >= 14 && !phoneError ? (
+                          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <svg className="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                        ) : null}
+                        {phoneError && (
+                          <div className="form-field-error-message">
+                            {phoneError}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-gray-900 dark:text-white text-sm sm:text-base">
+                        {(profile as any)?.phone ? formatPhone((profile as any).phone) : 'Não informado'}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Email
+                    </label>
+                    <p className="text-gray-900 dark:text-white text-sm sm:text-base break-all">{profile?.email}</p>
+                  </div>
+                </form>
               </div>
 
-              {error && (
-                <div className="mb-4 p-3 sm:p-4 bg-red-500/10 border border-red-500 rounded text-red-500 text-sm sm:text-base">
-                  {error}
-                </div>
-              )}
-
-              {success && (
-                <div className="mb-4 p-3 sm:p-4 bg-green-500/10 border border-green-500 rounded text-green-500 text-sm sm:text-base">
-                  {success}
-                </div>
-              )}
-
-              <form onSubmit={handleSaveProfile} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Nome Completo
-                  </label>
-                  {isEditing ? (
+              <div className="dashboard-card">
+                <h3 className="text-base sm:text-lg font-semibold mb-4" style={{ color: 'var(--text)' }}>Trocar Senha</h3>
+                {passwordSuccess && <div className="mb-2 p-2 sm:p-3 bg-green-100 text-green-700 rounded text-sm sm:text-base">{passwordSuccess}</div>}
+                {passwordError && <div className="mb-2 p-2 sm:p-3 bg-red-100 text-red-700 rounded text-sm sm:text-base">{passwordError}</div>}
+                <form className="space-y-4" onSubmit={handlePasswordChange}>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Nova Senha
+                    </label>
                     <input
-                      type="text"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
+                      type="password"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm sm:text-base"
                     />
-                  ) : (
-                    <p className="text-gray-900 dark:text-white text-sm sm:text-base">{profile?.full_name || 'Não informado'}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Telefone/WhatsApp
-                  </label>
-                  {isEditing ? (
-                    <div className="relative">
-                      <input
-                        type="tel"
-                        value={phone}
-                        onChange={handlePhoneChange}
-                        placeholder="(11) 99999-9999"
-                        className={`w-full px-3 py-2 pr-10 border rounded-md dark:bg-gray-700 dark:text-white text-sm sm:text-base ${phoneError
-                          ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
-                          : phone.length >= 14 && !phoneError
-                            ? 'border-green-500 focus:ring-green-500 focus:border-green-500'
-                            : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500'
-                          } focus:outline-none focus:ring-2`}
-                      />
-                      {phoneError ? (
-                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                          <AlertCircle className="h-4 w-4 text-red-500" />
-                        </div>
-                      ) : phone.length >= 14 && !phoneError ? (
-                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                          <svg className="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                        </div>
-                      ) : null}
-                      {phoneError && (
-                        <p className="mt-1 text-sm text-red-500">
-                          {phoneError}
-                        </p>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-gray-900 dark:text-white text-sm sm:text-base">
-                      {(profile as any)?.phone ? formatPhone((profile as any).phone) : 'Não informado'}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Email
-                  </label>
-                  <p className="text-gray-900 dark:text-white text-sm sm:text-base break-all">{profile?.email}</p>
-                </div>
-              </form>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Confirmar Nova Senha
+                    </label>
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={e => setConfirmPassword(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm sm:text-base"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={passwordLoading}
+                    className="cta-button w-full sm:w-auto"
+                  >
+                    {passwordLoading ? 'Salvando...' : 'Trocar Senha'}
+                  </button>
+                </form>
+              </div>
             </div>
-
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-6">
-              <h3 className="text-base sm:text-lg font-semibold mb-4 dark:text-white">Trocar Senha</h3>
-              {passwordSuccess && <div className="mb-2 p-2 sm:p-3 bg-green-100 text-green-700 rounded text-sm sm:text-base">{passwordSuccess}</div>}
-              {passwordError && <div className="mb-2 p-2 sm:p-3 bg-red-100 text-red-700 rounded text-sm sm:text-base">{passwordError}</div>}
-              <form className="space-y-4" onSubmit={handlePasswordChange}>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Nova Senha
-                  </label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm sm:text-base"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Confirmar Nova Senha
-                  </label>
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={e => setConfirmPassword(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm sm:text-base"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={passwordLoading}
-                  className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-60 text-sm sm:text-base"
-                >
-                  {passwordLoading ? 'Salvando...' : 'Trocar Senha'}
-                </button>
-              </form>
-            </div>
-          </div>
-        </main>
-      </div>
+          </main>
+        </>
+      )}
     </StandardNavigation>
   );
 }

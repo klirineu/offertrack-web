@@ -7,30 +7,29 @@ import {
   DragOverlay
 } from '@dnd-kit/core';
 import { Column } from './Column';
-import { NewOfferDialog } from './NewOfferDialog';
 import type { Offer } from '../types';
 import { useThemeStore } from '../store/themeStore';
-import { EditOfferDialog } from './EditOfferDialog';
 import { fetchOffersService, addOfferService, updateOfferService, deleteOfferService } from '../services/offerService';
 import { OfferCard } from './OfferCard';
 import { useAuth } from '../context/AuthContext';
 import { Search, Tag, X } from 'lucide-react';
+import { useModalStore } from '../store/modalStore';
 
 const columns = [
-  { id: 'waiting' as const, title: 'Waiting', color: 'yellow' },
-  { id: 'testing' as const, title: 'Testing', color: 'blue' },
-  { id: 'approved' as const, title: 'Approved', color: 'green' },
-  { id: 'invalid' as const, title: 'Invalid', color: 'red' },
+  { id: 'waiting' as const, title: 'Aguardando', color: 'yellow' },
+  { id: 'testing' as const, title: 'Testando', color: 'blue' },
+  { id: 'approved' as const, title: 'Aprovado', color: 'green' },
+  { id: 'invalid' as const, title: 'Inválido', color: 'red' },
 ];
 
 export function Board() {
   const { theme } = useThemeStore();
   const { user } = useAuth();
-  const [offers, setOffers] = useState<Offer[]>([]);
+  const { setOffers, setOnOfferUpdated, setOnNewOffer } = useModalStore();
+  const [offers, setOffersLocal] = useState<Offer[]>([]);
   const [filteredOffers, setFilteredOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isNewOfferDialogOpen, setIsNewOfferDialogOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -53,6 +52,7 @@ export function Board() {
       const { data, error } = await fetchOffersService(user.id);
       if (error) setError(error.message);
       if (data) {
+        setOffersLocal(data);
         setOffers(data);
         setFilteredOffers(data);
       }
@@ -60,6 +60,12 @@ export function Board() {
     };
     loadOffers();
   }, [user]);
+
+  // Configurar callbacks no store
+  useEffect(() => {
+    setOnOfferUpdated(handleOfferUpdated);
+    setOnNewOffer(handleNewOffer);
+  }, [setOnOfferUpdated, setOnNewOffer]);
 
   // Efeito para aplicar filtros
   useEffect(() => {
@@ -139,9 +145,11 @@ export function Board() {
       if (error) throw error;
       const { data, error: fetchError } = await fetchOffersService(user.id);
       if (fetchError) setError(fetchError.message);
-      if (data) setOffers(data);
+      if (data) {
+        setOffersLocal(data);
+        setOffers(data);
+      }
       setRefreshKey((k) => k + 1);
-      setIsNewOfferDialogOpen(false);
     } catch (err: unknown) {
       const error = err instanceof Error ? err : new Error(String(err));
       setError(error.message || 'Erro ao adicionar oferta');
@@ -180,11 +188,8 @@ export function Board() {
       <div className="flex justify-between items-center mb-6">
         <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Minhas Ofertas</h2>
         <button
-          onClick={() => setIsNewOfferDialogOpen(true)}
-          className={`px-4 py-2 rounded-lg shadow-lg transition-colors ${theme === 'dark'
-            ? 'bg-blue-700 hover:bg-blue-600 text-white'
-            : 'bg-blue-600 hover:bg-blue-700 text-white'
-            }`}
+          onClick={() => useModalStore.getState().setIsNewOfferDialogOpen(true)}
+          className="cta-button"
         >
           Adicionar Nova Oferta
         </button>
@@ -201,10 +206,7 @@ export function Board() {
               placeholder="Pesquisar ofertas..."
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              className={`w-full pl-10 pr-4 py-2 rounded-lg border ${theme === 'dark'
-                ? 'bg-gray-800 border-gray-700 text-white'
-                : 'bg-white border-gray-300 text-gray-900'
-                }`}
+              className="form-input w-full pl-10"
             />
           </div>
         </div>
@@ -222,14 +224,7 @@ export function Board() {
                     : [...prev, tag]
                 );
               }}
-              className={`px-3 py-1 rounded-full text-sm flex items-center gap-1 ${selectedTags.includes(tag)
-                ? theme === 'dark'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-blue-500 text-white'
-                : theme === 'dark'
-                  ? 'bg-gray-700 text-gray-300'
-                  : 'bg-gray-200 text-gray-700'
-                }`}
+              className={`badge ${selectedTags.includes(tag) ? 'badge-primary' : 'badge-info'}`}
             >
               {tag}
               {selectedTags.includes(tag) && (
@@ -268,14 +263,19 @@ export function Board() {
 
       {error && <div className="text-red-500 mb-4">{error}</div>}
       {loading ? (
-        <div className="p-8">Carregando...</div>
+        <div className="flex items-center justify-center p-12">
+          <div className="flex flex-col items-center gap-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            <p className="text-lg font-medium" style={{ color: 'var(--text)' }}>Carregando ofertas...</p>
+          </div>
+        </div>
       ) : (
         <DndContext
           collisionDetection={closestCorners}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <div key={refreshKey} className="flex gap-6 p-6 overflow-x-auto pb-8">
+          <div key={refreshKey} className="flex gap-4 overflow-x-auto pb-8" style={{ minHeight: 'calc(100vh - 400px)' }}>
             {columns.map((column) => (
               <Column
                 key={column.id}
@@ -292,13 +292,6 @@ export function Board() {
         </DndContext>
       )}
 
-      <NewOfferDialog
-        isOpen={isNewOfferDialogOpen}
-        onClose={() => setIsNewOfferDialogOpen(false)}
-        onSubmit={handleNewOffer}
-      />
-
-      <EditOfferDialog offers={offers} onOfferUpdated={handleOfferUpdated} />
     </>
   );
 }

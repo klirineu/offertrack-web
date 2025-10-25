@@ -19,7 +19,12 @@ export function Sidebar({ user }: SidebarProps) {
   const { theme } = useThemeStore();
 
   return (
-    <div className={`w-64 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border-r h-screen fixed left-0 top-0`}>
+    <div className={`w-64 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border-r h-screen fixed left-0 top-0`} style={{
+      background: 'linear-gradient(135deg, rgba(11, 15, 25, 0.95), rgba(30, 41, 59, 0.9))',
+      backdropFilter: 'blur(10px)',
+      boxShadow: '0 0 30px rgba(37, 99, 235, 0.2)',
+      borderRight: '1px solid rgba(37, 99, 235, 0.3)'
+    }}>
       <div className="p-6">
         <div className="flex items-center gap-3 mb-8">
           <img

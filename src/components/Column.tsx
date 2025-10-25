@@ -18,23 +18,35 @@ export function Column({ column, offers, onDeleteOffer }: ColumnProps) {
   const { theme } = useThemeStore(); // Obtenha o tema
   const { setNodeRef } = useDroppable({ id: column.id });
 
-  // Mapeamento de cores para tema escuro
-  const colorClasses = {
-    yellow: { light: 'bg-yellow-50 text-yellow-900', dark: 'bg-yellow-900/20 text-yellow-200' },
-    blue: { light: 'bg-blue-50 text-blue-900', dark: 'bg-blue-900/20 text-blue-200' },
-    green: { light: 'bg-green-50 text-green-900', dark: 'bg-green-900/20 text-green-200' },
-    red: { light: 'bg-red-50 text-red-900', dark: 'bg-red-900/20 text-red-200' },
+  // Mapeamento de cores para badges
+  const colorBadges = {
+    yellow: 'badge-warning',
+    blue: 'badge-info',
+    green: 'badge-success',
+    red: 'badge-error',
+  };
+
+  const colorIcons = {
+    yellow: '⏳',
+    blue: '🧪',
+    green: '✅',
+    red: '❌',
   };
 
   return (
-    <div className={`rounded-lg p-4 w-full md:w-80 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
-      <h2 className={`font-bold text-lg mb-4 ${theme === 'dark' ? colorClasses[column.color].dark : colorClasses[column.color].light}`}>
-        {column.title}
-        <span className={`ml-2 text-sm font-normal ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-          ({offers.length})
+    <div className="dashboard-card flex-1 min-w-[280px]" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <span className="text-2xl">{colorIcons[column.color]}</span>
+          <h2 className="text-lg font-bold" style={{ color: 'var(--text)', margin: 0 }}>
+            {column.title}
+          </h2>
+        </div>
+        <span className={`badge ${colorBadges[column.color]}`} style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem' }}>
+          {offers.length}
         </span>
-      </h2>
-      <div ref={setNodeRef} className="min-h-[200px]">
+      </div>
+      <div ref={setNodeRef} className="flex-1 space-y-3 overflow-y-auto" style={{ minHeight: '400px' }}>
         <SortableContext items={offers.map((o) => o.id)} strategy={verticalListSortingStrategy}>
           {offers.map((offer) => (
             <OfferCard key={offer.id} offer={offer} onDelete={onDeleteOffer} />

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useThemeStore } from '../../store/themeStore';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Filter, Plus, X, Wrench } from 'lucide-react';
+import { Layout, UserCog, Settings as SettingsIcon, Circle, Filter, Plus, X, Wrench } from 'lucide-react';
 import { Sidebar, SidebarBody, SidebarLink } from '../../components/ui/sidebar';
 import { useAuth } from '../../context/AuthContext';
 
@@ -106,13 +106,6 @@ export function Domains() {
         { label: "Anticlone", href: "/tools/anticlone", icon: <Circle className="h-4 w-4" /> },
         { label: "Clonar Sites", href: "/tools/clonesites", icon: <Circle className="h-4 w-4" /> },
       ],
-    },
-    {
-      label: "Logout",
-      href: "#",
-      icon: (
-        <LogOut className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
     },
   ];
 

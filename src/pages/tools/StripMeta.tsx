@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { StandardNavigation } from '../../components/StandardNavigation';
-import { useAuth } from '../../context/AuthContext';
-import { useThemeStore } from '../../store/themeStore';
 import api from '../../services/api';
 import { MediaUpload } from '../../components/ui/MediaUpload';
+import { Circle } from 'lucide-react';
 
 
 const Spinner = () => (
@@ -16,9 +15,6 @@ const Spinner = () => (
 );
 
 const StripMeta: React.FC = () => {
-  const { theme } = useThemeStore();
-  const [open, setOpen] = useState(false);
-  const { user, profile } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,37 +58,48 @@ const StripMeta: React.FC = () => {
 
   return (
     <StandardNavigation>
-      <div className="px-4 py-8 lg:px-0 pt-16 lg:pt-0">
-        <header className={`${theme === 'dark' ? 'bg-gray-800 border-b border-gray-700' : 'bg-white shadow-sm'} px-4 py-4 lg:px-8`}>
-          <div className="max-w-7xl mx-auto">
-            <div className="flex items-center gap-4">
-              <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Remover Metadados de Vídeo/Imagem</h1>
+      {(sidebarOpen) => (
+        <>
+          <header className={`page-header ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`} style={{ zIndex: 10 }}>
+            <div className="page-header-icon">
+              <Circle className="w-6 h-6" />
             </div>
-          </div>
-        </header>
+            <div className="page-header-content">
+              <h1 className="page-header-title">Remover Metadados</h1>
+              <p className="page-header-subtitle">Remova metadados de vídeos e imagens</p>
+            </div>
+          </header>
 
-        <main className="max-w-3xl mx-auto px-4 py-8 lg:px-8">
-          <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <MediaUpload accept="image/*,video/*" onFile={setFile} />
-              {!loading && (
-                <button
-                  type="submit"
-                  disabled={loading || !file}
-                  className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-colors"
-                >
-                  Remover Metadados
-                </button>
-              )}
-            </form>
-            {loading && <Spinner />}
-            {error && <div className="mt-4 text-red-600 dark:text-red-400 text-sm">{error}</div>}
-            {!loading && cleanFileUrl && file && (
-              <div className="mt-6"></div>
-            )}
-          </div>
-        </main>
-      </div>
+          <main className="px-4 py-8 lg:px-8" style={{ marginTop: '100px' }}>
+            <div className="dashboard-card">
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="form-field-wrapper">
+                  <label className="form-field-label">Arquivo para Processar</label>
+                  <MediaUpload accept="image/*,video/*" onFile={setFile} />
+                </div>
+
+                {!loading && (
+                  <div className="flex justify-center">
+                    <button
+                      type="submit"
+                      disabled={loading || !file}
+                      className="cta-button"
+                    >
+                      Remover Metadados
+                    </button>
+                  </div>
+                )}
+
+                {loading && <Spinner />}
+                {error && <div className="form-field-error-message">{error}</div>}
+                {!loading && cleanFileUrl && file && (
+                  <div className="mt-6"></div>
+                )}
+              </form>
+            </div>
+          </main>
+        </>
+      )}
     </StandardNavigation>
   );
 };

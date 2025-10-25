@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { AlertCircle } from 'lucide-react';
 import { formatPhone, validatePhone, cleanPhone } from '../../utils/phoneValidation';
+import LogoIcon from '../../assets/favicon.png';
 
 export function RegisterForm() {
   const [email, setEmail] = useState('');
@@ -13,6 +14,9 @@ export function RegisterForm() {
   const [phone, setPhone] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [emailValid, setEmailValid] = useState(false);
+  const [passwordValid, setPasswordValid] = useState(false);
+  const [nameValid, setNameValid] = useState(false);
   const navigate = useNavigate();
   const { signUp } = useAuth();
 
@@ -27,6 +31,25 @@ export function RegisterForm() {
     } else {
       setPhoneError('');
     }
+  };
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setFullName(value);
+    setNameValid(value.length >= 2);
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setEmail(value);
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    setEmailValid(emailRegex.test(value));
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setPassword(value);
+    setPasswordValid(value.length >= 6);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -67,34 +90,58 @@ export function RegisterForm() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-900">
-      <div className="flex-1 flex items-center justify-center">
-        <div className="w-full max-w-md px-8 py-12 bg-gray-800 rounded-lg shadow-xl">
-          <h2 className="text-3xl font-bold text-center text-white mb-8">
+    <div className="min-h-screen flex" style={{ background: 'linear-gradient(135deg, rgba(11, 15, 25, 0.95), rgba(30, 41, 59, 0.9))' }}>
+      {/* Logo à esquerda */}
+      <div className="hidden lg:flex lg:w-1/2 items-center justify-center relative overflow-hidden">
+        <div className="text-center">
+          <div className="logo mb-8" style={{ fontSize: '3rem', padding: '1rem' }}>
+            <div className="logo-icon mx-auto mb-4" style={{ background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '80px', height: '80px' }}>
+              <img src={LogoIcon} alt="ClonUp" style={{ width: '80px', height: '80px' }} />
+            </div>
+            <div className="text-white font-bold" style={{ textShadow: '0 0 20px rgba(37, 99, 235, 0.8)' }}>ClonUp</div>
+          </div>
+        </div>
+        {/* Efeitos neon de fundo */}
+        <div className="absolute top-20 left-20 w-96 h-96 rounded-full bg-blue-500/10 blur-3xl"></div>
+        <div className="absolute bottom-20 right-20 w-80 h-80 rounded-full bg-cyan-500/10 blur-3xl"></div>
+      </div>
+
+      {/* Form à direita */}
+      <div className="flex-1 lg:w-1/2 flex items-center justify-center p-8">
+        <div className="w-full max-w-md px-8 py-12 rounded-lg shadow-xl" style={{
+          background: 'linear-gradient(135deg, rgba(11, 15, 25, 0.95), rgba(30, 41, 59, 0.9))',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(37, 99, 235, 0.3)',
+          boxShadow: '0 0 30px rgba(37, 99, 235, 0.2)'
+        }}>
+          <h2 className="text-3xl font-bold text-center text-white m-2" style={{ textShadow: '0 0 10px rgba(37, 99, 235, 0.5)' }}>
             Criar conta
           </h2>
+          <p className="text-1xl text-gray-300 mb-8 text-center" style={{ textShadow: '0 0 10px rgba(37, 99, 235, 0.4)' }}>
+            Junte-se à plataforma de marketing digital
+          </p>
           {error && (
             <div className="mb-4 p-4 bg-red-500/10 border border-red-500 rounded text-red-500">
               {error}
             </div>
           )}
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label htmlFor="full-name" className="block text-sm font-medium text-gray-300">
+            <div className="form-field-wrapper">
+              <label htmlFor="full-name" className="form-field-label">
                 Nome
               </label>
               <input
                 id="full-name"
                 type="text"
                 required
-                className="mt-1 block w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={`form-input ${fullName.length > 0 ? (nameValid ? 'border-green-500 focus:ring-green-500' : 'border-red-500 focus:ring-red-500') : ''}`}
                 placeholder="Seu nome completo"
                 value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                onChange={handleNameChange}
               />
             </div>
-            <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-300">
+            <div className="form-field-wrapper">
+              <label htmlFor="phone" className="form-field-label">
                 Telefone/WhatsApp
               </label>
               <div className="relative">
@@ -102,7 +149,7 @@ export function RegisterForm() {
                   id="phone"
                   type="tel"
                   required
-                  className={`mt-1 block w-full px-4 py-3 bg-gray-700 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent pr-10 ${phoneError
+                  className={`form-input pr-10 ${phoneError
                     ? 'border-red-500 focus:ring-red-500'
                     : phone.length >= 14 && !phoneError
                       ? 'border-green-500 focus:ring-green-500'
@@ -125,41 +172,41 @@ export function RegisterForm() {
                 ) : null}
               </div>
               {phoneError ? (
-                <p className="mt-1 text-sm text-red-500">
+                <div className="form-field-error-message">
                   {phoneError}
-                </p>
+                </div>
               ) : (
                 <p className="mt-1 text-xs text-gray-400">
                   Digite seu telefone com DDD. Ex: (11) 99999-9999
                 </p>
               )}
             </div>
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-300">
+            <div className="form-field-wrapper">
+              <label htmlFor="email" className="form-field-label">
                 Email
               </label>
               <input
                 id="email"
                 type="email"
                 required
-                className="mt-1 block w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={`form-input ${email.length > 0 ? (emailValid ? 'border-green-500 focus:ring-green-500' : 'border-red-500 focus:ring-red-500') : ''}`}
                 placeholder="seu@email.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={handleEmailChange}
               />
             </div>
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-300">
+            <div className="form-field-wrapper">
+              <label htmlFor="password" className="form-field-label">
                 Senha
               </label>
               <input
                 id="password"
                 type="password"
                 required
-                className="mt-1 block w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={`form-input ${password.length > 0 ? (passwordValid ? 'border-green-500 focus:ring-green-500' : 'border-red-500 focus:ring-red-500') : ''}`}
                 placeholder="••••••••"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={handlePasswordChange}
               />
             </div>
             <div className="flex items-start">
@@ -188,7 +235,7 @@ export function RegisterForm() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full px-4 py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="cta-button w-full"
             >
               {loading ? 'Criando conta...' : 'Criar conta'}
             </button>

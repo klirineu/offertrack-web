@@ -2,7 +2,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { ExternalLink, Tag, Clock, Edit2, TrendingUp, Copy, Trash2, Download, Loader2 } from 'lucide-react';
 import type { Offer } from '../types';
-import { useEditDialogStore } from '../store/editDialogStore';
+import { useModalStore } from '../store/modalStore';
 import api from '../services/api';
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
@@ -13,7 +13,7 @@ interface OfferCardProps {
 }
 
 export function OfferCard({ offer, onDelete }: OfferCardProps) {
-  const { openDialog } = useEditDialogStore();
+  const { setSelectedOfferId, setIsEditOfferDialogOpen } = useModalStore();
   const [metrics, setMetrics] = useState<{ count: number; checked_at: string }[]>([]);
   const [loadingMetrics, setLoadingMetrics] = useState(true);
   const [downloading, setDownloading] = useState(false);
@@ -101,7 +101,8 @@ export function OfferCard({ offer, onDelete }: OfferCardProps) {
       ref={setNodeRef}
       style={style}
       {...attributes}
-      className="relative group bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-3 hover:shadow-lg transition-shadow"
+      className="feature-card relative group mb-3"
+      style={{ ...style, padding: '1rem' }}
     >
       {/* Área de arrasto invisível (cobre o card inteiro, menos o botão) */}
       <div
@@ -111,102 +112,133 @@ export function OfferCard({ offer, onDelete }: OfferCardProps) {
       {/* CONTEÚDO */}
       <div className="relative z-10">
         <div className="flex justify-between items-start mb-2">
-          <h3 className="font-semibold text-lg dark:text-white">{offer.title}</h3>
-          <div className="flex gap-2">
+          <h3 className="font-semibold text-base" style={{ color: 'var(--text)', margin: 0, lineHeight: 1.3 }}>{offer.title}</h3>
+          <div className="flex gap-1">
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                openDialog(offer.id);
+                setSelectedOfferId(offer.id);
+                setIsEditOfferDialogOpen(true);
               }}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 z-50"
+              className="p-1.5 rounded-lg transition-colors z-50"
+              style={{
+                color: 'var(--text-secondary)',
+                background: 'transparent'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--bg-card-hover)';
+                e.currentTarget.style.color = 'var(--accent)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = 'var(--text-secondary)';
+              }}
+              title="Editar"
             >
-              <Edit2 className="w-4 h-4" />
+              <Edit2 className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={handleDeleteOffer}
-              className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 z-50 flex items-center gap-1 disabled:opacity-60"
+              className="p-1.5 rounded-lg transition-colors z-50 flex items-center gap-1 disabled:opacity-60"
+              style={{
+                color: 'var(--error)',
+                background: 'transparent'
+              }}
               title="Excluir Oferta"
               disabled={loadingDelete}
+              onMouseEnter={(e) => {
+                if (!loadingDelete) {
+                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
             >
-              {loadingDelete ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-              {loadingDelete && <span className="ml-1 text-xs">Excluindo...</span>}
+              {loadingDelete ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
             </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 mb-2 text-sm text-gray-600 dark:text-gray-400">
-          <Clock className="w-4 h-4" />
-          <span>{new Date(offer.createdAt).toLocaleDateString()}</span>
-        </div>
-
         {loadingMetrics ? (
-          <div className="text-gray-500 dark:text-gray-400 text-sm mb-2">Carregando métricas...</div>
+          <div className="text-xs mb-2" style={{ color: 'var(--text-secondary)' }}>Carregando...</div>
         ) : latestMetric ? (
-          <div className="flex items-center gap-2 mb-2 text-sm">
-            <TrendingUp className="w-4 h-4" />
-            <span className="dark:text-white">Active Ads: {latestMetric.count}</span>
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp className="w-3.5 h-3.5" style={{ color: 'var(--accent)' }} />
+            <span className="text-xs font-semibold" style={{ color: 'var(--text)' }}>
+              {latestMetric.count} anúncios
+            </span>
             {adsTrend !== 0 && (
-              <span className={adsTrend > 0 ? 'text-green-600' : 'text-red-600'}>
-                ({adsTrend > 0 ? '+' : ''}{adsTrend})
+              <span className={`badge ${adsTrend > 0 ? 'badge-success' : 'badge-error'}`} style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem' }}>
+                {adsTrend > 0 ? '+' : ''}{adsTrend}
               </span>
             )}
           </div>
         ) : null}
 
-        <div className="flex flex-wrap gap-2 mb-3">
-          {offer.tags.map((tag) => (
-            <span
-              key={tag}
-              className="px-2 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full text-xs flex items-center gap-1"
-            >
-              <Tag className="w-3 h-3" />
-              {tag}
-            </span>
-          ))}
-        </div>
-
-        {offer.description && (
-          <p className="text-gray-600 dark:text-gray-400 text-sm mb-3 break-words">{offer.description}</p>
+        {offer.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {offer.tags.slice(0, 3).map((tag) => (
+              <span
+                key={tag}
+                className="badge badge-info"
+                style={{ fontSize: '0.65rem', padding: '0.15rem 0.5rem' }}
+              >
+                {tag}
+              </span>
+            ))}
+            {offer.tags.length > 3 && (
+              <span className="badge badge-info" style={{ fontSize: '0.65rem', padding: '0.15rem 0.5rem' }}>
+                +{offer.tags.length - 3}
+              </span>
+            )}
+          </div>
         )}
 
-        <div className="flex flex-wrap gap-2 mt-2">
+        {offer.description && (
+          <p className="text-xs mb-2 break-words line-clamp-2" style={{ color: 'var(--text-secondary)' }}>
+            {offer.description}
+          </p>
+        )}
+
+        <div className="flex flex-wrap gap-1.5 mt-2">
           <a
             href={offer.offerUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+            className="secondary-button"
+            style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', textDecoration: 'none' }}
+            title="Ver Oferta"
           >
-            <ExternalLink className="w-4 h-4" />
-            Ver Oferta
+            <ExternalLink className="w-3 h-3" />
           </a>
           <a
             href={`/offers/${offer.id}/metrics`}
-            className="flex items-center gap-1 px-3 py-1 rounded-md bg-emerald-50 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-200 hover:bg-emerald-100 dark:hover:bg-emerald-800 transition font-medium shadow-sm"
-            title="Ver Métricas Detalhadas"
+            className="starter-button"
+            style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', textDecoration: 'none' }}
+            title="Ver Métricas"
           >
-            <TrendingUp className="w-4 h-4" />
-            Métricas
+            <TrendingUp className="w-3 h-3" />
           </a>
           <button
             onClick={handleDownloadMedia}
-            className="flex items-center gap-1 px-3 py-1 rounded-md bg-indigo-50 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-indigo-800 transition font-medium shadow-sm"
-            title="Baixar Mídia da Oferta"
+            className="secondary-button"
+            style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}
+            title="Baixar Mídia"
+            disabled={downloading}
           >
-            <Download className="w-4 h-4" />
-            Baixar Mídia
+            {downloading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
           </button>
-
-        </div>
-        <div className="flex flex-wrap gap-2 mt-2">
           <a
             href={offer.landingPageUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+            className="secondary-button"
+            style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', textDecoration: 'none' }}
+            title="Landing Page"
           >
-            <ExternalLink className="w-4 h-4" />
-            Landing Page
+            <ExternalLink className="w-3 h-3" />
           </a>
           <button
             onClick={e => {
@@ -214,22 +246,23 @@ export function OfferCard({ offer, onDelete }: OfferCardProps) {
               e.stopPropagation();
               window.location.href = `/tools/clonesites?url=${encodeURIComponent(offer.landingPageUrl)}`;
             }}
-            className="flex items-center gap-1 px-3 py-1 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition font-medium shadow-sm"
-            title="Clonar Landing Page"
+            className="cta-button"
+            style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}
+            title="Clonar LP"
           >
-            <Copy className="w-4 h-4" />
-            Clonar
+            <Copy className="w-3 h-3" />
           </button>
         </div>
       </div>
       {downloading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="flex flex-col items-center gap-4 bg-white dark:bg-gray-800 rounded-lg p-8 shadow-lg">
-            <svg className="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-            </svg>
-            <span className="text-gray-700 dark:text-gray-200 font-semibold">Baixando mídia...</span>
+        <div className="modal-overlay">
+          <div className="dashboard-card flex flex-col items-center gap-4 p-8">
+            <div className="loader">
+              <div className="loader-circle"></div>
+              <div className="loader-circle"></div>
+              <div className="loader-circle"></div>
+            </div>
+            <span className="font-semibold" style={{ color: 'var(--text)' }}>Baixando mídia...</span>
           </div>
         </div>
       )}

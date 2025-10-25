@@ -1,42 +1,49 @@
 import { useState } from 'react';
 import { Board } from '../components/Board';
+import { NewOfferDialog } from '../components/NewOfferDialog';
+import { EditOfferDialog } from '../components/EditOfferDialog';
 import { useThemeStore } from '../store/themeStore';
+import { useModalStore } from '../store/modalStore';
 import { Link } from 'react-router-dom';
-import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Wrench, Users, Clock, Star } from 'lucide-react';
+import { Layout, UserCog, Settings as SettingsIcon, Circle, Wrench, Users, Clock, Star, LogOut } from 'lucide-react';
 import { SidebarBody, SidebarLink, Sidebar } from '../components/ui/sidebar';
 import { useAuth } from '../context/AuthContext';
 import { checkTrialStatus } from '../utils/trialUtils';
 
-import LogoBranco from '../assets/logo-branco.png';
-import IconBranco from '../assets/ico-branco.png';
+import LogoIcon from '../assets/favicon.png';
 
 
 const Logo = () => {
   return (
-    <Link
-      to="/"
-      className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
-    >
-      <img src={LogoBranco} alt="" />
+    <Link to="/" className="logo" style={{ fontSize: '1.5rem', padding: '0.5rem' }}>
+      <div className="logo-icon" style={{ background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px' }}>
+        <img src={LogoIcon} alt="ClonUp" style={{ width: '40', height: '40' }} />
+      </div>
+      ClonUp
     </Link>
   );
 };
 
-const LogoIcon = () => {
+const LogoIconOnly = () => {
   return (
-    <Link
-      to="/"
-      className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
-    >
-      <img src={IconBranco} alt="" />
+    <Link to="/" className="logo-icon" title="ClonUp" style={{ background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px' }}>
+      <img src={LogoIcon} alt="ClonUp" style={{ width: '40px', height: '40px' }} />
     </Link>
   );
 };
 
 export function Dashboard() {
   const { theme } = useThemeStore(); // Obtenha o tema do store
-  const [open, setOpen] = useState(false);
-  const { user, profile } = useAuth();
+  const [open, setOpen] = useState(true); // Sidebar aberto por padrão
+  const { user, profile, signOut } = useAuth();
+  const {
+    isNewOfferDialogOpen,
+    setIsNewOfferDialogOpen,
+    isEditOfferDialogOpen,
+    offers,
+    onOfferUpdated,
+    onNewOffer
+  } = useModalStore();
   const links = [
     {
       label: "Dashboard",
@@ -101,106 +108,147 @@ export function Dashboard() {
         <SettingsIcon className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
       ),
     },
-    {
-      label: "Logout",
-      href: "#",
-      icon: (
-        <LogOut className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
   ];
 
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
+    <div className="min-h-screen">
       <Sidebar open={open} setOpen={setOpen}>
         <SidebarBody className={`w-64 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border-r h-screen fixed left-0 top-0 z-40`}>
           <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
-            {open ? <Logo /> : <LogoIcon />}
+            {open ? <Logo /> : <LogoIconOnly />}
             <div className="mt-8 flex flex-col gap-2">
               {links.map((link, idx) => (
                 <SidebarLink key={idx} link={link} />
               ))}
             </div>
           </div>
-          <div>
-            <SidebarLink
-              link={{
-                label: profile?.full_name || user?.email || 'Usuário',
-                href: "/profile",
-                icon: (
-                  <img
-                    src={profile?.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(profile?.full_name || user?.email || 'U')}
-                    className="h-7 w-7 flex-shrink-0 rounded-full"
-                    alt="Avatar"
-                  />
-                ),
-              }}
-            />
+          <div className="mt-auto border-t" style={{ borderColor: 'rgba(30, 41, 59, 0.5)', paddingTop: '1rem' }}>
+            {/* Seção do Usuário */}
+            <div className="px-2 py-3 border-t" style={{ borderColor: 'rgba(30, 41, 59, 0.5)' }}>
+              <div className="flex items-center gap-3">
+                <img
+                  src={profile?.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(profile?.full_name || user?.email || 'U')}
+                  className="h-8 w-8 flex-shrink-0 rounded-full"
+                  alt="Avatar"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <div className="text-sm font-medium truncate" style={{ color: 'var(--text)' }}>
+                      {profile?.full_name || 'Usuário'}
+                    </div>
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${profile?.subscription_status === 'active'
+                        ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg shadow-green-500/25'
+                        : profile?.subscription_status === 'trialing'
+                          ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/25'
+                          : 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
+                      }`}>
+                      {profile?.subscription_status === 'active' ? 'PREMIUM' :
+                        profile?.subscription_status === 'trialing' ? 'TRIAL' : 'FREE'}
+                    </span>
+                  </div>
+                  <div className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>
+                    {user?.email}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Botão Sair */}
+            <div className="px-2 py-2">
+              <button
+                onClick={async () => {
+                  await signOut();
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-red-500/10 hover:text-red-400"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                <LogOut className="h-4 w-4" />
+                Sair
+              </button>
+            </div>
           </div>
         </SidebarBody>
       </Sidebar>
 
-      <div className={`${open ? 'lg:pl-72' : 'lg:pl-24'} transition-all duration-300`}>
-        <header className={`${theme === 'dark' ? 'bg-gray-800 border-b border-gray-700' : 'bg-white shadow-sm'} px-4 py-4 lg:px-8`}>
-          <div className="flex items-center gap-2">
-            <Layout className="w-6 h-6 text-blue-600" />
-            <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Gestão de Ofertas
-            </h1>
+      <div className={`${open ? 'md:pl-[240px]' : 'md:pl-[70px]'} transition-all duration-300`} style={{ position: 'relative', zIndex: 1 }}>
+        <header className={`page-header ${open ? 'sidebar-open' : 'sidebar-closed'}`}>
+          <div className="page-header-icon">
+            <Layout className="w-6 h-6" />
+          </div>
+          <div className="page-header-content">
+            <h1 className="page-header-title">Gestão de Ofertas</h1>
+            <p className="page-header-subtitle">Gerencie todas as suas ofertas em um só lugar</p>
           </div>
         </header>
 
-        <main className="px-4 py-8 lg:px-8">
+        <main className="px-4 py-8 lg:px-8" style={{ position: 'relative', zIndex: 1, paddingTop: '100px' }}>
           {/* Trial Status Banner */}
           {profile?.subscription_status === 'trialing' && (
-            <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <div className="flex items-center gap-3">
-                <Clock className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                <div>
-                  <h3 className="font-semibold text-blue-900 dark:text-blue-100">
-                    Período de Teste Gratuito
-                  </h3>
-                  <p className="text-sm text-blue-700 dark:text-blue-300">
-                    {(() => {
-                      const trialStatus = checkTrialStatus({
-                        subscription_status: profile.subscription_status,
-                        trial_started_at: profile.trial_started_at,
-                        created_at: profile.created_at
-                      });
-                      return `Você tem ${trialStatus.daysRemaining} ${trialStatus.daysRemaining === 1 ? 'dia restante' : 'dias restantes'} no seu período de teste. Aproveite todos os recursos do plano Starter!`;
-                    })()}
-                  </p>
+            <div className="alert alert-info mb-6">
+              <Clock className="alert-icon" />
+              <div className="alert-content">
+                <div className="alert-title">
+                  Período de Teste Gratuito
                 </div>
-                <button
-                  onClick={() => window.location.href = '/escolher-plano'}
-                  className="ml-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
-                >
-                  Ver Planos
-                </button>
+                <div className="alert-message">
+                  {(() => {
+                    const trialStatus = checkTrialStatus({
+                      subscription_status: profile.subscription_status,
+                      trial_started_at: profile.trial_started_at,
+                      created_at: profile.created_at
+                    });
+                    return `Você tem ${trialStatus.daysRemaining} ${trialStatus.daysRemaining === 1 ? 'dia restante' : 'dias restantes'} no seu período de teste. Aproveite todos os recursos do plano Starter!`;
+                  })()}
+                </div>
               </div>
+              <button
+                onClick={() => window.location.href = '/escolher-plano'}
+                className="cta-button"
+                style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
+              >
+                Ver Planos
+              </button>
             </div>
           )}
 
           {/* Aviso de Lançamento do Editor de Quiz */}
-          <div className="mb-6 flex flex-col gap-3 sm:gap-2">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 px-4 py-3 sm:py-2 rounded-lg bg-gradient-to-r from-green-100 to-blue-100 border border-green-300 text-green-900 font-semibold text-sm shadow-lg">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-1">
-                <span className="inline-flex items-center"><Wrench className="w-4 h-4 mr-2 text-green-700" /> 🚀 NOVO LANÇAMENTO</span>
-                <span className="text-xs font-normal text-green-800">Editor de Quiz Avançado disponível! Acesse em Ferramentas → Clonar Quiz</span>
+          <div className="alert alert-success mb-6">
+            <span className="alert-icon">🚀</span>
+            <div className="alert-content">
+              <div className="alert-title">
+                <Wrench className="inline w-4 h-4 mr-2" />
+                NOVO LANÇAMENTO
               </div>
-              <button
-                onClick={() => window.open('https://quiz.clonup.pro', '_blank')}
-                className="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition text-xs font-medium whitespace-nowrap"
-              >
-                Acessar Quiz Editor
-              </button>
+              <div className="alert-message">
+                Editor de Quiz Avançado disponível! Acesse em Ferramentas → Clonar Quiz
+              </div>
             </div>
+            <button
+              onClick={() => window.open('https://quiz.clonup.pro', '_blank')}
+              className="starter-button"
+              style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
+            >
+              Acessar Quiz Editor
+            </button>
           </div>
 
           <Board />
         </main>
       </div>
       {/* <ClonupFloatingWidget /> */}
+
+      {/* Modais renderizados fora do StandardNavigation para overlay completo */}
+      <NewOfferDialog
+        isOpen={isNewOfferDialogOpen}
+        onClose={() => setIsNewOfferDialogOpen(false)}
+        onSubmit={onNewOffer || (async () => { })}
+      />
+      {isEditOfferDialogOpen && (
+        <EditOfferDialog
+          offers={offers}
+          onOfferUpdated={onOfferUpdated || (() => { })}
+        />
+      )}
     </div>
   );
 }

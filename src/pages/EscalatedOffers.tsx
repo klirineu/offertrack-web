@@ -16,7 +16,6 @@ import {
   Plus,
   Loader2,
   CheckCircle,
-  XCircle,
   AlertCircle,
   BarChart3,
   Clock,
@@ -143,29 +142,13 @@ export default function EscalatedOffers() {
       if (filters.escalationLevel === 'escalada' && (offer.active_ads_count <= 15 || offer.active_ads_count > 50)) return false;
       if (filters.escalationLevel === 'escaladissima' && offer.active_ads_count <= 50) return false;
     }
-    
+
     // Filtro por mínimo de anúncios
     if (parseInt(filters.minAds) > 0 && offer.active_ads_count < parseInt(filters.minAds)) return false;
-    
+
     return true;
   });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200';
-      case 'inactive': return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200';
-      case 'archived': return 'bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-200';
-      default: return 'bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-200';
-    }
-  };
-
-  const getMarginIcon = (positive: boolean) => {
-    return positive ? (
-      <CheckCircle className="w-4 h-4 text-green-500" />
-    ) : (
-      <XCircle className="w-4 h-4 text-red-500" />
-    );
-  };
 
   const getEscalationLevel = (activeAdsCount: number) => {
     if (activeAdsCount <= 15) {
@@ -200,7 +183,7 @@ export default function EscalatedOffers() {
 
   if (!hasAccess) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
@@ -216,303 +199,320 @@ export default function EscalatedOffers() {
 
   return (
     <StandardNavigation>
-      <div className="max-w-7xl mx-auto px-4 py-8 lg:px-8">
+      <div className="max-w-7xl mx-auto" style={{ position: 'relative', zIndex: 1 }}>
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
-              <TrendingUp className="w-8 h-8 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                Ofertas Escaladas
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400">
-                Ofertas com margem positiva desde o início - apenas para administradores
-              </p>
-            </div>
+        <header className="page-header">
+          <div className="page-header-icon">
+            <TrendingUp className="w-6 h-6" />
           </div>
-        </div>
-
-        {/* Filtros */}
-        <div className={`mb-6 p-6 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
-          <div className="flex items-center gap-2 mb-4">
-            <Filter className="w-5 h-5 text-gray-500" />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Filtros</h2>
+          <div className="page-header-content">
+            <h1 className="page-header-title">Ofertas Escaladas</h1>
+            <p className="page-header-subtitle">Ofertas com margem positiva desde o início - apenas para administradores</p>
           </div>
+        </header>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Nível de Escalação */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Nível de Escalação
-              </label>
-              <select
-                value={filters.escalationLevel}
-                onChange={(e) => setFilters(prev => ({ ...prev, escalationLevel: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              >
-                <option value="all">Todos os Níveis</option>
-                <option value="escalando">🔥 Escalando (até 15 anúncios)</option>
-                <option value="escalada">🚀 Escalada (16 a 50 anúncios)</option>
-                <option value="escaladissima">💥 Escaladíssima (mais de 50 anúncios)</option>
-              </select>
+        <div className="px-4 py-8 lg:px-8" style={{ marginTop: '100px' }}>
+
+          {/* Filtros */}
+          <div className="dashboard-card mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Filter className="w-5 h-5" style={{ color: 'var(--accent)' }} />
+              <h2 className="text-lg font-semibold" style={{ color: 'var(--text)', margin: 0 }}>Filtros</h2>
             </div>
 
-            {/* Mínimo de Anúncios */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Mín. Anúncios
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={filters.minAds}
-                onChange={(e) => setFilters(prev => ({ ...prev, minAds: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Estatísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className={`p-6 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
-            <div className="flex items-center gap-3">
-              <BarChart3 className="w-8 h-8 text-blue-600" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Nível de Escalação */}
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total de Ofertas</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{offers.length}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className={`p-6 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
-            <div className="flex items-center gap-3">
-              <CheckCircle className="w-8 h-8 text-green-600" />
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Margem Positiva</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {offers.filter(o => o.margin_positive).length}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className={`p-6 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
-            <div className="flex items-center gap-3">
-              <TrendingUp className="w-8 h-8 text-purple-600" />
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total Anúncios</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {offers.reduce((sum, o) => sum + o.active_ads_count, 0)}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className={`p-6 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
-            <div className="flex items-center gap-3">
-              <Clock className="w-8 h-8 text-orange-600" />
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Última Análise</p>
-                <p className="text-sm font-medium text-gray-900 dark:text-white">
-                  {offers.length > 0 ? new Date(Math.max(...offers.map(o => new Date(o.last_analysis_date).getTime()))).toLocaleDateString() : 'N/A'}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Estatísticas por Nível de Escalação */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className={`p-6 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-sm border-2 border-orange-300 dark:border-orange-700`}>
-            <div className="flex items-center gap-3">
-              <div className="text-3xl">🔥</div>
-              <div>
-                <p className="text-sm font-semibold text-orange-600 dark:text-orange-400">Escalando</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {offers.filter(o => o.active_ads_count <= 15).length}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">até 15 anúncios</p>
-              </div>
-            </div>
-          </div>
-
-          <div className={`p-6 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-sm border-2 border-blue-300 dark:border-blue-700`}>
-            <div className="flex items-center gap-3">
-              <div className="text-3xl">🚀</div>
-              <div>
-                <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">Escalada</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {offers.filter(o => o.active_ads_count > 15 && o.active_ads_count <= 50).length}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">16 a 50 anúncios</p>
-              </div>
-            </div>
-          </div>
-
-          <div className={`p-6 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-sm border-2 border-purple-300 dark:border-purple-700`}>
-            <div className="flex items-center gap-3">
-              <div className="text-3xl">💥</div>
-              <div>
-                <p className="text-sm font-semibold text-purple-600 dark:text-purple-400">Escaladíssima</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {offers.filter(o => o.active_ads_count > 50).length}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">mais de 50 anúncios</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Lista de Ofertas */}
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-            <span className="ml-2 text-gray-600 dark:text-gray-400">Carregando ofertas...</span>
-          </div>
-        ) : error ? (
-          <div className="text-center py-12">
-            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <p className="text-red-600 dark:text-red-400">{error}</p>
-          </div>
-        ) : filteredOffers.length === 0 ? (
-          <div className="text-center py-12">
-            <TrendingUp className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600 dark:text-gray-400">Nenhuma oferta encontrada</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredOffers.map((offer) => {
-              const escalationLevel = getEscalationLevel(offer.active_ads_count);
-
-              return (
-                <div
-                  key={offer.id}
-                  className={`group relative overflow-hidden rounded-lg ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-2 ${escalationLevel.borderColor} shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col h-full`}
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text)' }}>
+                  Nível de Escalação
+                </label>
+                <select
+                  value={filters.escalationLevel}
+                  onChange={(e) => setFilters(prev => ({ ...prev, escalationLevel: e.target.value }))}
+                  className="form-input w-full"
                 >
-                  {/* Header do Card */}
-                  <div className="p-4 flex-shrink-0">
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="flex-1 min-w-0">
-                        <h3 className={`text-2xl font-bold mb-3 leading-tight ${escalationLevel.textColor} flex items-center gap-2`}>
-                          <span className="text-3xl">{escalationLevel.emoji}</span>
-                          <span>{escalationLevel.title}</span>
-                        </h3>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(offer.status)}`}>
-                            {offer.status === 'active' ? 'Ativo' : offer.status === 'inactive' ? 'Inativo' : 'Arquivado'}
-                          </span>
-                          <div className="flex items-center gap-1">
-                            {getMarginIcon(offer.margin_positive)}
-                            <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                  <option value="all">Todos os Níveis</option>
+                  <option value="escalando">🔥 Escalando (até 15 anúncios)</option>
+                  <option value="escalada">🚀 Escalada (16 a 50 anúncios)</option>
+                  <option value="escaladissima">💥 Escaladíssima (mais de 50 anúncios)</option>
+                </select>
+              </div>
+
+              {/* Mínimo de Anúncios */}
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text)' }}>
+                  Mín. Anúncios
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={filters.minAds}
+                  onChange={(e) => setFilters(prev => ({ ...prev, minAds: e.target.value }))}
+                  className="form-input w-full"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Estatísticas */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="dashboard-card">
+              <div className="flex items-center gap-3">
+                <div className="stat-icon">
+                  <BarChart3 className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Total de Ofertas</p>
+                  <p className="text-2xl font-bold" style={{ color: 'var(--text)' }}>{offers.length}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="dashboard-card">
+              <div className="flex items-center gap-3">
+                <div className="stat-icon" style={{ background: 'linear-gradient(135deg, var(--success), var(--accent))' }}>
+                  <CheckCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Margem Positiva</p>
+                  <p className="text-2xl font-bold" style={{ color: 'var(--text)' }}>
+                    {offers.filter(o => o.margin_positive).length}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="dashboard-card">
+              <div className="flex items-center gap-3">
+                <div className="stat-icon">
+                  <TrendingUp className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Total Anúncios</p>
+                  <p className="text-2xl font-bold" style={{ color: 'var(--text)' }}>
+                    {offers.reduce((sum, o) => sum + o.active_ads_count, 0)}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="dashboard-card">
+              <div className="flex items-center gap-3">
+                <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #f59e0b, #eab308)' }}>
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Última Análise</p>
+                  <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>
+                    {offers.length > 0 ? new Date(Math.max(...offers.map(o => new Date(o.last_analysis_date).getTime()))).toLocaleDateString() : 'N/A'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Estatísticas por Nível de Escalação */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div className="pricing-card" style={{ border: '2px solid #f59e0b', padding: '1.5rem' }}>
+              <div className="flex items-center gap-3">
+                <div className="text-3xl">🔥</div>
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: '#f59e0b' }}>Escalando</p>
+                  <p className="text-2xl font-bold" style={{ color: 'var(--text)' }}>
+                    {offers.filter(o => o.active_ads_count <= 15).length}
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>até 15 anúncios</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="pricing-card" style={{ border: '2px solid var(--primary)', padding: '1.5rem' }}>
+              <div className="flex items-center gap-3">
+                <div className="text-3xl">🚀</div>
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: 'var(--primary)' }}>Escalada</p>
+                  <p className="text-2xl font-bold" style={{ color: 'var(--text)' }}>
+                    {offers.filter(o => o.active_ads_count > 15 && o.active_ads_count <= 50).length}
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>16 a 50 anúncios</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="pricing-card" style={{ border: '2px solid #a855f7', padding: '1.5rem' }}>
+              <div className="flex items-center gap-3">
+                <div className="text-3xl">💥</div>
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: '#a855f7' }}>Escaladíssima</p>
+                  <p className="text-2xl font-bold" style={{ color: 'var(--text)' }}>
+                    {offers.filter(o => o.active_ads_count > 50).length}
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>mais de 50 anúncios</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Lista de Ofertas */}
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              <span className="ml-2 text-gray-600 dark:text-gray-400">Carregando ofertas...</span>
+            </div>
+          ) : error ? (
+            <div className="text-center py-12">
+              <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+              <p className="text-red-600 dark:text-red-400">{error}</p>
+            </div>
+          ) : filteredOffers.length === 0 ? (
+            <div className="text-center py-12">
+              <TrendingUp className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600 dark:text-gray-400">Nenhuma oferta encontrada</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredOffers.map((offer) => {
+                const escalationLevel = getEscalationLevel(offer.active_ads_count);
+
+                return (
+                  <div
+                    key={offer.id}
+                    className="offer-card"
+                    style={{
+                      borderColor: escalationLevel.borderColor.includes('orange') ? '#f59e0b' :
+                        escalationLevel.borderColor.includes('blue') ? 'var(--primary)' :
+                          escalationLevel.borderColor.includes('purple') ? '#a855f7' : 'var(--border)',
+                      borderWidth: '2px'
+                    }}
+                  >
+                    {/* Header do Card */}
+                    <div className="relative z-10">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-xl font-bold mb-2 leading-tight flex items-center gap-2" style={{ color: 'var(--text)' }}>
+                            <span className="text-2xl">{escalationLevel.emoji}</span>
+                            <span>{escalationLevel.title}</span>
+                          </h3>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`badge ${offer.status === 'active' ? 'badge-success' : 'badge-info'}`} style={{ fontSize: '0.7rem', padding: '0.2rem 0.6rem' }}>
+                              {offer.status === 'active' ? 'Ativo' : offer.status === 'inactive' ? 'Inativo' : 'Arquivado'}
+                            </span>
+                            <span className={`badge ${offer.margin_positive ? 'badge-success' : 'badge-error'}`} style={{ fontSize: '0.7rem', padding: '0.2rem 0.6rem' }}>
                               {offer.margin_positive ? 'Margem +' : 'Margem -'}
                             </span>
                           </div>
                         </div>
+                        <button
+                          onClick={() => handleEditOffer(offer)}
+                          className="p-2 rounded-lg transition-colors"
+                          style={{ color: 'var(--text-secondary)' }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--bg-card-hover)';
+                            e.currentTarget.style.color = 'var(--accent)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'transparent';
+                            e.currentTarget.style.color = 'var(--text-secondary)';
+                          }}
+                          title="Editar oferta"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
                       </div>
-                      <button
-                        onClick={() => handleEditOffer(offer)}
-                        className="p-2 text-gray-400 hover:text-blue-600 dark:text-gray-500 dark:hover:text-blue-400 transition-colors"
-                        title="Editar oferta"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
+
+                      {/* Métricas Principais */}
+                      <div className="grid grid-cols-2 gap-3 mb-3">
+                        <div className="dashboard-card" style={{ padding: '1rem', textAlign: 'center' }}>
+                          <div className="flex items-center justify-center mb-1">
+                            <TrendingUp className="w-4 h-4 mr-1" style={{ color: 'var(--primary)' }} />
+                            <p className="text-xl font-bold" style={{ color: 'var(--primary)' }}>{offer.active_ads_count.toLocaleString()}</p>
+                          </div>
+                          <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Active Ads</p>
+                        </div>
+                        <div className="dashboard-card" style={{ padding: '1rem', textAlign: 'center' }}>
+                          <div className="flex items-center justify-center mb-1">
+                            <CheckCircle className="w-4 h-4 mr-1" style={{ color: 'var(--success)' }} />
+                            <p className="text-xl font-bold" style={{ color: 'var(--success)' }}>
+                              {offer.total_analyses > 0 ? Math.round((offer.positive_analyses / offer.total_analyses) * 100) : 0}%
+                            </p>
+                          </div>
+                          <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Taxa Positiva</p>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Métricas Principais */}
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div className="text-center">
-                        <div className="flex items-center justify-center mb-1">
-                          <TrendingUp className="w-4 h-4 text-blue-600 mr-1" />
-                          <p className="text-2xl font-bold text-blue-600">{offer.active_ads_count.toLocaleString()}</p>
-                        </div>
-                        <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Active Ads</p>
-                      </div>
-                      <div className="text-center">
-                        <div className="flex items-center justify-center mb-1">
-                          <CheckCircle className="w-4 h-4 text-green-600 mr-1" />
-                          <p className="text-2xl font-bold text-green-600">
-                            {offer.total_analyses > 0 ? Math.round((offer.positive_analyses / offer.total_analyses) * 100) : 0}%
-                          </p>
-                        </div>
-                        <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Taxa Positiva</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Conteúdo do Card - Flex grow para ocupar espaço restante */}
-                  <div className="px-4 pb-4 flex flex-col flex-grow">
-                    {/* Links */}
-                    <div className="space-y-2 mb-4">
-                      <a
-                        href={offer.offer_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        Página da Oferta
-                      </a>
-                      {offer.landing_page_url && (
+                    {/* Conteúdo do Card - Flex grow para ocupar espaço restante */}
+                    <div className="relative z-10 flex flex-col flex-grow">
+                      {/* Links */}
+                      <div className="flex flex-wrap gap-2 mb-3">
                         <a
-                          href={offer.landing_page_url}
+                          href={offer.offer_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors"
+                          className="secondary-button"
+                          style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', textDecoration: 'none' }}
                         >
-                          <ExternalLink className="w-4 h-4" />
-                          Landing Page
+                          <ExternalLink className="w-3 h-3" />
+                          Oferta
                         </a>
-                      )}
-                    </div>
-
-                    {/* Tags */}
-                    {offer.tags && offer.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mb-4">
-                        {offer.tags.slice(0, 3).map((tag, index) => (
-                          <span
-                            key={index}
-                            className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium dark:bg-blue-900/20 dark:text-blue-200"
+                        {offer.landing_page_url && (
+                          <a
+                            href={offer.landing_page_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="secondary-button"
+                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', textDecoration: 'none' }}
                           >
-                            {tag}
-                          </span>
-                        ))}
-                        {offer.tags.length > 3 && (
-                          <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full font-medium dark:bg-gray-700 dark:text-gray-400">
-                            +{offer.tags.length - 3}
-                          </span>
+                            <ExternalLink className="w-3 h-3" />
+                            Landing
+                          </a>
                         )}
                       </div>
-                    )}
 
-                    {/* Spacer para empurrar o botão para o bottom */}
-                    <div className="flex-grow"></div>
-
-                    {/* Botão de Importar - Sempre no bottom */}
-                    <button
-                      onClick={() => handleImportOffer(offer)}
-                      disabled={importing === offer.id}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-all duration-200 shadow-sm hover:shadow-md mt-auto"
-                    >
-                      {importing === offer.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Plus className="w-4 h-4" />
+                      {/* Tags */}
+                      {offer.tags && offer.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-3">
+                          {offer.tags.slice(0, 3).map((tag, index) => (
+                            <span
+                              key={index}
+                              className="badge badge-info"
+                              style={{ fontSize: '0.65rem', padding: '0.15rem 0.5rem' }}
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                          {offer.tags.length > 3 && (
+                            <span className="badge badge-info" style={{ fontSize: '0.65rem', padding: '0.15rem 0.5rem' }}>
+                              +{offer.tags.length - 3}
+                            </span>
+                          )}
+                        </div>
                       )}
-                      {importing === offer.id ? 'Importando...' : 'Importar Oferta'}
-                    </button>
-                  </div>
 
-                  {/* Indicador de Performance */}
-                  <div className={`absolute top-4 right-4 w-3 h-3 rounded-full ${offer.margin_positive ? 'bg-green-500' : 'bg-red-500'
-                    } shadow-sm`}></div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                      {/* Spacer para empurrar o botão para o bottom */}
+                      <div className="flex-grow"></div>
+
+                      {/* Botão de Importar - Sempre no bottom */}
+                      <button
+                        onClick={() => handleImportOffer(offer)}
+                        disabled={importing === offer.id}
+                        className="cta-button w-full"
+                        style={{ padding: '0.6rem 1rem', fontSize: '0.875rem' }}
+                      >
+                        {importing === offer.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Plus className="w-4 h-4" />
+                        )}
+                        {importing === offer.id ? 'Importando...' : 'Importar Oferta'}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Modal de Edição */}
