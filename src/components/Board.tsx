@@ -126,6 +126,7 @@ export function Board() {
     const updatedOffers = offers.map((offer) =>
       offer.id === active.id ? { ...offer, status: newStatus, updatedAt: new Date() } : offer
     );
+    setOffersLocal(updatedOffers);
     setOffers(updatedOffers);
 
     // Persistir no backend
@@ -176,6 +177,11 @@ export function Board() {
   };
 
   const handleOfferUpdated = (updatedOffer: Offer) => {
+    setOffersLocal((prev) =>
+      prev.map((offer) =>
+        offer.id === updatedOffer.id ? { ...offer, ...updatedOffer } : offer
+      )
+    );
     setOffers((prev) =>
       prev.map((offer) =>
         offer.id === updatedOffer.id ? { ...offer, ...updatedOffer } : offer
