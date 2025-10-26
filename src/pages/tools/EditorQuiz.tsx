@@ -252,6 +252,7 @@ export default function EditorQuiz() {
                     </h2>
                     <button
                       onClick={() => {
+                        if (actionLoading === 'save') return; // Não permite fechar durante clonagem
                         setModalOpen(false);
                         setOriginalUrl('');
                         setSubdomain('');
@@ -261,11 +262,40 @@ export default function EditorQuiz() {
                         setQuizType('inlead');
                       }}
                       className="modal-close"
+                      disabled={actionLoading === 'save'}
+                      style={{
+                        opacity: actionLoading === 'save' ? 0.5 : 1,
+                        cursor: actionLoading === 'save' ? 'not-allowed' : 'pointer'
+                      }}
                     >
                       <X className="w-5 h-5" />
                     </button>
                   </div>
                   <div className="app-modal-body">
+                    {/* Aviso durante clonagem */}
+                    {actionLoading === 'save' && (
+                      <div className="mb-6 p-4 rounded-lg border-2 border-blue-500/30" style={{
+                        background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.05))',
+                        border: '1px solid rgba(37, 99, 235, 0.3)'
+                      }}>
+                        <div className="flex items-center gap-3">
+                          <div className="flex-shrink-0">
+                            <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="text-sm font-semibold text-blue-300 mb-1">
+                              🚀 Clonagem em andamento...
+                            </h3>
+                            <p className="text-xs text-blue-200/80 leading-relaxed">
+                              <strong>Importante:</strong> O processo de clonagem pode demorar alguns minutos.
+                              <br />
+                              <span className="text-yellow-300">⚠️ Não feche esta aba nem atualize a página</span> até que o processo seja concluído.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="space-y-6">
                       <div className="form-field-wrapper">
                         <label className="form-field-label">Tipo de Quiz</label>
@@ -273,6 +303,7 @@ export default function EditorQuiz() {
                           value={quizType}
                           onChange={e => setQuizType(e.target.value as 'inlead' | 'xquiz')}
                           className="form-input"
+                          disabled={actionLoading === 'save'}
                         >
                           <option value="inlead">Inlead</option>
                           <option value="xquiz">XQuiz (BETA) 🚀</option>
@@ -294,6 +325,7 @@ export default function EditorQuiz() {
                           value={originalUrl}
                           onChange={e => setOriginalUrl(e.target.value)}
                           className="form-input"
+                          disabled={actionLoading === 'save'}
                         />
                       </div>
 
@@ -309,6 +341,7 @@ export default function EditorQuiz() {
                             setSubdomainError(validateSubdomain(e.target.value));
                           }}
                           className="form-input"
+                          disabled={actionLoading === 'save'}
                         />
                         {subdomainError && <div className="form-field-error-message">{subdomainError}</div>}
                         {slugModified && (
@@ -323,6 +356,7 @@ export default function EditorQuiz() {
                   <div className="app-modal-footer">
                     <button
                       onClick={() => {
+                        if (actionLoading === 'save') return; // Não permite cancelar durante clonagem
                         setModalOpen(false);
                         setOriginalUrl('');
                         setSubdomain('');
@@ -332,6 +366,11 @@ export default function EditorQuiz() {
                         setQuizType('inlead');
                       }}
                       className="secondary-button"
+                      disabled={actionLoading === 'save'}
+                      style={{
+                        opacity: actionLoading === 'save' ? 0.5 : 1,
+                        cursor: actionLoading === 'save' ? 'not-allowed' : 'pointer'
+                      }}
                     >
                       Cancelar
                     </button>

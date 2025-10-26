@@ -113,10 +113,10 @@ export function StandardNavigation({ children }: StandardNavigationProps) {
                       {profile?.full_name || 'Usuário'}
                     </div>
                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${profile?.subscription_status === 'active'
-                        ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg shadow-green-500/25'
-                        : profile?.subscription_status === 'trialing'
-                          ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/25'
-                          : 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg shadow-green-500/25'
+                      : profile?.subscription_status === 'trialing'
+                        ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/25'
+                        : 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
                       }`}>
                       {profile?.subscription_status === 'active' ? 'PREMIUM' :
                         profile?.subscription_status === 'trialing' ? 'TRIAL' : 'FREE'}
