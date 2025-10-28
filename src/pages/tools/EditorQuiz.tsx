@@ -32,7 +32,7 @@ export default function EditorQuiz() {
   const [subdomain, setSubdomain] = useState("");
   const [subdomainError, setSubdomainError] = useState<string | null>(null);
   const [slugModified, setSlugModified] = useState<string | null>(null);
-  const [quizType, setQuizType] = useState<'inlead' | 'xquiz'>('inlead');
+  const [quizType, setQuizType] = useState<'inlead' | 'xquiz' | 'cakto'>('inlead');
   const [successModalOpen, setSuccessModalOpen] = useState(false);
   const [clonedQuizData, setClonedQuizData] = useState<{
     id: string;
@@ -115,7 +115,9 @@ export default function EditorQuiz() {
 
       // Chamar API para clonar o quiz com autenticação JWT
       // Usar rota baseada no tipo de quiz selecionado
-      const apiRoute = quizType === 'xquiz' ? '/api/clone/xquiz' : '/api/clone/quiz';
+      const apiRoute = quizType === 'xquiz' ? '/api/clone/xquiz' :
+        quizType === 'cakto' ? '/api/clone/cakto' :
+          '/api/clone/quiz';
       const res = await cloneQuizWithAuth(originalUrl, finalSubdomain, apiRoute);
       const responseData = res.data;
 
@@ -301,17 +303,25 @@ export default function EditorQuiz() {
                         <label className="form-field-label">Tipo de Quiz</label>
                         <select
                           value={quizType}
-                          onChange={e => setQuizType(e.target.value as 'inlead' | 'xquiz')}
+                          onChange={e => setQuizType(e.target.value as 'inlead' | 'xquiz' | 'cakto')}
                           className="form-input"
                           disabled={actionLoading === 'save'}
                         >
                           <option value="inlead">Inlead</option>
                           <option value="xquiz">XQuiz (BETA) 🚀</option>
+                          <option value="cakto">Cakto Quiz 🎯</option>
                         </select>
                         {quizType === 'xquiz' && (
                           <div className="mt-2 p-3 rounded-lg" style={{ background: 'var(--bg-card-hover)', border: '1px solid var(--border)' }}>
                             <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                               ⚠️ <strong>BETA:</strong> Esta funcionalidade está em fase de testes. Pode haver instabilidades.
+                            </p>
+                          </div>
+                        )}
+                        {quizType === 'cakto' && (
+                          <div className="mt-2 p-3 rounded-lg" style={{ background: 'var(--bg-card-hover)', border: '1px solid var(--accent)' }}>
+                            <p className="text-xs" style={{ color: 'var(--accent)' }}>
+                              🎯 <strong>CAKTO:</strong> Clone quizzes da plataforma Cakto com facilidade e rapidez.
                             </p>
                           </div>
                         )}
@@ -321,7 +331,11 @@ export default function EditorQuiz() {
                         <label className="form-field-label">URL do site do quiz</label>
                         <input
                           type="url"
-                          placeholder="https://exemplo.com/quiz"
+                          placeholder={
+                            quizType === 'cakto' ? 'https://quiz.cakto.com.br/exemplo-quiz' :
+                              quizType === 'xquiz' ? 'https://xquiz.com/exemplo' :
+                                'https://exemplo.com/quiz'
+                          }
                           value={originalUrl}
                           onChange={e => setOriginalUrl(e.target.value)}
                           className="form-input"

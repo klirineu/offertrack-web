@@ -117,6 +117,7 @@ if (!window.__clonupWidgetInjected) {
   let autoLoadInterval = null;
   let autoLoadActive = false;
   let foundLinks = [];
+  let reorganizarLayout = false; // Flag para escolher entre filtro visual ou reorganização
 
   // --- SUPABASE CONFIG ---
   // ATENÇÃO: Para evitar erro de CSP, inclua @supabase/supabase-js no bundle da extensão e use import local!
@@ -337,55 +338,100 @@ if (!window.__clonupWidgetInjected) {
     };
   }
 
-  // Helper para pegar todos os cards
-  function getCards() {
-    const container = document.querySelector('.xrvj5dj.x18m771g.x1p5oq8j.xbxaen2.x18d9i69.x1u72gb5.xtqikln.x1na6gtj.x1jr1mh3.xm39877.x7sq92a.xxy4fzi');
-    if (!container) return [];
-    return Array.from(container.querySelectorAll('.xh8yej3')).filter(card => card.querySelector('strong'));
+  // Helper para encontrar o container correto dos cards
+  function findCardsContainer() {
+    // Primeiro, encontra qualquer card
+    const firstCard = document.querySelector('.xh8yej3');
+    if (!firstCard) {
+      console.log('Nenhum card encontrado');
+      return null;
+    }
+
+    // Sobe na hierarquia até encontrar o container correto
+    let container = firstCard.parentElement;
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    while (container && attempts < maxAttempts) {
+      // Verifica se este container tem vários cards
+      const cardsInContainer = container.querySelectorAll('.xh8yej3');
+
+      if (cardsInContainer.length >= 3) { // Se tem pelo menos 3 cards, provavelmente é o container correto
+        console.log('Container encontrado:', container.className);
+        console.log('Cards no container:', cardsInContainer.length);
+        return container;
+      }
+
+      // Sobe para o próximo nível
+      container = container.parentElement;
+      attempts++;
+    }
+
+    console.log('Container não encontrado após', attempts, 'tentativas');
+    return null;
   }
 
-  // Destaca badge de quantidade em todos os cards
-  function destacarQtdAnuncios() {
-    getCards().forEach(card => {
-      // Busca qualquer <strong> em qualquer profundidade dentro do card
-      const strongs = card.querySelectorAll('strong');
-      strongs.forEach(strong => {
-        if (/\d+\s+anúncios?/.test(strong.textContent)) {
-          strong.style.background = '#2563eb';
-          strong.style.color = '#fff';
-          strong.style.padding = '2px 10px';
-          strong.style.marginLeft = '8px';
-          strong.style.marginRight = '8px';
-          strong.style.borderRadius = '12px';
-          strong.style.fontWeight = 'bold';
-          strong.style.fontSize = '1.1em';
-          strong.style.boxShadow = '0 1px 4px #0002';
-          strong.style.display = 'inline-block';
-        }
+  // Helper para pegar todos os cards
+  function getCards() {
+    const container = findCardsContainer();
+    if (!container) return [];
+    return Array.from(container.querySelectorAll('.xh8yej3')).filter(card => {
+      // Verifica se o card tem o padrão "X anúncios usam esse criativo"
+      const allElements = card.querySelectorAll('*');
+      return Array.from(allElements).some(el => {
+        const text = el.textContent.trim();
+        return text.match(/^\d+\s+anúncios?\s+usam\s+esse\s+criativo/);
       });
     });
   }
 
-  // Reorganiza os cards de acordo com a quantidade de anúncios
-  function reorganizarCardsPorQuantidade() {
-    const container = document.querySelector('.xrvj5dj.x18m771g.x1p5oq8j.xbxaen2.x18d9i69.x1u72gb5.xtqikln.x1na6gtj.x1jr1mh3.xm39877.x7sq92a.xxy4fzi');
-    if (!container) return;
-    const cards = getCards();
-    // Extrai quantidade de cada card
-    const cardsComQtd = cards.map(card => {
-      const strong = Array.from(card.querySelectorAll('strong')).find(s => /\d+\s+anúncios?/.test(s.textContent));
-      const match = strong ? strong.textContent.match(/(\d+)/) : null;
-      const qtd = match ? parseInt(match[1], 10) : 0;
-      return { card, qtd };
-    });
-    // Ordena: primeiro os com qtd <= limite, do maior para o menor, depois os acima do limite
-    const top = cardsComQtd.filter(c => c.qtd <= qtdAnuncios).sort((a, b) => b.qtd - a.qtd);
-    const bottom = cardsComQtd.filter(c => c.qtd > qtdAnuncios).sort((a, b) => b.qtd - a.qtd);
-    [...top, ...bottom].forEach(({ card }) => {
-      card.style.display = 'block';
-      container.appendChild(card);
+  // Destaca badge de quantidade em todos os cards
+  function destacarQtdAnuncios() {
+    // Busca todos os cards na página usando container dinâmico
+    const container = findCardsContainer();
+    if (!container) {
+      console.log('Container não encontrado para destacar quantidade');
+      return;
+    }
+
+    const allCards = Array.from(container.querySelectorAll('.xh8yej3'));
+    console.log('Total de cards encontrados:', allCards.length);
+
+    allCards.forEach((card, index) => {
+      // Busca por qualquer elemento que contenha o padrão "X anúncios usam esse criativo"
+      const allElements = card.querySelectorAll('*');
+      let found = false;
+
+      allElements.forEach(element => {
+        const text = element.textContent.trim();
+        if (text.match(/^\d+\s+anúncios?\s+usam\s+esse\s+criativo/)) {
+          console.log(`Card ${index}: Encontrou texto "${text}"`);
+          found = true;
+          // Encontrou o elemento com o texto completo
+          const strongInside = element.querySelector('strong');
+          if (strongInside && /\d+\s+anúncios?/.test(strongInside.textContent)) {
+            console.log(`Card ${index}: Destacando <strong> "${strongInside.textContent}"`);
+            // Destaca o <strong> dentro do elemento
+            strongInside.style.background = '#2563eb';
+            strongInside.style.color = '#fff';
+            strongInside.style.padding = '2px 10px';
+            strongInside.style.marginLeft = '8px';
+            strongInside.style.marginRight = '8px';
+            strongInside.style.borderRadius = '12px';
+            strongInside.style.fontWeight = 'bold';
+            strongInside.style.fontSize = '1.1em';
+            strongInside.style.boxShadow = '0 1px 4px #0002';
+            strongInside.style.display = 'inline-block';
+          }
+        }
+      });
+
+      if (!found) {
+        console.log(`Card ${index}: Não encontrou padrão de quantidade`);
+      }
     });
   }
+
 
   // Função para rolar e carregar anúncios na biblioteca do Facebook
   function tryAutoLoadFacebook() {
@@ -410,40 +456,106 @@ if (!window.__clonupWidgetInjected) {
   // Função para filtrar, destacar e mostrar apenas os cards com quantidade >= qtdAnuncios (ou 1 se for 1)
   function filtrarCardsPorQuantidade() {
     if (!/facebook\.com\/ads\/library/.test(window.location.href)) return;
-    const container = document.querySelector('.xrvj5dj.x18m771g.x1p5oq8j.xbxaen2.x18d9i69.x1u72gb5.xtqikln.x1na6gtj.x1jr1mh3.xm39877.x7sq92a.xxy4fzi');
-    if (!container) return;
+    const container = findCardsContainer();
+    if (!container) {
+      console.log('Container não encontrado para filtrar');
+      return;
+    }
+
+    console.log('=== INICIANDO FILTRAGEM ===');
+    console.log('qtdAnuncios definida:', qtdAnuncios);
+
     // Remove mensagem anterior
     const oldMsg = container.querySelector('.clonup-no-cards-msg');
     if (oldMsg) oldMsg.remove();
-    const cards = Array.from(container.querySelectorAll(':scope > .xh8yej3'));
+
+    // Usa a mesma lógica do destaque - busca todos os cards do container
+    const cards = Array.from(container.querySelectorAll('.xh8yej3'));
+    console.log('Total de cards encontrados para filtrar:', cards.length);
+
     const minQtd = qtdAnuncios > 1 ? qtdAnuncios : 1;
+    console.log('Quantidade mínima para filtro:', minQtd);
+
+    // Se minQtd for 1, apenas destaca sem reorganizar
+    if (minQtd === 1) {
+      console.log('Filtro padrão (1) - apenas destacando, sem reorganizar');
+      cards.forEach(card => {
+        card.style.opacity = 1;
+      });
+      destacarQtdAnuncios();
+      showToast(`Mostrando todos os ${cards.length} cards`);
+      return;
+    }
+
     let count = 0;
     // Armazena cards que atendem e não atendem ao filtro
     const cardsFiltrados = [];
     const cardsRestantes = [];
-    cards.forEach(card => {
-      // Busca qualquer elemento que contenha o texto de quantidade de anúncios
-      const qtdEl = Array.from(card.querySelectorAll('*')).find(el => /\d+\s+anúncios?/.test(el.textContent));
-      const qtd = qtdEl ? parseInt(qtdEl.textContent.match(/(\d+)/)[1], 10) : 0;
-      if (!qtdEl) {
+
+    cards.forEach((card, index) => {
+      // Busca pelo padrão "X anúncios usam esse criativo" - mesma lógica do destaque
+      const allElements = card.querySelectorAll('*');
+      let qtd = 0;
+      let found = false;
+
+      Array.from(allElements).forEach(el => {
+        const text = el.textContent.trim();
+        const match = text.match(/^(\d+)\s+anúncios?\s+usam\s+esse\s+criativo/);
+        if (match) {
+          qtd = parseInt(match[1], 10);
+          found = true;
+          console.log(`Card ${index}: Encontrou ${qtd} anúncios`);
+        }
+      });
+
+      if (!found) {
+        console.log(`Card ${index}: Não encontrou quantidade de anúncios`);
         card.style.opacity = 0.5;
         cardsRestantes.push({ card, qtd: 0 });
         return;
       }
+
       if (qtd >= minQtd) {
+        console.log(`Card ${index}: ATENDE ao filtro (${qtd} >= ${minQtd})`);
         card.style.opacity = 1;
         cardsFiltrados.push({ card, qtd });
         count++;
       } else {
+        console.log(`Card ${index}: NÃO atende ao filtro (${qtd} < ${minQtd})`);
         card.style.opacity = 0.5;
         cardsRestantes.push({ card, qtd });
       }
     });
-    // Ordena os cards visíveis do maior para o menor
-    cardsFiltrados.sort((a, b) => b.qtd - a.qtd);
-    cardsRestantes.sort((a, b) => b.qtd - a.qtd);
-    // Reanexa todos os cards: primeiro os que atendem, depois os restantes
-    [...cardsFiltrados, ...cardsRestantes].forEach(({ card }) => container.appendChild(card));
+
+    console.log(`Cards que atendem ao filtro: ${cardsFiltrados.length}`);
+    console.log(`Cards que não atendem: ${cardsRestantes.length}`);
+
+    // Escolhe entre filtro visual ou reorganização
+    if (reorganizarLayout && cardsFiltrados.length > 0 && cardsRestantes.length > 0) {
+      console.log('Aplicando filtro com reorganização');
+      reorganizarCardsComLayout(container, cardsFiltrados, cardsRestantes);
+    } else {
+      console.log('Aplicando filtro visual (apenas opacidade)');
+
+      // Ordena apenas para referência (não mexe no DOM)
+      cardsFiltrados.sort((a, b) => b.qtd - a.qtd);
+      cardsRestantes.sort((a, b) => b.qtd - a.qtd);
+
+      // Apenas ajusta a opacidade, mantendo a ordem original do DOM
+      cardsFiltrados.forEach(({ card }) => {
+        card.style.opacity = 1;
+      });
+
+      cardsRestantes.forEach(({ card }) => {
+        card.style.opacity = 0.5;
+      });
+
+      // Reaplica os destaques sem mexer no layout
+      setTimeout(() => {
+        destacarQtdAnuncios();
+      }, 100);
+    }
+
     // Se nenhum card atende ao filtro, mostra mensagem
     if (cardsFiltrados.length === 0) {
       const msg = document.createElement('div');
@@ -452,7 +564,77 @@ if (!window.__clonupWidgetInjected) {
       msg.textContent = `Nenhum card com ${minQtd} anúncios encontrado.`;
       container.insertBefore(msg, container.firstChild);
     }
+
     showToast(`Exibindo ${cardsFiltrados.length} cards com ${minQtd} anúncios ou mais.`);
+    console.log('=== FILTRAGEM CONCLUÍDA ===');
+  }
+
+  // Função para reorganizar cards preservando layout em grid
+  function reorganizarCardsComLayout(container, cardsFiltrados, cardsRestantes) {
+    console.log('Reorganizando preservando layout em grid');
+
+    // Salva o estilo original do container
+    const originalDisplay = container.style.display;
+    const originalFlexDirection = container.style.flexDirection;
+
+    // Temporariamente muda para flex para reorganizar
+    container.style.display = 'flex';
+    container.style.flexDirection = 'column';
+
+    // Ordena os cards
+    cardsFiltrados.sort((a, b) => b.qtd - a.qtd);
+    cardsRestantes.sort((a, b) => b.qtd - a.qtd);
+
+    // Cria fragmento
+    const fragment = document.createDocumentFragment();
+
+    // Adiciona cards filtrados primeiro
+    cardsFiltrados.forEach(({ card }) => {
+      fragment.appendChild(card);
+    });
+
+    // Adiciona cards restantes depois
+    cardsRestantes.forEach(({ card }) => {
+      fragment.appendChild(card);
+    });
+
+    // Substitui conteúdo
+    container.innerHTML = '';
+    container.appendChild(fragment);
+
+    // Restaura estilo original do container
+    container.style.display = originalDisplay || '';
+    container.style.flexDirection = originalFlexDirection || '';
+
+    // Reaplica botões e destaques
+    setTimeout(() => {
+      addVerAnunciosButtons();
+      destacarQtdAnuncios();
+    }, 100);
+  }
+
+  // Função para resetar o filtro e mostrar todos os cards
+  function resetarFiltro() {
+    const container = findCardsContainer();
+    if (!container) {
+      console.log('Container não encontrado para resetar');
+      return;
+    }
+
+    console.log('=== RESETANDO FILTRO ===');
+
+    // Remove mensagem de "nenhum card encontrado"
+    const oldMsg = container.querySelector('.clonup-no-cards-msg');
+    if (oldMsg) oldMsg.remove();
+
+    // Reseta todos os cards para opacidade normal
+    const cards = Array.from(container.querySelectorAll('.xh8yej3'));
+    cards.forEach(card => {
+      card.style.opacity = 1;
+    });
+
+    showToast('Filtro resetado - mostrando todos os cards');
+    console.log('=== FILTRO RESETADO ===');
   }
 
   // Clique na palavra: insere entre aspas duplas, dá Enter e feedback
@@ -668,6 +850,30 @@ if (!window.__clonupWidgetInjected) {
               class: 'clonup-tab',
               onclick: filtrarCardsPorQuantidade
             }, 'Filtrar por quantidade'),
+            createEl('button', {
+              class: 'clonup-tab',
+              onclick: resetarFiltro,
+              style: 'background:#dc2626;color:#fff;'
+            }, 'Resetar filtro'),
+            createEl('label', { class: 'clonup-label-switch' },
+              (() => {
+                const label = document.createElement('label');
+                label.className = 'clonup-switch';
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.checked = reorganizarLayout;
+                input.onchange = e => {
+                  reorganizarLayout = e.target.checked;
+                  render();
+                };
+                const slider = document.createElement('span');
+                slider.className = 'clonup-slider';
+                label.appendChild(input);
+                label.appendChild(slider);
+                return label;
+              })(),
+              reorganizarLayout ? 'Reorganizar layout' : 'Filtro visual'
+            ),
             createEl('label', { class: 'clonup-label-switch' },
               (() => {
                 const label = document.createElement('label');
@@ -826,15 +1032,37 @@ if (!window.__clonupWidgetInjected) {
     // Adiciona botões "Ver anúncios" nos cards se for Facebook Ads Library
   }
 
+  // Função de teste para debug
+  function testarFuncionalidade() {
+    console.log('=== TESTE DA EXTENSÃO CLONUP ===');
+    const container = findCardsContainer();
+    if (container) {
+      console.log('✅ Container encontrado:', container);
+      const cards = container.querySelectorAll('.xh8yej3');
+      console.log('✅ Cards encontrados:', cards.length);
+
+      // Testa destacar quantidade
+      destacarQtdAnuncios();
+
+      // Testa filtragem com valor padrão 1
+      console.log('Testando filtragem com qtdAnuncios =', qtdAnuncios);
+      filtrarCardsPorQuantidade();
+    } else {
+      console.log('❌ Container não encontrado');
+    }
+    console.log('=== FIM DO TESTE ===');
+  }
+
   // Destaca quantidade ao abrir o site
   setTimeout(addVerAnunciosButtons, 100);
   setTimeout(destacarQtdAnuncios, 100);
+  setTimeout(testarFuncionalidade, 500); // Testa após 500ms
   render();
 
   // --- OBSERVADOR DE CARDS ---
   // Observa o container de cards e aplica botões/destaques automaticamente
   function setupCardsObserver() {
-    const cardsContainer = document.querySelector('.xrvj5dj.x18m771g.x1p5oq8j.xbxaen2.x18d9i69.x1u72gb5.xtqikln.x1na6gtj.x1jr1mh3.xm39877.x7sq92a.xxy4fzi');
+    const cardsContainer = findCardsContainer();
     if (cardsContainer && !cardsContainer.__clonupObserved) {
       cardsContainer.__clonupObserved = true;
       const observer = new MutationObserver(() => {
