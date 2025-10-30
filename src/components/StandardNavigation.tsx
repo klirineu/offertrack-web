@@ -41,14 +41,14 @@ export function StandardNavigation({ children }: StandardNavigationProps) {
         <Layout className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
       ),
     },
-    // Adicionar link de Ofertas Escaladas apenas para usuários autorizados
-    ...(profile?.email === 'klirineu.js@gmail.com' || profile?.email === 'naclisboa@gmail.com' || profile?.email === 'epanumseiqla@gmail.com' ? [{
+    // Adicionar link de Ofertas Escaladas para todos os usuários logados
+    {
       label: "Ofertas Escaladas",
       href: "/escalated-offers",
       icon: (
         <Star className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
       ),
-    }] : []),
+    },
     {
       label: "Ferramentas",
       href: "#",

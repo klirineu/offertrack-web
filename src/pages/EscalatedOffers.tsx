@@ -45,8 +45,8 @@ export default function EscalatedOffers() {
     minAds: '10'
   });
 
-  // Verificar se o usuário tem acesso
-  const hasAccess = profile?.email === 'klirineu.js@gmail.com' || profile?.email === 'naclisboa@gmail.com' || profile?.email === 'epanumseiqla@gmail.com';
+  // Verificar se o usuário está logado
+  const hasAccess = !!user;
 
   useEffect(() => {
     if (hasAccess) {
