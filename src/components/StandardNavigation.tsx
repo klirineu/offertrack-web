@@ -42,7 +42,7 @@ export function StandardNavigation({ children }: StandardNavigationProps) {
       ),
     },
     // Adicionar link de Ofertas Escaladas apenas para usuários autorizados
-    ...(profile?.email === 'klirineu.js@gmail.com' || profile?.email === 'naclisboa@gmail.com' ? [{
+    ...(profile?.email === 'klirineu.js@gmail.com' || profile?.email === 'naclisboa@gmail.com' || profile?.email === 'epanumseiqla@gmail.com' ? [{
       label: "Ofertas Escaladas",
       href: "/escalated-offers",
       icon: (

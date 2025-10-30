@@ -46,7 +46,7 @@ export default function EscalatedOffers() {
   });
 
   // Verificar se o usuário tem acesso
-  const hasAccess = profile?.email === 'klirineu.js@gmail.com' || profile?.email === 'naclisboa@gmail.com';
+  const hasAccess = profile?.email === 'klirineu.js@gmail.com' || profile?.email === 'naclisboa@gmail.com' || profile?.email === 'epanumseiqla@gmail.com';
 
   useEffect(() => {
     if (hasAccess) {
