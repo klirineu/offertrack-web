@@ -2091,7 +2091,7 @@ export function Admin() {
                       <option value="">Sem plano</option>
                       {plans.map(plan => (
                         <option key={plan.id} value={plan.id}>
-                          {plan.name} - R$ {plan.price.toLocaleString('pt-BR')}
+                          {plan.name} - R$ {plan.price.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </option>
                       ))}
                     </select>
@@ -2137,7 +2137,7 @@ export function Admin() {
                         <option value="">Selecione um plano</option>
                         {plans.map(plan => (
                           <option key={plan.id} value={plan.id}>
-                            {plan.name} - R$ {plan.price.toLocaleString('pt-BR')}
+                            {plan.name} - R$ {plan.price.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </option>
                         ))}
                       </select>

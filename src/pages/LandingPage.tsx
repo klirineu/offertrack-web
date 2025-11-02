@@ -359,7 +359,7 @@ export function LandingPage() {
                     </div>
                   )}
                   <div className="text-center my-6">
-                    <span className="text-3xl sm:text-4xl font-bold">R$ {plan.price}</span>
+                    <span className="text-3xl sm:text-4xl font-bold">R$ {plan.price.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     <span className={theme === 'dark' ? 'text-[#cbd5e1] ml-2' : 'text-gray-600 ml-2'}>/mês</span>
                   </div>
                   <ul className="space-y-3 mb-8 text-left w-full">

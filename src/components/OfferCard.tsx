@@ -99,7 +99,6 @@ export function OfferCard({ offer, onDelete }: OfferCardProps) {
   return (
     <div
       ref={setNodeRef}
-      style={style}
       {...attributes}
       className="feature-card relative group mb-3"
       style={{ ...style, padding: '1rem' }}

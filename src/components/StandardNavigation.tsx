@@ -41,13 +41,14 @@ export function StandardNavigation({ children }: StandardNavigationProps) {
         <Layout className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
       ),
     },
-    // Adicionar link de Ofertas Escaladas para todos os usuários logados
+    // Adicionar link de Ofertas Escaladas - desabilitado se não tiver assinatura ativa
     {
       label: "Ofertas Escaladas",
-      href: "/escalated-offers",
+      href: profile?.subscription_status === 'active' ? "/escalated-offers" : "#",
       icon: (
         <Star className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
       ),
+      disabled: profile?.subscription_status !== 'active',
     },
     {
       label: "Ferramentas",

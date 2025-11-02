@@ -35,7 +35,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Verificar trial de 7 dias
+      // Verificar trial de 1 dia
       if (profile.subscription_status === 'trialing') {
         const trialStatus = checkTrialStatus({
           subscription_status: profile.subscription_status,

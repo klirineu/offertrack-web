@@ -16,8 +16,8 @@ export interface TrialStatus {
 }
 
 /**
- * Verifica o status do trial de 7 dias do usuário
- * Se o usuário estiver como 'trialing', verifica se já passou dos 7 dias
+ * Verifica o status do trial de 1 dia do usuário
+ * Se o usuário estiver como 'trialing', verifica se já passou de 1 dia
  * Usa trial_started_at se disponível, senão usa created_at
  */
 export function checkTrialStatus(profile: Profile): TrialStatus {
@@ -40,18 +40,18 @@ export function checkTrialStatus(profile: Profile): TrialStatus {
     ? new Date(profile.trial_started_at)
     : new Date(profile.created_at);
 
-  // Calcula a data de fim do trial (7 dias após o início)
+  // Calcula a data de fim do trial (1 dia após o início)
   const trialEndDate = new Date(trialStartDate);
-  trialEndDate.setDate(trialEndDate.getDate() + 7);
+  trialEndDate.setDate(trialEndDate.getDate() + 1);
 
   // Calcula quantos dias se passaram desde o início
   const daysSinceStart = differenceInDays(now, trialStartDate);
 
   // Calcula quantos dias restam
-  const daysRemaining = Math.max(0, 7 - daysSinceStart);
+  const daysRemaining = Math.max(0, 1 - daysSinceStart);
 
   // Verifica se o trial expirou
-  const isTrialExpired = daysSinceStart >= 7;
+  const isTrialExpired = daysSinceStart >= 1;
 
   return {
     isInTrial: true,
@@ -65,7 +65,7 @@ export function checkTrialStatus(profile: Profile): TrialStatus {
 
 /**
  * Verifica se o usuário tem acesso às funcionalidades
- * Durante o trial (7 dias), tem acesso completo ao que o plano starter oferece
+ * Durante o trial (1 dia), tem acesso completo ao que o plano starter oferece
  */
 export function hasFeatureAccess(profile: Profile): boolean {
   const trialStatus = checkTrialStatus(profile);

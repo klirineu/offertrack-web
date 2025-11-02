@@ -15,6 +15,7 @@ interface SidebarLinkProps {
     href: string;
     icon?: React.ReactNode;
     subLinks?: SubLink[];
+    disabled?: boolean;
   };
 }
 
@@ -28,6 +29,13 @@ export function SidebarLink({ link }: SidebarLinkProps) {
     (link.subLinks && link.subLinks.some(subLink => location.pathname === subLink.href));
 
   const handleClick = async (e: React.MouseEvent) => {
+    if (link.disabled) {
+      e.preventDefault();
+      alert('Você precisa ter uma assinatura ativa para acessar as Ofertas Escaladas. Redirecionando para a página de planos...');
+      window.location.href = '/escolher-plano';
+      return;
+    }
+
     if (link.label === 'Logout') {
       e.preventDefault();
       await signOut();
@@ -87,15 +95,21 @@ export function SidebarLink({ link }: SidebarLinkProps) {
         <Link
           to={link.href}
           onClick={handleClick}
-          style={isActive ? activeLinkStyle : linkStyle}
+          style={{
+            ...(isActive ? activeLinkStyle : linkStyle),
+            ...(link.disabled ? {
+              opacity: 0.5,
+              cursor: 'not-allowed'
+            } : {})
+          }}
           onMouseEnter={(e) => {
-            if (!isActive) {
+            if (!isActive && !link.disabled) {
               e.currentTarget.style.background = 'var(--bg-card-hover)';
               e.currentTarget.style.color = 'var(--accent)';
             }
           }}
           onMouseLeave={(e) => {
-            if (!isActive) {
+            if (!isActive && !link.disabled) {
               e.currentTarget.style.background = 'transparent';
               e.currentTarget.style.color = 'var(--text-secondary)';
             }

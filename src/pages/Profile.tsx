@@ -76,7 +76,7 @@ export function Profile() {
   const statusPt = profile?.subscription_status
     ? {
       active: 'Ativa',
-      trialing: 'Período de Teste (7 dias grátis)',
+      trialing: 'Período de Teste (1 dia grátis)',
       canceled: 'Cancelada',
       expired: 'Expirada',
       past_due: 'Pagamento em atraso',

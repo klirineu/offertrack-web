@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useThemeStore } from '../store/themeStore';
+import { useNavigate } from 'react-router-dom';
 import { StandardNavigation } from '../components/StandardNavigation';
 import {
   fetchEscalatedOffersService,
@@ -20,7 +21,8 @@ import {
   BarChart3,
   Clock,
   Edit,
-  X
+  X,
+  Lock
 } from 'lucide-react';
 
 interface FilterOptions {
@@ -31,6 +33,7 @@ interface FilterOptions {
 export default function EscalatedOffers() {
   const { user, profile } = useAuth();
   const { theme } = useThemeStore();
+  const navigate = useNavigate();
   const [offers, setOffers] = useState<EscalatedOffer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,14 +48,21 @@ export default function EscalatedOffers() {
     minAds: '10'
   });
 
-  // Verificar se o usuário está logado
+  // Verificar se o usuário está logado e tem assinatura ativa
   const hasAccess = !!user;
+  const hasActiveSubscription = profile?.subscription_status === 'active';
 
   useEffect(() => {
-    if (hasAccess) {
+    if (hasAccess && hasActiveSubscription) {
       fetchEscalatedOffers();
+    } else if (hasAccess && !hasActiveSubscription) {
+      // Se estiver logado mas não tiver assinatura ativa, redirecionar
+      setTimeout(() => {
+        alert('Você precisa ter uma assinatura ativa para acessar as Ofertas Escaladas. Redirecionando para a página de planos...');
+        navigate('/escolher-plano');
+      }, 100);
     }
-  }, [hasAccess]);
+  }, [hasAccess, hasActiveSubscription, navigate]);
 
   const fetchEscalatedOffers = async () => {
     try {
@@ -183,17 +193,43 @@ export default function EscalatedOffers() {
 
   if (!hasAccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            Acesso Negado
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Você não tem permissão para acessar esta página.
-          </p>
+      <StandardNavigation>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              Acesso Negado
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Você não tem permissão para acessar esta página.
+            </p>
+          </div>
         </div>
-      </div>
+      </StandardNavigation>
+    );
+  }
+
+  if (!hasActiveSubscription) {
+    return (
+      <StandardNavigation>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="dashboard-card max-w-md text-center p-8">
+            <Lock className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold mb-4" style={{ color: 'var(--text)' }}>
+              Assinatura Necessária
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Você precisa ter uma assinatura ativa para acessar as Ofertas Escaladas.
+            </p>
+            <button
+              onClick={() => navigate('/escolher-plano')}
+              className="cta-button w-full"
+            >
+              Ver Planos
+            </button>
+          </div>
+        </div>
+      </StandardNavigation>
     );
   }
 

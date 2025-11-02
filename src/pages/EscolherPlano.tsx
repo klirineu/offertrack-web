@@ -98,7 +98,7 @@ export default function EscolherPlano() {
       case 'choose':
         return {
           title: 'Escolha um plano para começar',
-          description: 'Experimente gratuitamente por 7 dias! Não será cobrado nada no seu cartão durante o período de teste.',
+          description: 'Experimente gratuitamente por 1 dia! Não será cobrado nada no seu cartão durante o período de teste.',
           type: 'info'
         };
       case 'trial_expired':
@@ -294,7 +294,7 @@ export default function EscolherPlano() {
                   {plan.name === 'starter' ? '🟢 Starter' : plan.name === 'intermediario' ? '🟡 Intermediário' : '🔴 Avançado'}
                   {idx === 1 && <span className="ml-2 px-2 py-1 bg-yellow-400 text-black rounded text-xs font-bold">Recomendado</span>}
                 </h3>
-                <div className="text-3xl font-extrabold mb-2">R$ {plan.price},00 <span className="text-base font-normal">/ mês</span></div>
+                <div className="text-3xl font-extrabold mb-2">R$ {plan.price.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-base font-normal">/ mês</span></div>
 
                 <ul className="text-left mb-6 space-y-2">
                   {formatPlanFeatures(plan).map((feature, i) => (

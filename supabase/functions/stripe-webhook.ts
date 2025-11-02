@@ -32,7 +32,7 @@ serve(async (req) => {
 
     // Atualiza o perfil do usuário no Supabase
     const now = new Date();
-    const trialExpires = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const trialExpires = new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000); // 1 dia de trial
 
     await supabase
       .from("profiles")
