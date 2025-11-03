@@ -25,6 +25,7 @@ const VisualEditor = ({ clonedData, onAfterSave }: EditorProps) => {
   const setSelectedOtId = useEditorStore((s) => s.setSelectedOtId);
   const [dragType] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
+  const [editingEnabled, setEditingEnabled] = useState<boolean>(false);
 
   const navigate = useNavigate();
 
@@ -63,23 +64,53 @@ const VisualEditor = ({ clonedData, onAfterSave }: EditorProps) => {
       </div>
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header com controles de visualização */}
-        <div className="flex items-center justify-between px-4 py-2 bg-gray-950 border-b border-gray-800">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-400 mr-2">Visualização:</span>
-            <button
-              className={`px-2 py-1 rounded-l ${previewMode === 'desktop' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-200'}`}
-              onClick={() => setPreviewMode('desktop')}
-            >Desktop</button>
-            <button
-              className={`px-2 py-1 rounded-r ${previewMode === 'mobile' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-200'}`}
-              onClick={() => setPreviewMode('mobile')}
-            >Mobile</button>
+        <div className="flex items-center justify-between px-4 py-2.5 bg-gray-950 border-b border-gray-800 relative z-10 min-h-[48px]">
+          <div className="flex items-center gap-6 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-400 mr-2">Visualização:</span>
+              <button
+                className={`px-3 py-1.5 rounded-l text-sm font-medium transition ${previewMode === 'desktop' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-200 hover:bg-gray-700'}`}
+                onClick={() => setPreviewMode('desktop')}
+              >
+                Desktop
+              </button>
+              <button
+                className={`px-3 py-1.5 rounded-r text-sm font-medium transition ${previewMode === 'mobile' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-200 hover:bg-gray-700'}`}
+                onClick={() => setPreviewMode('mobile')}
+              >
+                Mobile
+              </button>
+            </div>
+            <div className="flex items-center gap-2 border-l border-gray-700 pl-4">
+              <span className="text-xs text-gray-400">Edição:</span>
+              <button
+                className={`px-4 py-1.5 rounded text-sm font-medium flex items-center gap-2 transition ${
+                  editingEnabled 
+                    ? 'bg-green-600 text-white hover:bg-green-700' 
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+                onClick={() => setEditingEnabled(!editingEnabled)}
+                title={editingEnabled ? 'Desativar edição para navegar no site' : 'Ativar edição para modificar elementos'}
+              >
+                {editingEnabled ? (
+                  <>
+                    <span className="text-base">👁️</span>
+                    <span>Visualizar</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-base">✏️</span>
+                    <span>Editar</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
         {/* Preview principal */}
         <div className="flex-1 flex justify-center items-center bg-gray-900 min-w-0">
           <div className="w-full h-full flex justify-center items-center min-w-0">
-            <LivePreview previewMode={previewMode} content={{ ...clonedData, html: currentHtml }} onSelectElement={(selector: string, otId?: string) => handleSelectElement(selector, otId)} dragType={dragType} style={{ width: '100%', maxWidth: '100%', minWidth: 0 }} siteId={siteId} />
+            <LivePreview previewMode={previewMode} content={{ ...clonedData, html: currentHtml }} onSelectElement={editingEnabled ? (selector: string, otId?: string) => handleSelectElement(selector, otId) : undefined} dragType={dragType} style={{ width: '100%', maxWidth: '100%', minWidth: 0 }} siteId={siteId} editingEnabled={editingEnabled} />
           </div>
         </div>
       </div>

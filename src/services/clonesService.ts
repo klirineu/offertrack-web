@@ -1,5 +1,6 @@
 import { supabase } from "../lib/supabase";
 import { hasFeatureAccess } from "../utils/trialUtils";
+import api from "./api";
 
 export interface CloneSite {
   id: string;
@@ -116,13 +117,40 @@ export async function addCloneService(
   return { data, error: null };
 }
 
-export async function removeCloneService(userId: string, cloneId: string) {
+export async function removeCloneService(
+  userId: string,
+  cloneId: string,
+  subdomain: string
+) {
+  // Primeiro remove no backend
+  try {
+    // Obter o token JWT do Supabase Auth
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      return { error: new Error("Usuário não autenticado") };
+    }
+
+    await api.delete("/api/clone", {
+      data: { subdomain },
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (error) {
+    return { error };
+  }
+  // Só depois remove do supabase
   const { error } = await supabase
     .from("cloned_sites")
     .delete()
     .eq("id", cloneId)
     .eq("user_id", userId);
-  return { error };
+  if (error) return { error };
+  return { error: null };
 }
 
 export async function checkCloneLimit(userId: string) {

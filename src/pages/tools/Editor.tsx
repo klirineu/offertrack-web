@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Edit, Trash2, Plus, Loader2, Clock, Download, Upload, CheckCircle, Copy, X } from 'lucide-react';
+import { Edit, Trash2, Plus, Loader2, Clock, Download, Upload, CheckCircle, Copy, X, Settings, AlertCircle } from 'lucide-react';
 import { StandardNavigation } from '../../components/StandardNavigation';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
@@ -13,6 +13,31 @@ declare global {
   interface Window {
     gjsEditor?: unknown;
   }
+}
+
+interface DnsRecord {
+  type: string;
+  name: string;
+  value: string;
+  note?: string;
+}
+
+interface DnsOption {
+  title: string;
+  description?: string;
+  nameservers?: string[];
+  records?: DnsRecord[];
+  steps?: string[];
+  note?: string;
+}
+
+interface DnsInstructions {
+  type?: string;
+  name?: string;
+  value?: string;
+  note?: string;
+  option1?: DnsOption;
+  option2?: DnsOption;
 }
 
 
@@ -40,6 +65,17 @@ export default function Editor() {
     url: string;
     subdomain: string;
     originalUrl?: string;
+  } | null>(null);
+  const [domainConfigModalOpen, setDomainConfigModalOpen] = useState(false);
+  const [selectedCloneForDomain, setSelectedCloneForDomain] = useState<CloneSite | null>(null);
+  const [domainInput, setDomainInput] = useState('');
+  const [domainLoading, setDomainLoading] = useState(false);
+  const [domainChecking, setDomainChecking] = useState(false);
+  const [domainConfig, setDomainConfig] = useState<{
+    domain: string;
+    verified: boolean;
+    dnsInstructions: DnsInstructions | null;
+    message: string;
   } | null>(null);
 
   useEffect(() => {
@@ -104,7 +140,7 @@ export default function Editor() {
       return;
     }
 
-    const { error } = await removeCloneService(user.id, id);
+    const { error } = await removeCloneService(user.id, id, clone.subdomain);
 
     if (error) {
       console.error('Erro ao deletar clone:', error);
@@ -114,6 +150,176 @@ export default function Editor() {
     }
     setDeleteLoadingId(null);
   };
+
+  const handleOpenDomainConfig = async (clone: CloneSite) => {
+    setSelectedCloneForDomain(clone);
+    setDomainConfigModalOpen(true);
+    setDomainInput('');
+
+    // Carregar instruções DNS padrão
+    const subdomain = getSubdomainFromUrl(clone.url);
+    if (!subdomain) {
+      setErrorModal('Não foi possível identificar o subdomínio do site.');
+      return;
+    }
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        setDomainConfig(null);
+        return;
+      }
+
+      // Carregar instruções DNS padrão (sem domínio específico)
+      const instructionsResponse = await api.get(`/api/sites/${subdomain}/dns-instructions`, {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (instructionsResponse.data.dnsInstructions) {
+        setDomainConfig({
+          domain: '',
+          verified: false,
+          dnsInstructions: instructionsResponse.data.dnsInstructions,
+          message: instructionsResponse.data.message || 'Configure o DNS seguindo as instruções abaixo',
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao carregar instruções DNS:', error);
+      setDomainConfig(null);
+    }
+  };
+
+  const handleAddDomain = async () => {
+    if (!selectedCloneForDomain || !domainInput) return;
+    if (!user || !profile) return;
+
+    // Verificar se tem assinatura ativa
+    if (profile.subscription_status !== 'active') {
+      setErrorModal('Para configurar domínio próprio você precisa de uma assinatura ativa. Assine um plano para continuar.');
+      return;
+    }
+
+    const subdomain = getSubdomainFromUrl(selectedCloneForDomain.url);
+    if (!subdomain) {
+      setErrorModal('Não foi possível identificar o subdomínio do site.');
+      return;
+    }
+
+    setDomainLoading(true);
+    try {
+      // Obter o token JWT do Supabase Auth
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        setErrorModal('Usuário não autenticado');
+        setDomainLoading(false);
+        return;
+      }
+
+      const response = await api.post(`/api/sites/${subdomain}/add-domain`, {
+        domain: domainInput.trim(),
+      }, {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.data.success) {
+        setDomainConfig({
+          domain: response.data.domain,
+          verified: response.data.verification?.verified || false,
+          dnsInstructions: response.data.dnsInstructions,
+          message: response.data.message || 'Domínio adicionado com sucesso',
+        });
+      } else {
+        setErrorModal(response.data.error || 'Erro ao adicionar domínio');
+      }
+    } catch (error: unknown) {
+      console.error('Erro ao adicionar domínio:', error);
+      const errorMessage = (error as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Erro ao adicionar domínio';
+      setErrorModal(errorMessage);
+    } finally {
+      setDomainLoading(false);
+    }
+  };
+
+  const checkDomainStatus = useCallback(async () => {
+    if (!selectedCloneForDomain || !domainInput) return;
+    if (!user) return;
+
+    const subdomain = getSubdomainFromUrl(selectedCloneForDomain.url);
+    if (!subdomain) return;
+
+    setDomainChecking(true);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        setDomainChecking(false);
+        return;
+      }
+
+      const response = await api.get(`/api/sites/${subdomain}/verify-domain`, {
+        params: { domain: domainInput.trim() },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.data.verified) {
+        setDomainConfig((prev) =>
+          prev
+            ? {
+              ...prev,
+              verified: true,
+              message: response.data.message || 'Domínio verificado e configurado corretamente',
+            }
+            : null
+        );
+      } else {
+        // Atualizar instruções se necessário
+        const instructionsResponse = await api.get(`/api/sites/${subdomain}/dns-instructions`, {
+          params: { domain: domainInput.trim() },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
+
+        setDomainConfig({
+          domain: domainInput.trim(),
+          verified: false,
+          dnsInstructions: instructionsResponse.data.dnsInstructions,
+          message: instructionsResponse.data.message || 'Domínio ainda não está verificado',
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao verificar domínio:', error);
+    } finally {
+      setDomainChecking(false);
+    }
+  }, [selectedCloneForDomain, domainInput, user]);
+
+  // Polling automático para verificar status
+  useEffect(() => {
+    if (domainConfig && !domainConfig.verified && domainConfigModalOpen) {
+      const interval = setInterval(() => {
+        checkDomainStatus();
+      }, 10000); // Verificar a cada 10 segundos
+
+      return () => clearInterval(interval);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [domainConfig?.verified, domainConfigModalOpen, checkDomainStatus]);
 
   const handleZipDownload = async (clone: CloneSite) => {
     // Verificar se o usuário tem plano ativo (não pode estar em trial)
@@ -1090,6 +1296,14 @@ export default function Editor() {
                             </>
                           )}
                           <button
+                            onClick={() => handleOpenDomainConfig(clone)}
+                            className="p-2 rounded-lg transition-colors hover:bg-blue-500/10"
+                            style={{ color: 'var(--accent)' }}
+                            title="Configurar domínio"
+                          >
+                            <Settings className="w-4 h-4" />
+                          </button>
+                          <button
                             onClick={() => handleDeleteClone(clone.id)}
                             disabled={deleteLoadingId === clone.id}
                             className="p-2 rounded-lg transition-colors hover:bg-red-500/10"
@@ -1105,6 +1319,399 @@ export default function Editor() {
                 </div>
               )}
             </div>
+
+            {/* Modal de Configuração de Domínio */}
+            {domainConfigModalOpen && selectedCloneForDomain && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 sm:p-8 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold" style={{ color: 'var(--text)' }}>
+                      Configurar Domínio Customizado
+                    </h2>
+                    <button
+                      onClick={() => {
+                        setDomainConfigModalOpen(false);
+                        setSelectedCloneForDomain(null);
+                        setDomainInput('');
+                        setDomainConfig(null);
+                      }}
+                      className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                    >
+                      <X className="w-5 h-5" style={{ color: 'var(--text)' }} />
+                    </button>
+                  </div>
+
+                  {/* Site info */}
+                  <div className="mb-6 p-4 rounded-lg" style={{ background: 'var(--bg-card-hover)' }}>
+                    <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      <strong>Site:</strong> {selectedCloneForDomain.url}
+                    </p>
+                    <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      <strong>Subdomínio:</strong> {getSubdomainFromUrl(selectedCloneForDomain.url)}
+                    </p>
+                  </div>
+
+                  {/* Aviso sobre novo sistema de clonagem */}
+                  <div className="mb-6 p-4 rounded-lg border-2 border-blue-500" style={{ background: 'rgba(59, 130, 246, 0.1)' }}>
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <h3 className="font-semibold mb-1" style={{ color: 'var(--text)' }}>
+                          Novo Sistema de Clonagem e Hospedagem Premium
+                        </h3>
+                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                          Para adicionar domínio próprio em sites clonados, você precisará clonar o site novamente usando nosso novo sistema de clonagem e hospedagem premium. Sites clonados anteriormente precisam ser recriados para suportar domínios customizados.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Aviso sobre assinatura necessária */}
+                  {profile?.subscription_status !== 'active' && (
+                    <div className="mb-6 p-4 rounded-lg border-2 border-yellow-500" style={{ background: 'rgba(234, 179, 8, 0.1)' }}>
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <h3 className="font-semibold mb-1" style={{ color: 'var(--text)' }}>
+                            Assinatura Necessária
+                          </h3>
+                          <p className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>
+                            Para configurar domínio próprio você precisa de uma assinatura ativa. Assine um plano para continuar.
+                          </p>
+                          <button
+                            onClick={() => navigate('/escolher-plano')}
+                            className="cta-button text-sm"
+                          >
+                            Assine Agora
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Formulário para adicionar domínio */}
+                  <div className="space-y-4 mb-6">
+                    <div className="form-field-wrapper">
+                      <label className="form-field-label">
+                        Domínio Customizado
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="meusite.com.br"
+                        value={domainInput}
+                        onChange={(e) => setDomainInput(e.target.value)}
+                        disabled={domainLoading || profile?.subscription_status !== 'active'}
+                        className="form-input"
+                      />
+                      <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+                        Digite o domínio que deseja usar (sem http:// ou https://)
+                      </p>
+                    </div>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={handleAddDomain}
+                        disabled={domainLoading || !domainInput.trim() || profile?.subscription_status !== 'active'}
+                        className="cta-button"
+                        style={{
+                          opacity: profile?.subscription_status !== 'active' ? 0.6 : 1,
+                          cursor: profile?.subscription_status !== 'active' ? 'not-allowed' : 'pointer'
+                        }}
+                      >
+                        {domainLoading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Adicionando...
+                          </>
+                        ) : (
+                          'Adicionar Domínio'
+                        )}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setDomainConfigModalOpen(false);
+                          setSelectedCloneForDomain(null);
+                          setDomainInput('');
+                          setDomainConfig(null);
+                        }}
+                        className="secondary-button"
+                      >
+                        Fechar
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Instruções DNS - sempre mostrar se disponível */}
+                  {domainConfig && domainConfig.dnsInstructions && (
+                    <div className="space-y-6 mt-6">
+                      <div className="p-4 rounded-lg border" style={{ borderColor: 'var(--border)', background: 'var(--bg-card-hover)' }}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <AlertCircle className="w-5 h-5 text-blue-500" />
+                          <p className="font-semibold" style={{ color: 'var(--text)' }}>
+                            Instruções DNS para Configurar Domínio
+                          </p>
+                        </div>
+                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                          {domainConfig.domain ? domainConfig.message : 'Siga as instruções abaixo para configurar seu domínio próprio no provedor de DNS. Você pode usar uma das duas opções disponíveis.'}
+                        </p>
+                      </div>
+
+                      {/* Se tiver duas opções (option1 e option2) */}
+                      {domainConfig.dnsInstructions.option1 && domainConfig.dnsInstructions.option2 && (
+                        <>
+                          {/* Opção 1: Nameservers */}
+                          <div className="p-6 rounded-lg border" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+                            <h3 className="text-lg font-bold mb-3" style={{ color: 'var(--text)' }}>
+                              {domainConfig.dnsInstructions.option1.title}
+                            </h3>
+                            {domainConfig.dnsInstructions.option1.description && (
+                              <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
+                                {domainConfig.dnsInstructions.option1.description}
+                              </p>
+                            )}
+
+                            <div className="mb-4">
+                              <p className="font-semibold mb-2" style={{ color: 'var(--text)' }}>
+                                Nameservers:
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {domainConfig.dnsInstructions.option1.nameservers?.map((ns: string, i: number) => (
+                                  <div
+                                    key={i}
+                                    className="px-3 py-2 rounded bg-gray-100 dark:bg-gray-700 font-mono text-sm"
+                                    style={{ color: 'var(--text)' }}
+                                  >
+                                    {ns}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {domainConfig.dnsInstructions.option1.steps && (
+                              <div className="mb-4">
+                                <h4 className="font-semibold mb-2" style={{ color: 'var(--text)' }}>
+                                  Passo a passo:
+                                </h4>
+                                <ol className="list-decimal list-inside space-y-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                                  {domainConfig.dnsInstructions.option1.steps.map((step: string, i: number) => (
+                                    <li key={i}>{step}</li>
+                                  ))}
+                                </ol>
+                              </div>
+                            )}
+
+                            {domainConfig.dnsInstructions.option1.note && (
+                              <p className="text-xs italic p-3 rounded" style={{ background: 'var(--bg-card-hover)', color: 'var(--text-secondary)' }}>
+                                {domainConfig.dnsInstructions.option1.note}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Opção 2: Registros DNS */}
+                          <div className="p-6 rounded-lg border" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+                            <h3 className="text-lg font-bold mb-3" style={{ color: 'var(--text)' }}>
+                              {domainConfig.dnsInstructions.option2.title}
+                            </h3>
+                            {domainConfig.dnsInstructions.option2.description && (
+                              <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
+                                {domainConfig.dnsInstructions.option2.description}
+                              </p>
+                            )}
+
+                            <div className="mb-4">
+                              <p className="font-semibold mb-3" style={{ color: 'var(--text)' }}>
+                                Registros DNS:
+                              </p>
+                              <div className="space-y-3">
+                                {domainConfig.dnsInstructions.option2.records?.map((record: DnsRecord, i: number) => (
+                                  <div
+                                    key={i}
+                                    className="p-4 rounded border"
+                                    style={{ borderColor: 'var(--border)', background: 'var(--bg-card-hover)' }}
+                                  >
+                                    <div className="grid grid-cols-3 gap-2 mb-2">
+                                      <div>
+                                        <p className="text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                                          Tipo
+                                        </p>
+                                        <p className="font-mono text-sm" style={{ color: 'var(--text)' }}>
+                                          {record.type}
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                                          Nome
+                                        </p>
+                                        <p className="font-mono text-sm" style={{ color: 'var(--text)' }}>
+                                          {record.name}
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                                          Valor
+                                        </p>
+                                        <p className="font-mono text-sm break-all" style={{ color: 'var(--text)' }}>
+                                          {record.value}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    {record.note && (
+                                      <p className="text-xs italic mt-2" style={{ color: 'var(--text-secondary)' }}>
+                                        {record.note}
+                                      </p>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {domainConfig.dnsInstructions.option2.steps && (
+                              <div className="mb-4">
+                                <h4 className="font-semibold mb-2" style={{ color: 'var(--text)' }}>
+                                  Passo a passo:
+                                </h4>
+                                <ol className="list-decimal list-inside space-y-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                                  {domainConfig.dnsInstructions.option2.steps.map((step: string, i: number) => (
+                                    <li key={i}>{step}</li>
+                                  ))}
+                                </ol>
+                              </div>
+                            )}
+
+                            {domainConfig.dnsInstructions.option2.note && (
+                              <p className="text-xs italic p-3 rounded" style={{ background: 'var(--bg-card-hover)', color: 'var(--text-secondary)' }}>
+                                {domainConfig.dnsInstructions.option2.note}
+                              </p>
+                            )}
+                          </div>
+                        </>
+                      )}
+
+                      {/* Formato antigo (compatibilidade) */}
+                      {domainConfig.dnsInstructions.type && !domainConfig.dnsInstructions.option1 && (
+                        <div className="p-6 rounded-lg border" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+                          <h3 className="text-lg font-bold mb-4" style={{ color: 'var(--text)' }}>
+                            Instruções DNS
+                          </h3>
+                          <div className="space-y-3">
+                            <div>
+                              <p className="text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                                Tipo
+                              </p>
+                              <p className="font-mono text-sm" style={{ color: 'var(--text)' }}>
+                                {domainConfig.dnsInstructions.type}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                                Nome/Host
+                              </p>
+                              <p className="font-mono text-sm" style={{ color: 'var(--text)' }}>
+                                {domainConfig.dnsInstructions.name}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                                Valor/Destino
+                              </p>
+                              <p className="font-mono text-sm break-all" style={{ color: 'var(--text)' }}>
+                                {domainConfig.dnsInstructions.value}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                                TTL
+                              </p>
+                              <p className="text-sm" style={{ color: 'var(--text)' }}>
+                                3600 (ou padrão)
+                              </p>
+                            </div>
+                            {domainConfig.dnsInstructions.note && (
+                              <p className="text-xs italic mt-3" style={{ color: 'var(--text-secondary)' }}>
+                                {domainConfig.dnsInstructions.note}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex gap-3">
+                        <button
+                          onClick={checkDomainStatus}
+                          disabled={domainChecking}
+                          className="cta-button"
+                        >
+                          {domainChecking ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Verificando...
+                            </>
+                          ) : (
+                            'Verificar Agora'
+                          )}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setDomainConfigModalOpen(false);
+                            setSelectedCloneForDomain(null);
+                            setDomainInput('');
+                            setDomainConfig(null);
+                          }}
+                          className="secondary-button"
+                        >
+                          Fechar
+                        </button>
+                      </div>
+
+                      <p className="text-xs text-center" style={{ color: 'var(--text-secondary)' }}>
+                        ⏱️ Verificando automaticamente a cada 10 segundos...
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Domínio verificado */}
+                  {domainConfig && domainConfig.verified && (
+                    <div className="space-y-4">
+                      <div className="p-6 rounded-lg border-2 border-green-500" style={{ background: 'var(--bg-card)' }}>
+                        <div className="flex items-center gap-3 mb-3">
+                          <CheckCircle className="w-8 h-8 text-green-500" />
+                          <h3 className="text-xl font-bold text-green-600">
+                            Domínio Verificado!
+                          </h3>
+                        </div>
+                        <p className="text-sm mb-4" style={{ color: 'var(--text)' }}>
+                          {domainConfig.message}
+                        </p>
+                        <div className="p-4 rounded" style={{ background: 'var(--bg-card-hover)' }}>
+                          <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
+                            Seu site está disponível em:
+                          </p>
+                          <a
+                            href={`https://${domainConfig.domain}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-lg font-semibold text-blue-600 hover:underline"
+                          >
+                            https://{domainConfig.domain}
+                          </a>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setDomainConfigModalOpen(false);
+                          setSelectedCloneForDomain(null);
+                          setDomainInput('');
+                          setDomainConfig(null);
+                        }}
+                        className="cta-button w-full"
+                      >
+                        Fechar
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </main>
         </>
       )}
