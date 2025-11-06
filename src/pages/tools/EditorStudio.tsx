@@ -15,34 +15,14 @@ export default function EditorStudio() {
   const [html, setHtml] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Função para buscar o HTML do backend com cache-busting agressivo
+  // Função para buscar o HTML do backend
   const fetchHtml = useCallback(async () => {
     if (!cloneId) return;
     setLoading(true);
     try {
-      // Cache-busting agressivo para evitar cache da Vercel
-      const timestamp = Date.now();
-      const random = Math.random().toString(36).substring(7);
-      const siteUrl = `https://${cloneId}.clonup.site?_t=${timestamp}&_r=${random}&nocache=1`;
-      
-      const htmlRes = await api.get(siteUrl, {
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
-      });
-      
+      const siteUrl = `https://${cloneId}.clonup.site?t=${Date.now()}`;
+      const htmlRes = await api.get(siteUrl);
       setHtml(htmlRes.data);
-      
-      // Log para debug (apenas em desenvolvimento)
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[EditorStudio] HTML carregado:', {
-          length: htmlRes.data?.length || 0,
-          hasImg: htmlRes.data?.includes('<img') || false,
-          timestamp
-        });
-      }
     } catch (error) {
       setHtml(null);
       console.error('Erro ao carregar o site:', error);
@@ -59,9 +39,6 @@ export default function EditorStudio() {
 
   // Função para ser chamada após salvar no editor
   const handleAfterSave = async () => {
-    // Aguarda um pouco para garantir que o backend processou o salvamento
-    await new Promise(resolve => setTimeout(resolve, 500));
-    // Recarrega com cache-busting agressivo
     await fetchHtml();
   };
 
