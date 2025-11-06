@@ -195,24 +195,15 @@ const LivePreview = ({ previewMode, content, onSelectElement, dragType, style, s
       }
     ` : '';
 
-    if (editingEnabled) {
-      styleEl.textContent = `
-        [data-editor-selected] {
-          outline: 2px solid #2563eb !important;
-          outline-offset: 2px !important;
-        }
-        ${mobileCss}
-      `;
-    } else {
-      styleEl.textContent = mobileCss;
-      // Remover seleção visual ao sair do modo de edição (fazer de forma segura)
-      try {
-        doc.querySelectorAll('[data-editor-selected]').forEach(x => x.removeAttribute('data-editor-selected'));
-      } catch (e) {
-        // Ignorar erros
+    // Sempre aplicar estilos de edição
+    styleEl.textContent = `
+      [data-editor-selected] {
+        outline: 2px solid #2563eb !important;
+        outline-offset: 2px !important;
       }
-    }
-  }, [editingEnabled, previewMode]);
+      ${mobileCss}
+    `;
+  }, [previewMode]);
 
   useEffect(() => {
     function handler(event: MessageEvent) {
