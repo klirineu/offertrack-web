@@ -304,29 +304,37 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
     const subdomain = params.get('id');
     const domain = `https://${subdomain}.clonup.com`;
 
-    // CRÍTICO: Sincronizar atributos atualizados do iframe ANTES de capturar o HTML
-    // Cria um mapeamento de elementos com atributos que podem ter sido atualizados
-    const originalElementsMap = new Map<string, { element: Element; attrs: Record<string, string> }>();
+    // CRÍTICO: Criar mapeamento de atributos atualizados ANTES de parsear
+    // Isso garante que capturamos os valores mais recentes do iframe
+    const updatedAttributesMap = new Map<string, Record<string, string>>();
 
-    doc.querySelectorAll('img, video, a, [src], [href]').forEach(el => {
-      const otId = el.getAttribute('data-ot-id');
-      const id = el.id;
+    // Itera por todos os elementos que podem ter atributos atualizados
+    // IMPORTANTE: Captura diretamente do DOM do iframe para garantir valores atualizados
+    doc.querySelectorAll('img, video, a, [src], [href]').forEach(originalEl => {
+      const otId = originalEl.getAttribute('data-ot-id');
+      const id = originalEl.id;
 
-      // Captura atributos importantes que podem ter sido atualizados
+      // Captura atributos que podem ter sido atualizados
+      // Usa getAttribute() para pegar o valor atual do DOM
       const attrs: Record<string, string> = {};
-      const importantAttrs = ['src', 'href', 'alt', 'style'];
-
-      importantAttrs.forEach(attr => {
-        const value = el.getAttribute(attr);
-        if (value !== null) {
+      ['src', 'href', 'alt', 'style'].forEach(attr => {
+        const value = originalEl.getAttribute(attr);
+        if (value !== null && value !== '') {
           attrs[attr] = value;
         }
       });
 
-      // Usa ot-id como chave principal (mais confiável), fallback para id
-      const key = otId ? `ot-id-${otId}` : (id ? `id-${id}` : null);
-      if (key && Object.keys(attrs).length > 0) {
-        originalElementsMap.set(key, { element: el, attrs });
+      // Só adiciona ao mapa se tiver atributos
+      if (Object.keys(attrs).length > 0) {
+        if (otId) {
+          // Prioriza data-ot-id (mais confiável para elementos editados)
+          updatedAttributesMap.set(`ot-id-${otId}`, attrs);
+        } else if (id) {
+          updatedAttributesMap.set(`id-${id}`, attrs);
+        } else {
+          // Para elementos sem identificador, usa o índice como fallback
+          // Isso será processado depois pela função syncByIndex
+        }
       }
     });
 
@@ -347,9 +355,10 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
     const parser = new DOMParser();
     const tempDoc = parser.parseFromString(decodedHtml, 'text/html');
 
-    // CRÍTICO: Sincronizar atributos atualizados do iframe original para o tempDoc
-    // Isso garante que src, href e outros atributos atualizados sejam preservados
-    originalElementsMap.forEach(({ element: originalEl, attrs }, key) => {
+    // CRÍTICO: Aplicar atributos atualizados ANTES de remover data-ot-id
+    // Isso garante que podemos encontrar os elementos pelo data-ot-id
+    // E também sincronizar diretamente por índice para elementos sem identificador
+    updatedAttributesMap.forEach((attrs, key) => {
       let tempEl: Element | null = null;
 
       // Encontra o elemento correspondente no tempDoc
@@ -361,13 +370,51 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
         tempEl = tempDoc.getElementById(id);
       }
 
-      // Sincroniza atributos atualizados
-      if (tempEl && tempEl.tagName === originalEl.tagName) {
+      // Aplica os atributos atualizados
+      if (tempEl) {
         Object.entries(attrs).forEach(([attr, value]) => {
+          // FORÇA a atualização do atributo com o valor do iframe original
+          const oldValue = tempEl.getAttribute(attr);
           tempEl.setAttribute(attr, value);
+          // Debug: log se o valor foi diferente
+          if (oldValue !== value && attr === 'src') {
+            console.log(`[Save] Atualizado ${attr}: "${oldValue}" -> "${value}"`);
+          }
         });
+      } else {
+        // Debug: log se não encontrou o elemento
+        console.warn(`[Save] Não encontrou elemento para sincronizar: ${key}`);
       }
     });
+
+    // ADICIONAL: Sincronizar diretamente por tipo e índice para garantir que não perdemos nada
+    // Isso é um fallback para elementos que não têm data-ot-id ou id
+    const syncByIndex = (selector: string) => {
+      const originalElements = Array.from(doc.querySelectorAll(selector));
+      const tempElements = Array.from(tempDoc.querySelectorAll(selector));
+
+      originalElements.forEach((originalEl, index) => {
+        // Pula se já foi sincronizado pelo mapa
+        const otId = originalEl.getAttribute('data-ot-id');
+        const id = originalEl.id;
+        if (otId || id) return; // Já foi processado acima
+
+        // Tenta sincronizar por índice
+        if (tempElements[index] && tempElements[index].tagName === originalEl.tagName) {
+          const tempEl = tempElements[index];
+          ['src', 'href', 'alt'].forEach(attr => {
+            const value = originalEl.getAttribute(attr);
+            if (value !== null && value !== '') {
+              tempEl.setAttribute(attr, value);
+            }
+          });
+        }
+      });
+    };
+
+    // Sincroniza imagens e vídeos por índice como fallback
+    syncByIndex('img');
+    syncByIndex('video');
 
     // Remove atributos do editor mas mantém os elementos
     tempDoc.querySelectorAll('[data-editor-selected]').forEach(el => {
