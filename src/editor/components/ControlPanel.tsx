@@ -374,16 +374,8 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
       if (tempEl) {
         Object.entries(attrs).forEach(([attr, value]) => {
           // FORÇA a atualização do atributo com o valor do iframe original
-          const oldValue = tempEl.getAttribute(attr);
           tempEl.setAttribute(attr, value);
-          // Debug: log se o valor foi diferente
-          if (oldValue !== value && attr === 'src') {
-            console.log(`[Save] Atualizado ${attr}: "${oldValue}" -> "${value}"`);
-          }
         });
-      } else {
-        // Debug: log se não encontrou o elemento
-        console.warn(`[Save] Não encontrou elemento para sincronizar: ${key}`);
       }
     });
 
@@ -1172,11 +1164,10 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
             <div className="flex gap-2 mb-2">
               <input
                 type="text"
-                className="flex-1 border border-gray-700 bg-gray-800 text-gray-100 rounded px-2 py-1 cursor-not-allowed opacity-75"
+                className="flex-1 border border-gray-700 bg-gray-800 text-gray-100 rounded px-2 py-1"
                 value={src}
-                readOnly
-                placeholder="Clique no botão ao lado para selecionar"
-                title="Use o botão ao lado para selecionar uma imagem"
+                onChange={e => { setSrc(e.target.value); updateAttr('src', e.target.value); }}
+                placeholder="URL da imagem ou clique no botão para selecionar"
               />
               <button
                 type="button"

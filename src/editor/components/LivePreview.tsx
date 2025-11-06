@@ -8,7 +8,6 @@ interface LivePreviewProps {
   dragType?: string | null;
   style?: React.CSSProperties;
   siteId: string;
-  editingEnabled?: boolean;
 }
 
 // Função utilitária para extrair <head> e <body> do HTML do usuário
@@ -76,7 +75,7 @@ function absolutizeAssetPaths(html: string, siteId: string) {
   return html;
 }
 
-const LivePreview = ({ previewMode, content, onSelectElement, dragType, style, siteId, editingEnabled = true }: LivePreviewProps) => {
+const LivePreview = ({ previewMode, content, onSelectElement, dragType, style, siteId }: LivePreviewProps) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { setNodeRef } = useDroppable({ id: 'preview-drop' });
   // Pegue o siteId de algum lugar (exemplo: do content ou de uma prop)
@@ -108,15 +107,11 @@ const LivePreview = ({ previewMode, content, onSelectElement, dragType, style, s
         }
       ` : '';
 
-      // Script do editor - gerencia listener dinamicamente SEM interferir no estado da página
+      // Script do editor - sempre ativo para seleção de elementos
       const editorScript = `
         (function() {
-          let isEditingEnabled = ${editingEnabled ? 'true' : 'false'};
-          window.__editorListenerAttached = false;
-          
-          // Handler de clique - APENAS quando em modo edição
+          // Handler de clique para seleção de elementos
           window.__editorClickHandler = function(e) {
-            // Em modo edição, intercepta cliques
             e.preventDefault();
             e.stopPropagation();
             let el = e.target;
@@ -130,68 +125,25 @@ const LivePreview = ({ previewMode, content, onSelectElement, dragType, style, s
             window.parent.postMessage({ type: 'element-selected', selector, otId: el.dataset.otId }, '*');
           };
           
-          // Função para atualizar o listener - CRÍTICO: remove completamente quando não está editando
-          function updateEditorMode(enabled) {
-            // PASSO 1: SEMPRE remove o listener primeiro (crítico para não interferir)
-            if (window.__editorListenerAttached && window.__editorClickHandler) {
-              try {
-                document.body.removeEventListener('click', window.__editorClickHandler, true);
-              } catch(e) {
-                console.warn('Erro ao remover listener:', e);
-              }
-              window.__editorListenerAttached = false;
-            }
-            
-            // PASSO 2: Limpar seleção visual
+          // Adiciona listener após um pequeno delay para não interferir com outros scripts
+          setTimeout(function() {
             try {
-              document.querySelectorAll('[data-editor-selected]').forEach(x => {
-                x.removeAttribute('data-editor-selected');
-              });
+              document.body.addEventListener('click', window.__editorClickHandler, true);
             } catch(e) {
-              // Ignorar
+              console.warn('Erro ao adicionar listener:', e);
             }
-            
-            // PASSO 3: Atualizar flag
-            isEditingEnabled = enabled;
-            
-            // PASSO 4: Adicionar listener APENAS se estiver editando
-            if (enabled && !window.__editorListenerAttached) {
-              // Usar setTimeout para garantir que outros listeners já foram registrados
-              // Isso evita interferência com o estado JavaScript da página (quiz, etc)
-              setTimeout(function() {
-                // Verificar novamente antes de adicionar (pode ter mudado)
-                if (isEditingEnabled && !window.__editorListenerAttached && window.__editorClickHandler) {
-                  try {
-                    document.body.addEventListener('click', window.__editorClickHandler, true);
-                    window.__editorListenerAttached = true;
-                  } catch(e) {
-                    console.warn('Erro ao adicionar listener:', e);
-                  }
-                }
-              }, 10);
-            }
-          }
-          
-          // Inicializa o modo (sem listener se não estiver editando)
-          updateEditorMode(isEditingEnabled);
-          
-          // Listener para mudanças de modo via postMessage (sempre ativo)
-          window.addEventListener('message', function(event) {
-            if (event.data && event.data.type === 'editor-mode-change') {
-              updateEditorMode(event.data.editingEnabled);
-            }
-          }, false); // Usar bubble phase para não interferir
+          }, 10);
         })();
       `;
 
-      // Estilos mínimos do editor usando atributos em vez de classes - só quando editingEnabled
-      const editorStyles = editingEnabled ? `
+      // Estilos mínimos do editor
+      const editorStyles = `
         [data-editor-selected] {
           outline: 2px solid #2563eb !important;
           outline-offset: 2px !important;
         }
         ${mobileCss}
-      ` : mobileCss;
+      `;
 
       doc.open();
       doc.write(`
@@ -219,29 +171,6 @@ const LivePreview = ({ previewMode, content, onSelectElement, dragType, style, s
       }
     };
   }, [content, htmlComPathsAbsolutos, previewMode]);
-
-  // Atualizar modo de edição sem recarregar o iframe - separado do useEffect principal
-  useEffect(() => {
-    const iframe = iframeRef.current;
-    if (!iframe || !iframe.contentDocument || !iframe.contentWindow) return;
-
-    const win = iframe.contentWindow;
-    
-    // Aguardar um pouco para garantir que o script já está rodando e pronto
-    const timeoutId = setTimeout(() => {
-      try {
-        // Usar postMessage para atualizar o modo sem interferir com o JavaScript existente
-        win.postMessage({ 
-          type: 'editor-mode-change', 
-          editingEnabled: editingEnabled 
-        }, '*');
-      } catch (e) {
-        // Ignorar erros de cross-origin se houver
-      }
-    }, 50);
-
-    return () => clearTimeout(timeoutId);
-  }, [editingEnabled]);
 
   // Atualizar estilos separadamente
   useEffect(() => {
