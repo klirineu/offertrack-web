@@ -304,41 +304,43 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
     const subdomain = params.get('id');
     const domain = `https://${subdomain}.clonup.com`;
 
-    // CRÍTICO: Criar mapeamento de atributos atualizados ANTES de parsear
-    // Isso garante que capturamos os valores mais recentes do iframe
-    const updatedAttributesMap = new Map<string, Record<string, string>>();
+    // CRÍTICO: Mapear TODOS os elementos do iframe com seus atributos ATUALIZADOS
+    // Isso garante que capturamos os valores mais recentes do DOM vivo
+    const elementAttributesMap = new Map<string, { element: Element; attrs: Record<string, string> }>();
 
-    // Itera por todos os elementos que podem ter atributos atualizados
-    // IMPORTANTE: Captura diretamente do DOM do iframe para garantir valores atualizados
+    // Função para criar chave única para elemento
+    const getElementKey = (el: Element): string | null => {
+      const otId = el.getAttribute('data-ot-id');
+      if (otId) return `ot-id-${otId}`;
+      if (el.id) return `id-${el.id}`;
+      return null;
+    };
+
+    // Mapear TODOS os elementos que podem ter sido editados (img, video, a, e qualquer elemento com src/href)
     doc.querySelectorAll('img, video, a, [src], [href]').forEach(originalEl => {
-      const otId = originalEl.getAttribute('data-ot-id');
-      const id = originalEl.id;
+      const key = getElementKey(originalEl);
+      if (!key) return; // Pula elementos sem identificador (serão tratados depois)
 
-      // Captura atributos que podem ter sido atualizados
-      // Usa getAttribute() para pegar o valor atual do DOM
+      // Captura TODOS os atributos relevantes do DOM VIVO
       const attrs: Record<string, string> = {};
-      ['src', 'href', 'alt', 'style'].forEach(attr => {
+      ['src', 'href', 'alt', 'style', 'class', 'id'].forEach(attr => {
         const value = originalEl.getAttribute(attr);
         if (value !== null && value !== '') {
           attrs[attr] = value;
         }
       });
 
-      // Só adiciona ao mapa se tiver atributos
+      // Também captura estilos inline computados para elementos com style
+      if (originalEl instanceof HTMLElement && originalEl.style.cssText) {
+        attrs['style'] = originalEl.style.cssText;
+      }
+
       if (Object.keys(attrs).length > 0) {
-        if (otId) {
-          // Prioriza data-ot-id (mais confiável para elementos editados)
-          updatedAttributesMap.set(`ot-id-${otId}`, attrs);
-        } else if (id) {
-          updatedAttributesMap.set(`id-${id}`, attrs);
-        } else {
-          // Para elementos sem identificador, usa o índice como fallback
-          // Isso será processado depois pela função syncByIndex
-        }
+        elementAttributesMap.set(key, { element: originalEl, attrs });
       }
     });
 
-    // Preserva o HTML original
+    // Preserva o HTML original (mas vamos sobrescrever com valores atualizados depois)
     const originalHtml = doc.documentElement.outerHTML;
 
     // Função para decodificar entidades HTML
@@ -355,13 +357,12 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
     const parser = new DOMParser();
     const tempDoc = parser.parseFromString(decodedHtml, 'text/html');
 
-    // CRÍTICO: Aplicar atributos atualizados ANTES de remover data-ot-id
-    // Isso garante que podemos encontrar os elementos pelo data-ot-id
-    // E também sincronizar diretamente por índice para elementos sem identificador
-    updatedAttributesMap.forEach((attrs, key) => {
+    // CRÍTICO: Sincronizar TODOS os atributos atualizados do DOM VIVO para o tempDoc
+    // Isso deve acontecer ANTES de qualquer outra manipulação
+    elementAttributesMap.forEach(({ element: originalEl, attrs }, key) => {
       let tempEl: Element | null = null;
 
-      // Encontra o elemento correspondente no tempDoc
+      // Encontra o elemento correspondente no tempDoc usando a mesma chave
       if (key.startsWith('ot-id-')) {
         const otId = key.replace('ot-id-', '');
         tempEl = tempDoc.querySelector(`[data-ot-id="${otId}"]`);
@@ -370,43 +371,57 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
         tempEl = tempDoc.getElementById(id);
       }
 
-      // Aplica os atributos atualizados
-      if (tempEl) {
+      // FORÇA a aplicação de TODOS os atributos atualizados do DOM VIVO
+      if (tempEl && tempEl.tagName === originalEl.tagName) {
+        // Aplica TODOS os atributos capturados do DOM vivo
+        // Isso sobrescreve qualquer valor antigo que possa estar no HTML parseado
         Object.entries(attrs).forEach(([attr, value]) => {
-          // FORÇA a atualização do atributo com o valor do iframe original
-          tempEl.setAttribute(attr, value);
+          // IMPORTANTE: Usa o valor do DOM vivo, não do HTML parseado
+          if (attr === 'style' && originalEl instanceof HTMLElement) {
+            // Para style, usa o cssText completo do DOM vivo
+            tempEl.setAttribute(attr, originalEl.style.cssText || value);
+          } else {
+            // Para outros atributos, usa o valor capturado do DOM vivo
+            tempEl.setAttribute(attr, value);
+          }
         });
       }
     });
 
-    // ADICIONAL: Sincronizar diretamente por tipo e índice para garantir que não perdemos nada
-    // Isso é um fallback para elementos que não têm data-ot-id ou id
-    const syncByIndex = (selector: string) => {
+    // FALLBACK: Sincronizar elementos sem identificador por índice e tipo
+    // Isso garante que elementos sem data-ot-id ou id também sejam atualizados
+    const syncUnidentifiedElements = (selector: string) => {
       const originalElements = Array.from(doc.querySelectorAll(selector));
       const tempElements = Array.from(tempDoc.querySelectorAll(selector));
 
       originalElements.forEach((originalEl, index) => {
-        // Pula se já foi sincronizado pelo mapa
-        const otId = originalEl.getAttribute('data-ot-id');
-        const id = originalEl.id;
-        if (otId || id) return; // Já foi processado acima
+        // Pula se já foi sincronizado pelo mapa acima
+        const key = getElementKey(originalEl);
+        if (key && elementAttributesMap.has(key)) return;
 
-        // Tenta sincronizar por índice
+        // Sincroniza por posição no DOM - captura do DOM VIVO
         if (tempElements[index] && tempElements[index].tagName === originalEl.tagName) {
           const tempEl = tempElements[index];
+          // Captura atributos DIRETAMENTE do DOM vivo e aplica no tempDoc
           ['src', 'href', 'alt'].forEach(attr => {
+            // Pega o valor ATUAL do DOM vivo (não do HTML parseado)
             const value = originalEl.getAttribute(attr);
             if (value !== null && value !== '') {
               tempEl.setAttribute(attr, value);
             }
           });
+          // Para style, usa cssText completo do DOM vivo
+          if (originalEl instanceof HTMLElement && originalEl.style.cssText) {
+            tempEl.setAttribute('style', originalEl.style.cssText);
+          }
         }
       });
     };
 
-    // Sincroniza imagens e vídeos por índice como fallback
-    syncByIndex('img');
-    syncByIndex('video');
+    // Sincroniza todos os tipos de elementos que podem ter sido editados
+    syncUnidentifiedElements('img');
+    syncUnidentifiedElements('video');
+    syncUnidentifiedElements('a');
 
     // Remove atributos do editor mas mantém os elementos
     tempDoc.querySelectorAll('[data-editor-selected]').forEach(el => {
@@ -468,6 +483,52 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
 
     // Aplica conversão em todos elementos
     tempDoc.querySelectorAll('*').forEach(convertUrlsToRelative);
+
+    // CRÍTICO: Passagem final - sincronizar TODOS os elementos img/video/a do DOM vivo
+    // Isso acontece DEPOIS de todas as manipulações, garantindo valores atualizados
+    const finalSync = (selector: string) => {
+      const originalElements = Array.from(doc.querySelectorAll(selector));
+
+      originalElements.forEach(originalEl => {
+        let tempEl: Element | null = null;
+
+        // Tenta encontrar por id primeiro
+        if (originalEl.id) {
+          tempEl = tempDoc.getElementById(originalEl.id);
+        }
+
+        // Se não encontrou por id, tenta por índice e tipo
+        if (!tempEl) {
+          const tempElements = Array.from(tempDoc.querySelectorAll(selector));
+          const index = originalElements.indexOf(originalEl);
+          if (index >= 0 && tempElements[index] && tempElements[index].tagName === originalEl.tagName) {
+            tempEl = tempElements[index];
+          }
+        }
+
+        // Se encontrou, aplica os valores ATUAIS do DOM vivo
+        if (tempEl && tempEl.tagName === originalEl.tagName) {
+          // Captura valores DIRETAMENTE do DOM vivo (não do HTML parseado)
+          ['src', 'href', 'alt'].forEach(attr => {
+            const currentValue = originalEl.getAttribute(attr);
+            if (currentValue !== null && currentValue !== '') {
+              let finalValue = currentValue;
+              // Converte para relativo se necessário
+              if (finalValue.startsWith(domain)) {
+                finalValue = finalValue.replace(domain, '');
+              }
+              // FORÇA a atualização com o valor do DOM vivo
+              tempEl.setAttribute(attr, finalValue);
+            }
+          });
+        }
+      });
+    };
+
+    // Sincronização final de TODOS os elementos editáveis
+    finalSync('img');
+    finalSync('video');
+    finalSync('a');
 
     // Preserva DOCTYPE se existir
     const doctype = doc.doctype;
