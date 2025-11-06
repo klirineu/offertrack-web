@@ -304,6 +304,32 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
     const subdomain = params.get('id');
     const domain = `https://${subdomain}.clonup.com`;
 
+    // CRÍTICO: Sincronizar atributos atualizados do iframe ANTES de capturar o HTML
+    // Cria um mapeamento de elementos com atributos que podem ter sido atualizados
+    const originalElementsMap = new Map<string, { element: Element; attrs: Record<string, string> }>();
+
+    doc.querySelectorAll('img, video, a, [src], [href]').forEach(el => {
+      const otId = el.getAttribute('data-ot-id');
+      const id = el.id;
+
+      // Captura atributos importantes que podem ter sido atualizados
+      const attrs: Record<string, string> = {};
+      const importantAttrs = ['src', 'href', 'alt', 'style'];
+
+      importantAttrs.forEach(attr => {
+        const value = el.getAttribute(attr);
+        if (value !== null) {
+          attrs[attr] = value;
+        }
+      });
+
+      // Usa ot-id como chave principal (mais confiável), fallback para id
+      const key = otId ? `ot-id-${otId}` : (id ? `id-${id}` : null);
+      if (key && Object.keys(attrs).length > 0) {
+        originalElementsMap.set(key, { element: el, attrs });
+      }
+    });
+
     // Preserva o HTML original
     const originalHtml = doc.documentElement.outerHTML;
 
@@ -320,6 +346,28 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
     // Cria um parser temporário para manipular o HTML sem afetar a estrutura
     const parser = new DOMParser();
     const tempDoc = parser.parseFromString(decodedHtml, 'text/html');
+
+    // CRÍTICO: Sincronizar atributos atualizados do iframe original para o tempDoc
+    // Isso garante que src, href e outros atributos atualizados sejam preservados
+    originalElementsMap.forEach(({ element: originalEl, attrs }, key) => {
+      let tempEl: Element | null = null;
+
+      // Encontra o elemento correspondente no tempDoc
+      if (key.startsWith('ot-id-')) {
+        const otId = key.replace('ot-id-', '');
+        tempEl = tempDoc.querySelector(`[data-ot-id="${otId}"]`);
+      } else if (key.startsWith('id-')) {
+        const id = key.replace('id-', '');
+        tempEl = tempDoc.getElementById(id);
+      }
+
+      // Sincroniza atributos atualizados
+      if (tempEl && tempEl.tagName === originalEl.tagName) {
+        Object.entries(attrs).forEach(([attr, value]) => {
+          tempEl.setAttribute(attr, value);
+        });
+      }
+    });
 
     // Remove atributos do editor mas mantém os elementos
     tempDoc.querySelectorAll('[data-editor-selected]').forEach(el => {
