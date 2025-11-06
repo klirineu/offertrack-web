@@ -539,6 +539,43 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
       html = doctypeString + '\n';
     }
 
+    // CRÍTICO: Última sincronização ANTES de serializar o HTML
+    // Garante que TODOS os valores do DOM vivo sejam aplicados
+    doc.querySelectorAll('img, video, a').forEach(originalEl => {
+      let tempEl: Element | null = null;
+
+      // Tenta encontrar por id
+      if (originalEl.id) {
+        tempEl = tempDoc.getElementById(originalEl.id);
+      }
+
+      // Se não encontrou, tenta por índice
+      if (!tempEl) {
+        const selector = originalEl.tagName.toLowerCase();
+        const originalElements = Array.from(doc.querySelectorAll(selector));
+        const tempElements = Array.from(tempDoc.querySelectorAll(selector));
+        const index = originalElements.indexOf(originalEl);
+        if (index >= 0 && tempElements[index] && tempElements[index].tagName === originalEl.tagName) {
+          tempEl = tempElements[index];
+        }
+      }
+
+      // Aplica valores do DOM vivo imediatamente antes de serializar
+      if (tempEl && tempEl.tagName === originalEl.tagName) {
+        ['src', 'href', 'alt'].forEach(attr => {
+          const liveValue = originalEl.getAttribute(attr);
+          if (liveValue !== null && liveValue !== '') {
+            let finalValue = liveValue;
+            // Converte para relativo se necessário
+            if (finalValue.startsWith(domain)) {
+              finalValue = finalValue.replace(domain, '');
+            }
+            tempEl.setAttribute(attr, finalValue);
+          }
+        });
+      }
+    });
+
     // Adiciona o HTML decodificado
     html += tempDoc.documentElement.outerHTML;
 
@@ -551,6 +588,49 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
     // Garante que o HTML não está escapado
     html = decodeHtmlEntities(html);
 
+    // CRÍTICO: Verificação final - substituir src/href no HTML string diretamente
+    // Isso garante que mesmo se algo foi perdido, pegamos do DOM vivo
+    doc.querySelectorAll('img, video, a').forEach(originalEl => {
+      const src = originalEl.getAttribute('src');
+      const href = originalEl.getAttribute('href');
+
+      if (src) {
+        // Encontra todas as tags img/video no HTML e substitui o src se necessário
+        const tagName = originalEl.tagName.toLowerCase();
+        const currentSrcPattern = new RegExp(`<${tagName}[^>]+src=["']([^"']+)["']`, 'g');
+        const matches = Array.from(html.matchAll(currentSrcPattern));
+
+        matches.forEach(match => {
+          const oldSrc = match[1];
+          // Se o src atual do DOM vivo é diferente, substitui
+          if (oldSrc !== src && oldSrc !== src.replace(domain, '')) {
+            let newSrc = src;
+            if (newSrc.startsWith(domain)) {
+              newSrc = newSrc.replace(domain, '');
+            }
+            html = html.replace(match[0], match[0].replace(oldSrc, newSrc));
+          }
+        });
+      }
+
+      if (href && originalEl.tagName === 'A') {
+        // Mesma coisa para links
+        const currentHrefPattern = /<a[^>]+href=["']([^"']+)["']/g;
+        const matches = Array.from(html.matchAll(currentHrefPattern));
+
+        matches.forEach(match => {
+          const oldHref = match[1];
+          if (oldHref !== href && oldHref !== href.replace(domain, '')) {
+            let newHref = href;
+            if (newHref.startsWith(domain)) {
+              newHref = newHref.replace(domain, '');
+            }
+            html = html.replace(match[0], match[0].replace(oldHref, newHref));
+          }
+        });
+      }
+    });
+
     // Preserva os links sem estilo padrão
     tempDoc.querySelectorAll('a').forEach(a => {
       if (!a.style.textDecoration) {
@@ -562,13 +642,59 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
     });
 
     try {
-      const res = await api.post('/api/clone/save', { html, subdomain });
+      // Adiciona timestamp para forçar invalidação de cache na Vercel
+      const timestamp = Date.now();
+
+      // IMPORTANTE: Log do HTML para debug
+      console.log('[Save] HTML sendo enviado:', {
+        length: html.length,
+        hasImg: html.includes('<img'),
+        imgSrcs: Array.from(html.matchAll(/<img[^>]+src=["']([^"']+)["']/g)).map(m => m[1]),
+        timestamp,
+        subdomain
+      });
+
+      // Log adicional: compara src do DOM vivo com o HTML
+      doc.querySelectorAll('img').forEach((img, idx) => {
+        const liveSrc = img.getAttribute('src') || '';
+        const htmlMatch = html.match(new RegExp(`<img[^>]*src=["']([^"']+)["']`, 'g'));
+        if (htmlMatch && htmlMatch[idx]) {
+          const htmlSrc = htmlMatch[idx].match(/src=["']([^"']+)["']/)?.[1] || '';
+          if (liveSrc !== htmlSrc && liveSrc.replace(domain, '') !== htmlSrc) {
+            console.warn(`[Save] DESCONFORMIDADE: img[${idx}] - DOM: "${liveSrc}" vs HTML: "${htmlSrc}"`);
+          }
+        }
+      });
+
+      const res = await api.post('/api/clone/save', {
+        html,
+        subdomain,
+        timestamp // Envia timestamp para forçar invalidação de cache
+      }, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+
       if (res.status === 200) {
         setSaveMsg('Site salvo com sucesso!');
+
+        // Aguarda um pouco e força reload do iframe para garantir que está atualizado
+        setTimeout(() => {
+          const iframe = document.querySelector('iframe');
+          if (iframe && iframe.contentWindow) {
+            // Força reload do iframe com cache-busting
+            const iframeSrc = iframe.src || '';
+            iframe.src = iframeSrc.split('?')[0] + `?t=${timestamp}&v=${Date.now()}`;
+          }
+        }, 1000);
       } else {
         setSaveMsg('Erro ao salvar o site.');
       }
-    } catch {
+    } catch (error) {
+      console.error('Erro ao salvar:', error);
       setSaveMsg('Erro ao salvar o site.');
     }
     setSaving(false);
