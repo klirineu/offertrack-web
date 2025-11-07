@@ -29,6 +29,11 @@ function isRelevantScript(s: Element) {
     return false;
   }
 
+  // Sempre exibir scripts controlados pelo editor ou adicionados pelo usuário
+  if (s.hasAttribute('data-user-added') || s.hasAttribute('data-editor-managed')) {
+    return true;
+  }
+
   const terms = [
     // Analytics e Tracking
     'facebook.com/tr',
@@ -302,7 +307,20 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
     // Obter subdomínio para converter URLs
     const params = new URLSearchParams(location.search);
     const subdomain = params.get('id');
-    const domain = `https://${subdomain}.clonup.com`;
+    const managedDomains = subdomain
+      ? [`https://${subdomain}.clonup.site`, `https://${subdomain}.clonup.com`]
+      : [];
+
+    const stripManagedDomain = (value: string) => {
+      for (const base of managedDomains) {
+        if (value.startsWith(base)) {
+          return value.replace(base, '');
+        }
+      }
+      return value;
+    };
+
+    const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
     // CRÍTICO: Mapear TODOS os elementos do iframe com seus atributos ATUALIZADOS
     // Isso garante que capturamos os valores mais recentes do DOM vivo
@@ -466,18 +484,30 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
 
     // Converte URLs absolutas de volta para relativas
     const convertUrlsToRelative = (element: Element) => {
+      if (!managedDomains.length) return;
+
       // Converte src e href
       ['src', 'href'].forEach(attr => {
         const value = element.getAttribute(attr);
-        if (value && value.startsWith(domain)) {
-          element.setAttribute(attr, value.replace(domain, ''));
+        if (!value) return;
+        const strippedValue = stripManagedDomain(value);
+        if (strippedValue !== value) {
+          element.setAttribute(attr, strippedValue);
         }
       });
 
       // Converte background-image em style
       const style = element.getAttribute('style');
-      if (style && style.includes(domain)) {
-        element.setAttribute('style', style.replace(new RegExp(domain, 'g'), ''));
+      if (!style) return;
+
+      let updatedStyle = style;
+      managedDomains.forEach(base => {
+        const regex = new RegExp(escapeRegExp(base), 'g');
+        updatedStyle = updatedStyle.replace(regex, '');
+      });
+
+      if (updatedStyle !== style) {
+        element.setAttribute('style', updatedStyle);
       }
     };
 
@@ -512,11 +542,7 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
           ['src', 'href', 'alt'].forEach(attr => {
             const currentValue = originalEl.getAttribute(attr);
             if (currentValue !== null && currentValue !== '') {
-              let finalValue = currentValue;
-              // Converte para relativo se necessário
-              if (finalValue.startsWith(domain)) {
-                finalValue = finalValue.replace(domain, '');
-              }
+              let finalValue = stripManagedDomain(currentValue);
               // FORÇA a atualização com o valor do DOM vivo
               tempEl.setAttribute(attr, finalValue);
             }
@@ -606,92 +632,105 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
       const processedScripts = new Set<string>();
       const formattedScripts: string[] = [];
 
+      const hashString = (value: string) => {
+        let hash = 0;
+        for (let i = 0; i < value.length; i += 1) {
+          hash = (hash << 5) - hash + value.charCodeAt(i);
+          hash |= 0; // Converte para 32 bits
+        }
+        return hash.toString(16);
+      };
+
+      const normalizeExternalSrc = (src: string) => {
+        try {
+          const url = new URL(src, window.location.origin);
+          return `${url.origin}${url.pathname}`;
+        } catch {
+          return src;
+        }
+      };
+
+      const shouldKeepComment = (comment?: string | null) => {
+        if (!comment) return false;
+        const lower = comment.toLowerCase();
+        return lower.includes('pixel') ||
+          lower.includes('facebook') ||
+          lower.includes('meta') ||
+          lower.includes('analytics') ||
+          lower.includes('end');
+      };
+
       scripts
         .filter(isRelevantScript)
-        .forEach(script => {
-          const scriptEl = script as HTMLScriptElement;
+        .forEach(node => {
+          try {
+            const element = node as HTMLElement;
+            const isScriptTag = element.tagName === 'SCRIPT';
 
-          // Filtra scripts que foram carregados dinamicamente pelo Facebook ou outros serviços
-          const isDynamicScript =
-            // Scripts do Facebook carregados dinamicamente
-            (scriptEl.src && scriptEl.src.includes('connect.facebook.net/signals/config')) ||
-            (scriptEl.src && scriptEl.src.includes('connect.facebook.net/en_US/fbevents.js') && !scriptEl.innerHTML) ||
-            // Scripts com atributos que indicam carregamento dinâmico
-            scriptEl.hasAttribute('data-fbq-loaded') ||
-            scriptEl.hasAttribute('data-gtm-loaded') ||
-            // Scripts sem innerHTML que foram carregados por src dinamicamente (exceto se foram adicionados pelo usuário)
-            (scriptEl.src && !scriptEl.innerHTML && !scriptEl.hasAttribute('data-editor-managed') && !scriptEl.hasAttribute('data-user-added'));
+            if (isScriptTag) {
+              const htmlScript = element as HTMLScriptElement;
+              const isDynamicScript =
+                (htmlScript.src && htmlScript.src.includes('connect.facebook.net/signals/config')) ||
+                (htmlScript.src && htmlScript.src.includes('connect.facebook.net/en_US/fbevents.js') && !htmlScript.innerHTML) ||
+                htmlScript.hasAttribute('data-fbq-loaded') ||
+                htmlScript.hasAttribute('data-gtm-loaded') ||
+                (htmlScript.src && !htmlScript.innerHTML && !htmlScript.hasAttribute('data-editor-managed') && !htmlScript.hasAttribute('data-user-added'));
 
-          // Pula scripts dinâmicos
-          if (isDynamicScript) {
-            return;
-          }
-
-          let identifier: string;
-
-          // Cria identificador único para evitar duplicações
-          if (scriptEl.src) {
-            // Para scripts externos, usa a URL base como identificador
-            const url = new URL(scriptEl.src);
-            identifier = `${url.origin}${url.pathname}`;
-          } else {
-            // Para scripts inline, usa hash do conteúdo
-            identifier = btoa(scriptEl.innerHTML.trim()).substring(0, 20);
-          }
-
-          // Pula se já foi processado
-          if (processedScripts.has(identifier)) {
-            console.log('Script duplicado detectado, pulando:', identifier);
-            return;
-          }
-
-          processedScripts.add(identifier);
-
-          // Limpa e formata o HTML do script
-          let scriptHTML = script.outerHTML;
-
-          // Remove atributos desnecessários adicionados dinamicamente
-          scriptHTML = scriptHTML
-            .replace(/\s+data-editor-(added|managed)="true"/g, '')
-            .replace(/\s+data-user-added="true"/g, '')
-            .replace(/\s+async=""/g, ' async')
-            .replace(/\s+defer=""/g, ' defer')
-            .trim();
-
-          // Preserva comentários se existirem
-          const parentNode = script.parentNode;
-          if (parentNode) {
-            const previousNode = script.previousSibling;
-            const nextNode = script.nextSibling;
-
-            let fullHTML = scriptHTML;
-
-            // Adiciona comentário anterior se for um comentário relacionado
-            if (previousNode && previousNode.nodeType === Node.COMMENT_NODE) {
-              const comment = previousNode.textContent?.trim() || '';
-              if (comment.toLowerCase().includes('pixel') ||
-                comment.toLowerCase().includes('facebook') ||
-                comment.toLowerCase().includes('meta') ||
-                comment.toLowerCase().includes('analytics')) {
-                fullHTML = `<!--${comment}-->\n${scriptHTML}`;
+              if (isDynamicScript) {
+                return;
               }
             }
 
-            // Adiciona comentário posterior se for um comentário relacionado
+            let identifier: string;
+            if (isScriptTag) {
+              const htmlScript = element as HTMLScriptElement;
+              if (htmlScript.src) {
+                identifier = normalizeExternalSrc(htmlScript.src);
+              } else {
+                const inlineContent = htmlScript.innerHTML.trim();
+                identifier = inlineContent
+                  ? `inline-${hashString(inlineContent)}`
+                  : `inline-empty-${formattedScripts.length}`;
+              }
+            } else {
+              identifier = `node-${hashString(element.outerHTML.trim())}`;
+            }
+
+            if (processedScripts.has(identifier)) {
+              console.log('Script duplicado detectado, pulando:', identifier);
+              return;
+            }
+            processedScripts.add(identifier);
+
+            let scriptHTML = element.outerHTML
+              .replace(/\s+data-editor-(added|managed)="true"/g, '')
+              .replace(/\s+data-user-added="true"/g, '')
+              .replace(/\s+async=""/g, ' async')
+              .replace(/\s+defer=""/g, ' defer')
+              .trim();
+
+            const previousNode = element.previousSibling;
+            const nextNode = element.nextSibling;
+            let fullHTML = scriptHTML;
+
+            if (previousNode && previousNode.nodeType === Node.COMMENT_NODE) {
+              const comment = previousNode.textContent?.trim() || '';
+              if (shouldKeepComment(comment)) {
+                fullHTML = `<!--${comment}-->\n${fullHTML}`;
+              }
+            }
+
             if (nextNode && nextNode.nodeType === Node.COMMENT_NODE) {
               const comment = nextNode.textContent?.trim() || '';
-              if (comment.toLowerCase().includes('end') ||
-                comment.toLowerCase().includes('pixel') ||
-                comment.toLowerCase().includes('facebook') ||
-                comment.toLowerCase().includes('meta')) {
+              if (shouldKeepComment(comment)) {
                 fullHTML = `${fullHTML}\n<!--${comment}-->`;
               }
             }
 
-            scriptHTML = fullHTML;
+            formattedScripts.push(fullHTML);
+          } catch (error) {
+            console.error('Erro ao processar entrada do gerenciador de scripts:', error);
           }
-
-          formattedScripts.push(scriptHTML);
         });
 
       return formattedScripts.join('\n\n');
