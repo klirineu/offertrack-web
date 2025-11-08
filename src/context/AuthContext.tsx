@@ -87,21 +87,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsLoading(false);
         return { error };
       }
-      
-      // Define o período de trial de 1 dia
-      const now = new Date();
-      const trialExpires = new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000); // 1 dia de trial
-      
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          full_name: extra?.full_name ?? null,
-          phone: extra?.phone ?? null,
-          subscription_status: 'trialing',
-          trial_started_at: now.toISOString(),
-          trial_expires_at: trialExpires.toISOString(),
-        })
-        .eq('id', data.user.id);
+
+      const profileUpdates: Record<string, unknown> = {};
+      if (extra?.full_name) profileUpdates.full_name = extra.full_name;
+      if (extra?.phone) profileUpdates.phone = extra.phone;
+
+      let profileError: PostgrestError | null = null;
+      if (Object.keys(profileUpdates).length > 0) {
+        const { error } = await supabase
+          .from('profiles')
+          .update(profileUpdates)
+          .eq('id', data.user.id);
+        profileError = error;
+      }
       setIsLoading(false);
       return { error: error || profileError };
     } catch (err: unknown) {

@@ -82,12 +82,6 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
         const diffDays = (now.getTime() - renewedAt.getTime()) / (1000 * 60 * 60 * 24);
 
         if (diffDays >= 30) {
-          // Atualizar status para expired
-          if (profile.id) {
-            await supabase.from('profiles')
-              .update({ subscription_status: 'expired' })
-              .eq('id', profile.id);
-          }
           if (isMounted) {
             setRedirectUrl('/escolher-plano?message=plan_expired');
             setChecking(false);

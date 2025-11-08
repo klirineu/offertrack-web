@@ -669,24 +669,24 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
 
             if (isScriptTag) {
               const htmlScript = element as HTMLScriptElement;
-              const isDynamicScript =
+          const isDynamicScript =
                 (htmlScript.src && htmlScript.src.includes('connect.facebook.net/signals/config')) ||
                 (htmlScript.src && htmlScript.src.includes('connect.facebook.net/en_US/fbevents.js') && !htmlScript.innerHTML) ||
                 htmlScript.hasAttribute('data-fbq-loaded') ||
                 htmlScript.hasAttribute('data-gtm-loaded') ||
                 (htmlScript.src && !htmlScript.innerHTML && !htmlScript.hasAttribute('data-editor-managed') && !htmlScript.hasAttribute('data-user-added'));
 
-              if (isDynamicScript) {
-                return;
+          if (isDynamicScript) {
+            return;
               }
-            }
+          }
 
-            let identifier: string;
+          let identifier: string;
             if (isScriptTag) {
               const htmlScript = element as HTMLScriptElement;
               if (htmlScript.src) {
                 identifier = normalizeExternalSrc(htmlScript.src);
-              } else {
+          } else {
                 const inlineContent = htmlScript.innerHTML.trim();
                 identifier = inlineContent
                   ? `inline-${hashString(inlineContent)}`
@@ -694,20 +694,20 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
               }
             } else {
               identifier = `node-${hashString(element.outerHTML.trim())}`;
-            }
+          }
 
-            if (processedScripts.has(identifier)) {
-              console.log('Script duplicado detectado, pulando:', identifier);
-              return;
-            }
-            processedScripts.add(identifier);
+          if (processedScripts.has(identifier)) {
+            console.log('Script duplicado detectado, pulando:', identifier);
+            return;
+          }
+          processedScripts.add(identifier);
 
             let scriptHTML = element.outerHTML
-              .replace(/\s+data-editor-(added|managed)="true"/g, '')
-              .replace(/\s+data-user-added="true"/g, '')
-              .replace(/\s+async=""/g, ' async')
-              .replace(/\s+defer=""/g, ' defer')
-              .trim();
+            .replace(/\s+data-editor-(added|managed)="true"/g, '')
+            .replace(/\s+data-user-added="true"/g, '')
+            .replace(/\s+async=""/g, ' async')
+            .replace(/\s+defer=""/g, ' defer')
+            .trim();
 
             const previousNode = element.previousSibling;
             const nextNode = element.nextSibling;
