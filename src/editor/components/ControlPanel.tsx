@@ -23,67 +23,18 @@ function isStylable(el: HTMLElement | null) {
   return !nonStylable.includes(el.tagName);
 }
 
-function isRelevantScript(s: Element) {
-  // Exclude editor scripts
-  if (s.id === 'editor-script' || s.id === 'editor-styles') {
-    return false;
-  }
+const PLATFORM_SCRIPT_SIGNATURES = [
+  'fastspeed.site/api/site-verify',
+  'clonup-status-overlay',
+  '[CloneStatus]',
+  'checkClientStatus',
+];
 
-  // Sempre exibir scripts controlados pelo editor ou adicionados pelo usuário
-  if (s.hasAttribute('data-user-added') || s.hasAttribute('data-editor-managed')) {
-    return true;
-  }
-
-  const terms = [
-    // Analytics e Tracking
-    'facebook.com/tr',
-    '/tr?id=',
-    '/pixel',
-    '/analytics',
-    '/gtag',
-    '/utm',
-    '/clarity',
-    '/fixbug',
-    '/hotjar',
-    '/google-analytics',
-    '/utmify',
-    '/connect.facebook.net',
-    '/googletagmanager.com',
-    '/clarity.ms',
-
-    // Redirecionamentos e Navegação
-    'window.location',
-    'location.href',
-    'location.replace',
-    'URLSearchParams',
-    'addEventListener',
-    'history.pushState',
-    'history.replaceState',
-    'document.location',
-    'window.open',
-    'redirect',
-
-    // Outros scripts importantes
-    'querySelector',
-    'getElementById',
-    'localStorage',
-    'sessionStorage',
-    'fetch(',
-    'axios',
-    '.ajax',
-    'XMLHttpRequest'
-  ];
-
-  // Verifica o src do script
-  if ((s as HTMLScriptElement).src) {
-    return terms.some(term => (s as HTMLScriptElement).src.includes(term));
-  }
-
-  // Verifica o conteúdo do script
-  if (s.innerHTML) {
-    return terms.some(term => s.innerHTML.includes(term));
-  }
-
+function isPlatformInjectedScript(scriptEl: HTMLScriptElement) {
+  const src = scriptEl.src || '';
+  const content = scriptEl.innerHTML || '';
+  if (PLATFORM_SCRIPT_SIGNATURES.some(signature => src.includes(signature))) return true;
+  if (PLATFORM_SCRIPT_SIGNATURES.some(signature => content.includes(signature))) return true;
   return false;
 }
 
@@ -169,6 +120,16 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
   const params = new URLSearchParams(location.search);
   const siteId = params.get('id') ?? '';
   const subdomain = siteId;
+
+  const insertHtmlIntoContainer = (container: HTMLElement, html: string) => {
+    if (!html.trim()) return;
+    const doc = container.ownerDocument;
+    const tempDiv = doc.createElement('div');
+    tempDiv.innerHTML = html;
+    Array.from(tempDiv.childNodes).forEach(node => {
+      container.appendChild(node);
+    });
+  };
 
   // Sincroniza atributos do elemento selecionado
   useEffect(() => {
@@ -542,7 +503,7 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
           ['src', 'href', 'alt'].forEach(attr => {
             const currentValue = originalEl.getAttribute(attr);
             if (currentValue !== null && currentValue !== '') {
-              let finalValue = stripManagedDomain(currentValue);
+              const finalValue = stripManagedDomain(currentValue);
               // FORÇA a atualização com o valor do DOM vivo
               tempEl.setAttribute(attr, finalValue);
             }
@@ -627,140 +588,24 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
     const doc = iframe.contentDocument;
     if (!doc) return;
 
-    // Função melhorada para formatar scripts evitando duplicações e scripts dinâmicos
-    const formatScripts = (scripts: Element[]) => {
-      const processedScripts = new Set<string>();
-      const formattedScripts: string[] = [];
-
-      const hashString = (value: string) => {
-        let hash = 0;
-        for (let i = 0; i < value.length; i += 1) {
-          hash = (hash << 5) - hash + value.charCodeAt(i);
-          hash |= 0; // Converte para 32 bits
-        }
-        return hash.toString(16);
-      };
-
-      const normalizeExternalSrc = (src: string) => {
-        try {
-          const url = new URL(src, window.location.origin);
-          return `${url.origin}${url.pathname}`;
-        } catch {
-          return src;
-        }
-      };
-
-      const shouldKeepComment = (comment?: string | null) => {
-        if (!comment) return false;
-        const lower = comment.toLowerCase();
-        return lower.includes('pixel') ||
-          lower.includes('facebook') ||
-          lower.includes('meta') ||
-          lower.includes('analytics') ||
-          lower.includes('end');
-      };
-
-      scripts
-        .filter(isRelevantScript)
-        .forEach(node => {
-          try {
-            const element = node as HTMLElement;
-            const isScriptTag = element.tagName === 'SCRIPT';
-
-            if (isScriptTag) {
-              const htmlScript = element as HTMLScriptElement;
-          const isDynamicScript =
-                (htmlScript.src && htmlScript.src.includes('connect.facebook.net/signals/config')) ||
-                (htmlScript.src && htmlScript.src.includes('connect.facebook.net/en_US/fbevents.js') && !htmlScript.innerHTML) ||
-                htmlScript.hasAttribute('data-fbq-loaded') ||
-                htmlScript.hasAttribute('data-gtm-loaded') ||
-                (htmlScript.src && !htmlScript.innerHTML && !htmlScript.hasAttribute('data-editor-managed') && !htmlScript.hasAttribute('data-user-added'));
-
-          if (isDynamicScript) {
-            return;
-              }
+    const collectScripts = (elements: Element[]) =>
+      elements
+        .filter(element => {
+          if (element instanceof HTMLScriptElement && isPlatformInjectedScript(element)) {
+            return false;
           }
+          return true;
+        })
+        .map(element => element.outerHTML.trim())
+        .filter(Boolean);
 
-          let identifier: string;
-            if (isScriptTag) {
-              const htmlScript = element as HTMLScriptElement;
-              if (htmlScript.src) {
-                identifier = normalizeExternalSrc(htmlScript.src);
-          } else {
-                const inlineContent = htmlScript.innerHTML.trim();
-                identifier = inlineContent
-                  ? `inline-${hashString(inlineContent)}`
-                  : `inline-empty-${formattedScripts.length}`;
-              }
-            } else {
-              identifier = `node-${hashString(element.outerHTML.trim())}`;
-          }
+    const headScripts = collectScripts(Array.from(doc.head.querySelectorAll('script')));
+    const headNoScripts = collectScripts(Array.from(doc.head.querySelectorAll('noscript')));
+    const bodyScripts = collectScripts(Array.from(doc.body.querySelectorAll('script')));
+    const bodyNoScripts = collectScripts(Array.from(doc.body.querySelectorAll('noscript')));
 
-          if (processedScripts.has(identifier)) {
-            console.log('Script duplicado detectado, pulando:', identifier);
-            return;
-          }
-          processedScripts.add(identifier);
-
-            let scriptHTML = element.outerHTML
-            .replace(/\s+data-editor-(added|managed)="true"/g, '')
-            .replace(/\s+data-user-added="true"/g, '')
-            .replace(/\s+async=""/g, ' async')
-            .replace(/\s+defer=""/g, ' defer')
-            .trim();
-
-            const previousNode = element.previousSibling;
-            const nextNode = element.nextSibling;
-            let fullHTML = scriptHTML;
-
-            if (previousNode && previousNode.nodeType === Node.COMMENT_NODE) {
-              const comment = previousNode.textContent?.trim() || '';
-              if (shouldKeepComment(comment)) {
-                fullHTML = `<!--${comment}-->\n${fullHTML}`;
-              }
-            }
-
-            if (nextNode && nextNode.nodeType === Node.COMMENT_NODE) {
-              const comment = nextNode.textContent?.trim() || '';
-              if (shouldKeepComment(comment)) {
-                fullHTML = `${fullHTML}\n<!--${comment}-->`;
-              }
-            }
-
-            formattedScripts.push(fullHTML);
-          } catch (error) {
-            console.error('Erro ao processar entrada do gerenciador de scripts:', error);
-          }
-        });
-
-      return formattedScripts.join('\n\n');
-    };
-
-    // Extrai scripts do head (excluindo scripts do editor)
-    const headScripts = Array.from(doc.head.querySelectorAll('script:not([id="editor-script"]):not([id="editor-styles"])'));
-    const headNoScripts = Array.from(doc.head.querySelectorAll('noscript:not([data-editor-essential])'));
-
-    // Extrai scripts do body
-    const bodyScripts = Array.from(doc.body.querySelectorAll('script'));
-    const bodyNoScripts = Array.from(doc.body.querySelectorAll('noscript'));
-
-    // Formata os scripts
-    const formattedHeadScripts = formatScripts(headScripts);
-    const formattedHeadNoScripts = formatScripts(headNoScripts);
-    const formattedBodyScripts = formatScripts(bodyScripts);
-    const formattedBodyNoScripts = formatScripts(bodyNoScripts);
-
-    // Combina os scripts com separação adequada
-    const headContent = [formattedHeadScripts, formattedHeadNoScripts]
-      .filter(content => content.trim())
-      .join('\n\n');
-
-    const bodyContent = [formattedBodyScripts, formattedBodyNoScripts]
-      .filter(content => content.trim())
-      .join('\n\n');
-
-    setHeadScriptsText(headContent);
-    setBodyScriptsText(bodyContent);
+    setHeadScriptsText([...headScripts, ...headNoScripts].join('\n\n'));
+    setBodyScriptsText([...bodyScripts, ...bodyNoScripts].join('\n\n'));
     setShowScriptManager(true);
   }
 
@@ -771,164 +616,23 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
     if (!doc) return;
 
     try {
-      // Preserva scripts essenciais do editor antes de remover
-      const editorScripts = Array.from(doc.head.querySelectorAll('script[id="editor-script"], script[id="editor-styles"]'));
-      const editorNoScripts = Array.from(doc.head.querySelectorAll('noscript[data-editor-essential]'));
-
-      // Remove apenas scripts adicionados pelo usuário (não os do editor nem os dinâmicos)
-      Array.from(doc.head.querySelectorAll('script:not([id="editor-script"]):not([id="editor-styles"]), noscript:not([data-editor-essential])')).forEach(s => {
-        // Não remove scripts que foram carregados dinamicamente pelo Facebook
-        const scriptEl = s as HTMLScriptElement;
-        const isDynamicScript =
-          (scriptEl.src && scriptEl.src.includes('connect.facebook.net/signals/config')) ||
-          (scriptEl.src && scriptEl.src.includes('connect.facebook.net/en_US/fbevents.js') && !scriptEl.innerHTML) ||
-          scriptEl.hasAttribute('data-fbq-loaded') ||
-          scriptEl.hasAttribute('data-gtm-loaded');
-
-        if (!isDynamicScript) {
-          s.remove();
-        }
+      Array.from(doc.head.querySelectorAll('script')).forEach(script => {
+        if (script instanceof HTMLScriptElement && isPlatformInjectedScript(script)) return;
+        script.remove();
+      });
+      Array.from(doc.body.querySelectorAll('script')).forEach(script => {
+        if (script instanceof HTMLScriptElement && isPlatformInjectedScript(script)) return;
+        script.remove();
       });
 
-      Array.from(doc.body.querySelectorAll('script, noscript')).forEach(s => s.remove());
+      Array.from(doc.head.querySelectorAll('noscript')).forEach(noscript => noscript.remove());
+      Array.from(doc.body.querySelectorAll('noscript')).forEach(noscript => noscript.remove());
 
-      // Função para inserir scripts de forma segura
-      const insertScriptsSafely = (container: HTMLElement, scriptsText: string) => {
-        if (!scriptsText.trim()) return;
-
-        // Divide por blocos (incluindo comentários)
-        const blocks = scriptsText.split(/\n\s*\n/).filter(block => block.trim());
-
-        blocks.forEach(block => {
-          try {
-            // Verifica se o bloco contém comentários
-            const hasComments = block.includes('<!--') && block.includes('-->');
-
-            if (hasComments) {
-              // Processa bloco com comentários
-              const tempDiv = doc.createElement('div');
-              tempDiv.innerHTML = block.trim();
-
-              // Adiciona todos os nós (comentários e elementos)
-              Array.from(tempDiv.childNodes).forEach(node => {
-                if (node.nodeType === Node.COMMENT_NODE) {
-                  // Adiciona comentário
-                  container.appendChild(node.cloneNode(true));
-                } else if (node.nodeType === Node.ELEMENT_NODE) {
-                  const element = node as Element;
-                  if (element.tagName === 'SCRIPT') {
-                    const scriptEl = element as HTMLScriptElement;
-
-                    // Verifica duplicação
-                    const isDuplicate = scriptEl.src ?
-                      container.querySelector(`script[src="${scriptEl.src}"]`) :
-                      Array.from(container.querySelectorAll('script:not([src])')).some(s =>
-                        s.innerHTML.trim() === scriptEl.innerHTML.trim()
-                      );
-
-                    if (isDuplicate) {
-                      console.warn('Script duplicado detectado, pulando:', scriptEl.src || 'inline script');
-                      return;
-                    }
-
-                    // Cria novo elemento script
-                    const newScript = doc.createElement('script');
-
-                    // Copia atributos
-                    Array.from(scriptEl.attributes).forEach(attr => {
-                      newScript.setAttribute(attr.name, attr.value);
-                    });
-
-                    // Adiciona conteúdo
-                    if (scriptEl.src) {
-                      newScript.src = scriptEl.src;
-                    } else {
-                      newScript.innerHTML = scriptEl.innerHTML;
-                    }
-
-                    // Marca como adicionado pelo usuário
-                    newScript.setAttribute('data-user-added', 'true');
-                    container.appendChild(newScript);
-                  } else {
-                    // Para outros elementos
-                    const clonedElement = element.cloneNode(true) as Element;
-                    clonedElement.setAttribute('data-user-added', 'true');
-                    container.appendChild(clonedElement);
-                  }
-                }
-              });
-            } else {
-              // Processa bloco sem comentários (método original)
-              const tempDiv = doc.createElement('div');
-              tempDiv.innerHTML = block.trim();
-
-              Array.from(tempDiv.children).forEach(element => {
-                if (element.tagName === 'SCRIPT') {
-                  const scriptEl = element as HTMLScriptElement;
-
-                  // Verifica duplicação por src ou conteúdo
-                  const isDuplicate = scriptEl.src ?
-                    container.querySelector(`script[src="${scriptEl.src}"]`) :
-                    Array.from(container.querySelectorAll('script:not([src])')).some(s =>
-                      s.innerHTML.trim() === scriptEl.innerHTML.trim()
-                    );
-
-                  if (isDuplicate) {
-                    console.warn('Script duplicado detectado, pulando:', scriptEl.src || 'inline script');
-                    return;
-                  }
-
-                  // Cria novo elemento script
-                  const newScript = doc.createElement('script');
-
-                  // Copia atributos
-                  Array.from(scriptEl.attributes).forEach(attr => {
-                    newScript.setAttribute(attr.name, attr.value);
-                  });
-
-                  // Adiciona conteúdo
-                  if (scriptEl.src) {
-                    newScript.src = scriptEl.src;
-                  } else {
-                    newScript.innerHTML = scriptEl.innerHTML;
-                  }
-
-                  // Marca como adicionado pelo usuário
-                  newScript.setAttribute('data-user-added', 'true');
-                  container.appendChild(newScript);
-                } else {
-                  // Para outros elementos
-                  const clonedElement = element.cloneNode(true) as Element;
-                  clonedElement.setAttribute('data-user-added', 'true');
-                  container.appendChild(clonedElement);
-                }
-              });
-            }
-          } catch (blockError) {
-            console.error('Erro ao processar bloco de script:', blockError);
-          }
-        });
-      };
-
-      // Insere scripts no head e body
-      insertScriptsSafely(doc.head, headScriptsText);
-      insertScriptsSafely(doc.body, bodyScriptsText);
-
-      // Restaura scripts essenciais do editor no head se foram removidos
-      editorScripts.forEach(script => {
-        if (!doc.head.contains(script)) {
-          doc.head.appendChild(script);
-        }
-      });
-
-      editorNoScripts.forEach(noscript => {
-        if (!doc.head.contains(noscript)) {
-          doc.head.appendChild(noscript);
-        }
-      });
+      insertHtmlIntoContainer(doc.head, headScriptsText);
+      insertHtmlIntoContainer(doc.body, bodyScriptsText);
 
       setShowScriptManager(false);
-      setSaveMsg('Scripts atualizados com sucesso!');
+      setSaveMsg('Scripts atualizados! Aguarde alguns minutos para que o site processe as mudanças antes de editar novamente.');
       setTimeout(() => setSaveMsg(''), 3000);
     } catch (error) {
       console.error('Erro ao salvar scripts:', error);
