@@ -8,6 +8,14 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ["lucide-react"],
   },
+  build: {
+    // Garantir que o Rollup use a versão correta
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
+    },
+  },
   server: {
     proxy: {
       "/api/verify": {
