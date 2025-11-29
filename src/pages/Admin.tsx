@@ -4,6 +4,7 @@ import { Users, CreditCard, Home, X, Search, AlertTriangle, TrendingUp, FileText
 import { StandardNavigation } from '../components/StandardNavigation';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
+import { verifyAdmin } from '../services/profileService';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 
@@ -617,11 +618,38 @@ export function Admin() {
     });
   };
 
-  // Verifica se o usuário é admin
+  // Verifica se o usuário é admin no backend (verificação de segurança)
   useEffect(() => {
-    if (!profile || profile.role !== 'admin') {
-      navigate('/dashboard');
+    let isMounted = true;
+
+    async function checkAdminAccess() {
+      // Primeira verificação rápida no frontend
+      if (!profile || profile.role !== 'admin') {
+        if (isMounted) {
+          navigate('/dashboard');
+        }
+        return;
+      }
+
+      // Verificação de segurança no backend (consulta direta no BD)
+      try {
+        const isAdmin = await verifyAdmin();
+        if (isMounted && !isAdmin) {
+          navigate('/dashboard');
+        }
+      } catch (error) {
+        console.error('Erro ao verificar permissão de admin:', error);
+        if (isMounted) {
+          navigate('/dashboard');
+        }
+      }
     }
+
+    checkAdminAccess();
+
+    return () => {
+      isMounted = false;
+    };
   }, [profile, navigate]);
 
   const loadUserResources = async (userId: string) => {

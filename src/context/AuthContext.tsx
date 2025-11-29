@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { User, AuthError, PostgrestError } from '@supabase/supabase-js';
 import { Database } from '../types/supabase';
 import { fetchProfile } from '../services/profileService';
+import { withTimeout, isSupabaseClientHealthy } from '../utils/supabaseHelpers';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 
@@ -31,7 +32,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const initialize = useCallback(async () => {
     setIsLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      // Usar withTimeout para prevenir bloqueio indefinido após troca de abas
+      const { data: { session } } = await withTimeout(
+        supabase.auth.getSession(),
+        10000 // 10 segundos de timeout
+      );
 
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -47,19 +52,86 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  // Configurar listener de mudanças de autenticação
+  // IMPORTANTE: Não fazer chamadas ao Supabase dentro deste callback para evitar deadlock
   useEffect(() => {
     initialize();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Apenas atualizar o estado do usuário, sem fazer chamadas ao Supabase
       setUser(session?.user ?? null);
-      if (session?.user) {
-        const profile = await fetchProfile(session.user.id);
-        setProfile(profile);
-      } else {
+      // O profile será buscado pelo useEffect separado que observa mudanças em 'user'
+      if (!session?.user) {
         setProfile(null);
       }
     });
     return () => subscription?.unsubscribe();
   }, [initialize]);
+
+  // Buscar profile quando o usuário mudar (separado do onAuthStateChange para evitar deadlock)
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadProfile() {
+      if (!user?.id) {
+        if (isMounted) {
+          setProfile(null);
+        }
+        return;
+      }
+
+      try {
+        const profileData = await fetchProfile(user.id);
+        if (isMounted) {
+          setProfile(profileData);
+        }
+      } catch (err: unknown) {
+        console.error('Erro ao buscar profile:', err);
+        if (isMounted) {
+          setProfile(null);
+        }
+      }
+    }
+
+    loadProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.id]);
+
+  // Verificar saúde do cliente Supabase quando a aba recupera foco
+  // Isso ajuda a detectar e recuperar de estados corrompidos após troca de abas
+  useEffect(() => {
+    let isMounted = true;
+
+    async function checkClientHealth() {
+      // Verificar apenas se há um usuário logado
+      if (!user) return;
+
+      const healthy = await isSupabaseClientHealthy(supabase, 5000);
+      if (!healthy && isMounted) {
+        console.warn('Cliente Supabase pode estar corrompido. Tentando reinicializar...');
+        // Tentar reinicializar a sessão
+        try {
+          await initialize();
+        } catch (err) {
+          console.error('Erro ao reinicializar após detecção de cliente corrompido:', err);
+        }
+      }
+    }
+
+    const handleFocus = () => {
+      // Verificar saúde quando a aba recupera foco
+      checkClientHealth();
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [user, initialize]);
 
   const signIn = async (email: string, password: string) => {
     setIsLoading(true);

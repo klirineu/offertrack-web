@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Dashboard } from './pages/Dashboard';
 import { Settings } from './pages/Settings';
@@ -28,15 +28,71 @@ import { Admin } from './pages/Admin';
 import { Tracking } from './pages/tools/Tracking';
 import SiteBuilder from './pages/tools/SiteBuilder';
 import EscalatedOffers from './pages/EscalatedOffers';
+import { verifyAdmin } from './services/profileService';
 
-// Componente para proteger rotas de admin
+// Componente para proteger rotas de admin com verificação no backend
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { profile } = useAuth();
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [isChecking, setIsChecking] = useState(true);
 
-  if (profile?.role !== 'admin') {
+  useEffect(() => {
+    let isMounted = true;
+
+    async function checkAdmin() {
+      // Primeira verificação rápida no frontend (para UX)
+      if (!profile || profile.role !== 'admin') {
+        if (isMounted) {
+          setIsAdmin(false);
+          setIsChecking(false);
+        }
+        return;
+      }
+
+      // Verificação de segurança no backend (consulta direta no BD)
+      try {
+        const adminVerified = await verifyAdmin();
+        if (isMounted) {
+          setIsAdmin(adminVerified);
+          setIsChecking(false);
+        }
+      } catch (error) {
+        console.error('Erro ao verificar permissão de admin:', error);
+        if (isMounted) {
+          setIsAdmin(false);
+          setIsChecking(false);
+        }
+      }
+    }
+
+    checkAdmin();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [profile]);
+
+  // Mostra loading enquanto verifica
+  if (isChecking) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        color: 'var(--text)'
+      }}>
+        Verificando permissões...
+      </div>
+    );
+  }
+
+  // Redireciona se não for admin
+  if (!isAdmin) {
     return <Navigate to="/dashboard" />;
   }
 
+  // Permite acesso apenas se o backend confirmar que é admin
   return <>{children}</>;
 };
 

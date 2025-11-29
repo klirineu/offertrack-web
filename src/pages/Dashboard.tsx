@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Board } from '../components/Board';
 import { NewOfferDialog } from '../components/NewOfferDialog';
 import { EditOfferDialog } from '../components/EditOfferDialog';
@@ -9,6 +9,7 @@ import { Layout, UserCog, Settings as SettingsIcon, Circle, Wrench, Users, Clock
 import { SidebarBody, SidebarLink, Sidebar } from '../components/ui/sidebar';
 import { useAuth } from '../context/AuthContext';
 import { checkTrialStatus } from '../utils/trialUtils';
+import { verifyAdmin } from '../services/profileService';
 
 import LogoIcon from '../assets/favicon.png';
 
@@ -36,6 +37,7 @@ export function Dashboard() {
   const { theme } = useThemeStore(); // Obtenha o tema do store
   const [open, setOpen] = useState(true); // Sidebar aberto por padrão
   const { user, profile, signOut } = useAuth();
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const {
     isNewOfferDialogOpen,
     setIsNewOfferDialogOpen,
@@ -44,6 +46,39 @@ export function Dashboard() {
     onOfferUpdated,
     onNewOffer
   } = useModalStore();
+
+  // Verificar se é admin diretamente no Supabase (não confia no profile do frontend)
+  useEffect(() => {
+    let isMounted = true;
+
+    async function checkAdmin() {
+      // Verificação rápida no frontend primeiro (para UX)
+      if (profile?.role !== 'admin') {
+        if (isMounted) setIsAdmin(false);
+        return;
+      }
+
+      // Verificação de segurança no Supabase (consulta direta no BD)
+      try {
+        const adminVerified = await verifyAdmin();
+        if (isMounted) {
+          setIsAdmin(adminVerified);
+        }
+      } catch (error) {
+        console.error('Erro ao verificar admin no dashboard:', error);
+        if (isMounted) {
+          setIsAdmin(false);
+        }
+      }
+    }
+
+    checkAdmin();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [profile]);
+
   const links = [
     {
       label: "Dashboard",
@@ -87,8 +122,8 @@ export function Dashboard() {
         { label: "Clonar Quiz", href: "/tools/clonequiz", icon: <Circle className="h-4 w-4" /> },
       ],
     },
-    // Adiciona link de admin apenas para usuários admin
-    ...(profile?.role === 'admin' ? [{
+    // Adiciona link de admin apenas se verificação no Supabase confirmar que é admin
+    ...(isAdmin ? [{
       label: "Administração",
       href: "/admin",
       icon: (
