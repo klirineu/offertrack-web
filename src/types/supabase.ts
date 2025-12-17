@@ -194,6 +194,35 @@ export interface Database {
           quiz_extra_price?: number | null;
         };
       };
+      cloned_sites: {
+        Row: {
+          id: string;
+          user_id: string;
+          original_url: string;
+          url: string;
+          subdomain: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          original_url: string;
+          url: string;
+          subdomain: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          original_url?: string;
+          url?: string;
+          subdomain?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       cloned_quiz: {
         Row: {
           id: string;

@@ -18,7 +18,9 @@ declare global {
 interface DnsRecord {
   type: string;
   name: string;
+  fullName?: string;
   value: string;
+  reason?: string;
   note?: string;
 }
 
@@ -36,6 +38,8 @@ interface DnsInstructions {
   name?: string;
   value?: string;
   note?: string;
+  // Novo formato (Vercel-style): lista plana de registros
+  records?: DnsRecord[];
   option1?: DnsOption;
   option2?: DnsOption;
 }
@@ -74,6 +78,8 @@ export default function Editor() {
   const [domainConfig, setDomainConfig] = useState<{
     domain: string;
     verified: boolean;
+    ownershipVerified?: boolean;
+    configured?: boolean;
     dnsInstructions: DnsInstructions | null;
     message: string;
   } | null>(null);
@@ -84,7 +90,7 @@ export default function Editor() {
       setClonesLoading(true);
       const { data, error } = await fetchClonesService(user.id);
       if (error) console.error('Erro ao carregar clones:', error);
-      if (data) setClones(data);
+      if (data) setClones(data as unknown as CloneSite[]);
       setClonesLoading(false);
     };
     loadClones();
@@ -155,43 +161,10 @@ export default function Editor() {
     setSelectedCloneForDomain(clone);
     setDomainConfigModalOpen(true);
     setDomainInput('');
-
-    // Carregar instruções DNS padrão
-    const subdomain = getSubdomainFromUrl(clone.url);
-    if (!subdomain) {
-      setErrorModal('Não foi possível identificar o subdomínio do site.');
-      return;
-    }
-
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session?.access_token) {
-        setDomainConfig(null);
-        return;
-      }
-
-      // Carregar instruções DNS padrão (sem domínio específico)
-      const instructionsResponse = await api.get(`/api/sites/${subdomain}/dns-instructions`, {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (instructionsResponse.data.dnsInstructions) {
-        setDomainConfig({
-          domain: '',
-          verified: false,
-          dnsInstructions: instructionsResponse.data.dnsInstructions,
-          message: instructionsResponse.data.message || 'Configure o DNS seguindo as instruções abaixo',
-        });
-      }
-    } catch (error) {
-      console.error('Erro ao carregar instruções DNS:', error);
-      setDomainConfig(null);
-    }
+    // Importante: o backend agora exige ?domain=... em /dns-instructions.
+    // Então, não buscamos instruções até o usuário informar um domínio e clicar em "Adicionar Domínio"
+    // ou "Verificar Agora".
+    setDomainConfig(null);
   };
 
   const handleAddDomain = async () => {
@@ -233,18 +206,26 @@ export default function Editor() {
       });
 
       if (response.data.success) {
+        const uiMessage =
+          response.data?.verification?.message ||
+          response.data?.message ||
+          'Domínio adicionado. Configure o DNS conforme instruções.';
+
         setDomainConfig({
           domain: response.data.domain,
           verified: response.data.verification?.verified || false,
+          ownershipVerified: response.data.verification?.ownershipVerified,
+          configured: response.data.verification?.configured,
           dnsInstructions: response.data.dnsInstructions,
-          message: response.data.message || 'Domínio adicionado com sucesso',
+          message: uiMessage,
         });
       } else {
         setErrorModal(response.data.error || 'Erro ao adicionar domínio');
       }
     } catch (error: unknown) {
       console.error('Erro ao adicionar domínio:', error);
-      const errorMessage = (error as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Erro ao adicionar domínio';
+      const errorData = (error as { response?: { data?: { error?: string; message?: string } } })?.response?.data;
+      const errorMessage = errorData?.error || errorData?.message || 'Erro ao adicionar domínio';
       setErrorModal(errorMessage);
     } finally {
       setDomainLoading(false);
@@ -277,30 +258,47 @@ export default function Editor() {
       });
 
       if (response.data.verified) {
-        setDomainConfig((prev) =>
-          prev
-            ? {
-              ...prev,
-              verified: true,
-              message: response.data.message || 'Domínio verificado e configurado corretamente',
-            }
-            : null
-        );
+        const domain = response.data.domain || domainInput.trim();
+        setDomainConfig((prev) => {
+          const next = {
+            domain,
+            verified: true,
+            ownershipVerified: response.data.ownershipVerified,
+            configured: response.data.configured,
+            dnsInstructions: null,
+            message: response.data.message || 'Domínio verificado e configurado corretamente',
+          };
+          return prev ? { ...prev, ...next } : next;
+        });
       } else {
-        // Atualizar instruções se necessário
-        const instructionsResponse = await api.get(`/api/sites/${subdomain}/dns-instructions`, {
-          params: { domain: domainInput.trim() },
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        });
+        const domain = response.data.domain || domainInput.trim();
+        // Novo backend já devolve dnsInstructions aqui; usamos /dns-instructions só como fallback.
+        if (typeof response.data.dnsInstructions !== 'undefined') {
+          setDomainConfig({
+            domain,
+            verified: false,
+            ownershipVerified: response.data.ownershipVerified,
+            configured: response.data.configured,
+            dnsInstructions: response.data.dnsInstructions,
+            message: response.data.message || 'Domínio ainda não está verificado. Configure o DNS conforme instruções abaixo.',
+          });
+        } else {
+          const instructionsResponse = await api.get(`/api/sites/${subdomain}/dns-instructions`, {
+            params: { domain },
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          });
 
-        setDomainConfig({
-          domain: domainInput.trim(),
-          verified: false,
-          dnsInstructions: instructionsResponse.data.dnsInstructions,
-          message: instructionsResponse.data.message || 'Domínio ainda não está verificado',
-        });
+          setDomainConfig({
+            domain,
+            verified: false,
+            ownershipVerified: instructionsResponse.data.ownershipVerified,
+            configured: instructionsResponse.data.configured,
+            dnsInstructions: instructionsResponse.data.dnsInstructions,
+            message: instructionsResponse.data.message || response.data.message || 'Domínio ainda não está verificado',
+          });
+        }
       }
     } catch (error) {
       console.error('Erro ao verificar domínio:', error);
@@ -465,7 +463,7 @@ export default function Editor() {
       // Atualizar lista de clones
       const { data: clonesData, error: clonesError } = await fetchClonesService(user.id);
       if (clonesError) console.error('Erro ao carregar clones:', clonesError);
-      if (clonesData) setClones(clonesData);
+      if (clonesData) setClones(clonesData as unknown as CloneSite[]);
 
       // Mostrar sucesso
       setUploadSuccess({
@@ -517,7 +515,7 @@ export default function Editor() {
       // Atualizar lista de clones
       const { data: clonesData, error: clonesError } = await fetchClonesService(user.id);
       if (clonesError) console.error('Erro ao carregar clones:', clonesError);
-      if (clonesData) setClones(clonesData);
+      if (clonesData) setClones(clonesData as unknown as CloneSite[]);
 
       // Mostrar modal de sucesso
       setCloneSuccessData({
@@ -1454,7 +1452,78 @@ export default function Editor() {
                         <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                           {domainConfig.domain ? domainConfig.message : 'Siga as instruções abaixo para configurar seu domínio próprio no provedor de DNS. Você pode usar uma das duas opções disponíveis.'}
                         </p>
+                        {typeof domainConfig.ownershipVerified === 'boolean' && typeof domainConfig.configured === 'boolean' && (
+                          <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                            <div>
+                              <span className="font-semibold" style={{ color: 'var(--text)' }}>Propriedade (TXT):</span>{' '}
+                              {domainConfig.ownershipVerified ? 'OK' : 'Pendente'}
+                            </div>
+                            <div>
+                              <span className="font-semibold" style={{ color: 'var(--text)' }}>Apontamento (CNAME/A):</span>{' '}
+                              {domainConfig.configured ? 'OK' : 'Pendente'}
+                            </div>
+                            <div>
+                              <span className="font-semibold" style={{ color: 'var(--text)' }}>Verificado:</span>{' '}
+                              {domainConfig.verified ? 'OK' : 'Pendente'}
+                            </div>
+                          </div>
+                        )}
                       </div>
+
+                      {/* Novo formato: lista plana de registros (records[]) */}
+                      {Array.isArray(domainConfig.dnsInstructions.records) && domainConfig.dnsInstructions.records.length > 0 && (
+                        <div className="p-6 rounded-lg border" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+                          <h3 className="text-lg font-bold mb-4" style={{ color: 'var(--text)' }}>
+                            Registros DNS
+                          </h3>
+                          <div className="space-y-3">
+                            {domainConfig.dnsInstructions.records.map((record: DnsRecord, i: number) => (
+                              <div
+                                key={i}
+                                className="p-4 rounded border"
+                                style={{ borderColor: 'var(--border)', background: 'var(--bg-card-hover)' }}
+                              >
+                                <div className="grid grid-cols-3 gap-2 mb-2">
+                                  <div>
+                                    <p className="text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                                      Tipo
+                                    </p>
+                                    <p className="font-mono text-sm" style={{ color: 'var(--text)' }}>
+                                      {record.type}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                                      Nome
+                                    </p>
+                                    <p className="font-mono text-sm" style={{ color: 'var(--text)' }}>
+                                      {record.fullName || record.name}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                                      Valor
+                                    </p>
+                                    <p className="font-mono text-sm break-all" style={{ color: 'var(--text)' }}>
+                                      {record.value}
+                                    </p>
+                                  </div>
+                                </div>
+                                {(record.reason || record.note) && (
+                                  <p className="text-xs italic mt-2" style={{ color: 'var(--text-secondary)' }}>
+                                    {[record.reason, record.note].filter(Boolean).join(' — ')}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          {domainConfig.dnsInstructions.note && (
+                            <p className="text-xs italic p-3 rounded mt-4" style={{ background: 'var(--bg-card-hover)', color: 'var(--text-secondary)' }}>
+                              {domainConfig.dnsInstructions.note}
+                            </p>
+                          )}
+                        </div>
+                      )}
 
                       {/* Se tiver duas opções (option1 e option2) */}
                       {domainConfig.dnsInstructions.option1 && domainConfig.dnsInstructions.option2 && (

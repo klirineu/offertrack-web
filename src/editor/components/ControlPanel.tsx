@@ -93,23 +93,27 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
   const [domainConfig, setDomainConfig] = useState<{
     domain: string;
     verified: boolean;
+    ownershipVerified?: boolean;
+    configured?: boolean;
     dnsInstructions: {
       type?: string;
       name?: string;
       value?: string;
       note?: string;
+      // Novo formato (Vercel-style): lista plana de registros
+      records?: Array<{ type: string; name: string; fullName?: string; value: string; reason?: string; note?: string }>;
       option1?: {
         title: string;
         description?: string;
         nameservers?: string[];
-        records?: Array<{ type: string; name: string; value: string; note?: string }>;
+        records?: Array<{ type: string; name: string; fullName?: string; value: string; reason?: string; note?: string }>;
         steps?: string[];
         note?: string;
       };
       option2?: {
         title: string;
         description?: string;
-        records?: Array<{ type: string; name: string; value: string; note?: string }>;
+        records?: Array<{ type: string; name: string; fullName?: string; value: string; reason?: string; note?: string }>;
         steps?: string[];
         note?: string;
       };
@@ -718,11 +722,18 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
       });
 
       if (response.data.success) {
+        const uiMessage =
+          response.data?.verification?.message ||
+          response.data?.message ||
+          'Domínio adicionado. Configure o DNS conforme instruções.';
+
         setDomainConfig({
           domain: response.data.domain,
           verified: response.data.verification?.verified || false,
+          ownershipVerified: response.data.verification?.ownershipVerified,
+          configured: response.data.verification?.configured,
           dnsInstructions: response.data.dnsInstructions,
-          message: response.data.message || 'Domínio adicionado com sucesso',
+          message: uiMessage,
         });
         setSaveMsg('Domínio adicionado com sucesso!');
         setTimeout(() => setSaveMsg(''), 3000);
@@ -732,7 +743,8 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
       }
     } catch (error: unknown) {
       console.error('Erro ao adicionar domínio:', error);
-      const errorMessage = (error as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Erro ao adicionar domínio';
+      const errorData = (error as { response?: { data?: { error?: string; message?: string } } })?.response?.data;
+      const errorMessage = errorData?.error || errorData?.message || 'Erro ao adicionar domínio';
       setSaveMsg(errorMessage);
       setTimeout(() => setSaveMsg(''), 5000);
     } finally {
@@ -762,29 +774,47 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
       });
 
       if (response.data.verified) {
-        setDomainConfig((prev) =>
-          prev
-            ? {
-              ...prev,
-              verified: true,
-              message: response.data.message || 'Domínio verificado e configurado corretamente',
-            }
-            : null
-        );
+        const domain = response.data.domain || domainInput.trim();
+        setDomainConfig((prev) => {
+          const next = {
+            domain,
+            verified: true,
+            ownershipVerified: response.data.ownershipVerified,
+            configured: response.data.configured,
+            dnsInstructions: null,
+            message: response.data.message || 'Domínio verificado e configurado corretamente',
+          };
+          return prev ? { ...prev, ...next } : next;
+        });
       } else {
-        const instructionsResponse = await api.get(`/api/sites/${subdomain}/dns-instructions`, {
-          params: { domain: domainInput.trim() },
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        });
+        const domain = response.data.domain || domainInput.trim();
+        // Novo backend já devolve dnsInstructions aqui; usamos /dns-instructions só como fallback.
+        if (typeof response.data.dnsInstructions !== 'undefined') {
+          setDomainConfig({
+            domain,
+            verified: false,
+            ownershipVerified: response.data.ownershipVerified,
+            configured: response.data.configured,
+            dnsInstructions: response.data.dnsInstructions,
+            message: response.data.message || 'Domínio ainda não está verificado. Configure o DNS conforme instruções abaixo.',
+          });
+        } else {
+          const instructionsResponse = await api.get(`/api/sites/${subdomain}/dns-instructions`, {
+            params: { domain },
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          });
 
-        setDomainConfig({
-          domain: domainInput.trim(),
-          verified: false,
-          dnsInstructions: instructionsResponse.data.dnsInstructions,
-          message: instructionsResponse.data.message || 'Domínio ainda não está verificado',
-        });
+          setDomainConfig({
+            domain,
+            verified: false,
+            ownershipVerified: instructionsResponse.data.ownershipVerified,
+            configured: instructionsResponse.data.configured,
+            dnsInstructions: instructionsResponse.data.dnsInstructions,
+            message: instructionsResponse.data.message || response.data.message || 'Domínio ainda não está verificado',
+          });
+        }
       }
     } catch (error) {
       console.error('Erro ao verificar domínio:', error);
@@ -826,37 +856,10 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
           onClick={async () => {
             setDomainConfigModalOpen(true);
             setDomainInput('');
-
-            if (!subdomain) return;
-
-            try {
-              const {
-                data: { session },
-              } = await supabase.auth.getSession();
-
-              if (!session?.access_token) {
-                setDomainConfig(null);
-                return;
-              }
-
-              const instructionsResponse = await api.get(`/api/sites/${subdomain}/dns-instructions`, {
-                headers: {
-                  Authorization: `Bearer ${session.access_token}`,
-                },
-              });
-
-              if (instructionsResponse.data.dnsInstructions) {
-                setDomainConfig({
-                  domain: '',
-                  verified: false,
-                  dnsInstructions: instructionsResponse.data.dnsInstructions,
-                  message: instructionsResponse.data.message || 'Configure o DNS seguindo as instruções abaixo',
-                });
-              }
-            } catch (error) {
-              console.error('Erro ao carregar instruções DNS:', error);
-              setDomainConfig(null);
-            }
+            // Importante: o backend agora exige ?domain=... em /dns-instructions.
+            // Então, não buscamos instruções até o usuário informar um domínio e clicar em "Adicionar Domínio"
+            // ou "Verificar Agora".
+            setDomainConfig(null);
           }}
         >
           <Settings className="w-4 h-4" />
@@ -888,37 +891,10 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
         onClick={async () => {
           setDomainConfigModalOpen(true);
           setDomainInput('');
-
-          if (!subdomain) return;
-
-          try {
-            const {
-              data: { session },
-            } = await supabase.auth.getSession();
-
-            if (!session?.access_token) {
-              setDomainConfig(null);
-              return;
-            }
-
-            const instructionsResponse = await api.get(`/api/sites/${subdomain}/dns-instructions`, {
-              headers: {
-                Authorization: `Bearer ${session.access_token}`,
-              },
-            });
-
-            if (instructionsResponse.data.dnsInstructions) {
-              setDomainConfig({
-                domain: '',
-                verified: false,
-                dnsInstructions: instructionsResponse.data.dnsInstructions,
-                message: instructionsResponse.data.message || 'Configure o DNS seguindo as instruções abaixo',
-              });
-            }
-          } catch (error) {
-            console.error('Erro ao carregar instruções DNS:', error);
-            setDomainConfig(null);
-          }
+          // Importante: o backend agora exige ?domain=... em /dns-instructions.
+          // Então, não buscamos instruções até o usuário informar um domínio e clicar em "Adicionar Domínio"
+          // ou "Verificar Agora".
+          setDomainConfig(null);
         }}
       >
         <Settings className="w-4 h-4" />
@@ -1347,7 +1323,77 @@ Exemplo - Script de interação:
                   <p className="text-sm text-gray-300">
                     {domainConfig.domain ? domainConfig.message : 'Siga as instruções abaixo para configurar seu domínio próprio no provedor de DNS. Você pode usar uma das duas opções disponíveis.'}
                   </p>
+                  {typeof domainConfig.ownershipVerified === 'boolean' && typeof domainConfig.configured === 'boolean' && (
+                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-gray-400">
+                      <div>
+                        <span className="font-semibold text-white">Propriedade (TXT):</span>{' '}
+                        {domainConfig.ownershipVerified ? 'OK' : 'Pendente'}
+                      </div>
+                      <div>
+                        <span className="font-semibold text-white">Apontamento (CNAME/A):</span>{' '}
+                        {domainConfig.configured ? 'OK' : 'Pendente'}
+                      </div>
+                      <div>
+                        <span className="font-semibold text-white">Verificado:</span>{' '}
+                        {domainConfig.verified ? 'OK' : 'Pendente'}
+                      </div>
+                    </div>
+                  )}
                 </div>
+
+                {/* Novo formato: lista plana de registros (records[]) */}
+                {Array.isArray(domainConfig.dnsInstructions.records) && domainConfig.dnsInstructions.records.length > 0 && (
+                  <div className="p-6 rounded-lg border border-gray-700 bg-gray-800">
+                    <h3 className="text-lg font-bold mb-4 text-white">
+                      Registros DNS
+                    </h3>
+                    <div className="space-y-3">
+                      {domainConfig.dnsInstructions.records.map((record, i) => (
+                        <div
+                          key={i}
+                          className="p-4 rounded border border-gray-700 bg-gray-900"
+                        >
+                          <div className="grid grid-cols-3 gap-2 mb-2">
+                            <div>
+                              <p className="text-xs font-semibold mb-1 text-gray-400">
+                                Tipo
+                              </p>
+                              <p className="font-mono text-sm text-white">
+                                {record.type}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold mb-1 text-gray-400">
+                                Nome
+                              </p>
+                              <p className="font-mono text-sm text-white">
+                                {record.fullName || record.name}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold mb-1 text-gray-400">
+                                Valor
+                              </p>
+                              <p className="font-mono text-sm break-all text-white">
+                                {record.value}
+                              </p>
+                            </div>
+                          </div>
+                          {(record.reason || record.note) && (
+                            <p className="text-xs italic mt-2 text-gray-400">
+                              {[record.reason, record.note].filter(Boolean).join(' — ')}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {domainConfig.dnsInstructions.note && (
+                      <p className="text-xs italic p-3 rounded mt-4 bg-gray-900 text-gray-400">
+                        {domainConfig.dnsInstructions.note}
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* Se tiver duas opções (option1 e option2) */}
                 {domainConfig.dnsInstructions.option1 && domainConfig.dnsInstructions.option2 && (
@@ -1415,7 +1461,7 @@ Exemplo - Script de interação:
                           Registros DNS:
                         </p>
                         <div className="space-y-3">
-                          {domainConfig.dnsInstructions.option2.records?.map((record: { type: string; name: string; value: string; note?: string }, i: number) => (
+                          {domainConfig.dnsInstructions.option2.records?.map((record: { type: string; name: string; fullName?: string; value: string; reason?: string; note?: string }, i: number) => (
                             <div
                               key={i}
                               className="p-4 rounded border border-gray-700 bg-gray-900"
@@ -1434,7 +1480,7 @@ Exemplo - Script de interação:
                                     Nome
                                   </p>
                                   <p className="font-mono text-sm text-white">
-                                    {record.name}
+                                    {record.fullName || record.name}
                                   </p>
                                 </div>
                                 <div>
@@ -1446,9 +1492,9 @@ Exemplo - Script de interação:
                                   </p>
                                 </div>
                               </div>
-                              {record.note && (
+                              {(record.reason || record.note) && (
                                 <p className="text-xs italic mt-2 text-gray-400">
-                                  {record.note}
+                                  {[record.reason, record.note].filter(Boolean).join(' — ')}
                                 </p>
                               )}
                             </div>

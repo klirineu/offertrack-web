@@ -10,7 +10,7 @@
  * @returns A promessa original ou uma rejeição com timeout
  */
 export function withTimeout<T>(
-  promise: Promise<T>,
+  promise: PromiseLike<T>,
   timeoutMs: number = 10000
 ): Promise<T> {
   return Promise.race([

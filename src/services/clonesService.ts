@@ -1,6 +1,7 @@
 import { supabase } from "../lib/supabase";
 import { hasFeatureAccess } from "../utils/trialUtils";
 import api from "./api";
+import type { PostgrestError } from "@supabase/supabase-js";
 
 export interface CloneSite {
   id: string;
@@ -12,12 +13,19 @@ export interface CloneSite {
   updated_at: string;
 }
 
-export async function fetchClonesService(userId: string) {
-  const { data, error } = await supabase
-    .from("cloned_sites")
+export async function fetchClonesService(
+  userId: string
+): Promise<{ data: CloneSite[] | null; error: PostgrestError | null }> {
+  // Cast defensivo: evita erros de typing quando os tipos gerados do Supabase não incluem a tabela.
+  const { data, error } = (await supabase
+    .from("cloned_sites" as any)
     .select("*")
     .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })) as unknown as {
+    data: CloneSite[] | null;
+    error: PostgrestError | null;
+  };
+
   return { data, error };
 }
 

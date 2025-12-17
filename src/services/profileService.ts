@@ -1,36 +1,33 @@
 import { Database } from "../types/supabase";
-import api from "./api";
 import { supabase } from "../lib/supabase";
 import { withTimeout } from "../utils/supabaseHelpers";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+type PublicTableName = keyof Database["public"]["Tables"] & string;
+const PROFILES_TABLE = "profiles" as PublicTableName;
 
 export async function fetchProfile(userId: string): Promise<Profile | null> {
   try {
-    // Obter o token JWT do Supabase Auth com timeout para prevenir bloqueio
-    const {
-      data: { session },
-    } = await withTimeout(
-      supabase.auth.getSession(),
-      10000 // 10 segundos de timeout
-    );
+    // Buscar o profile direto do Supabase (evita depender da API externa que pode bloquear usuário comum)
+    // withTimeout para prevenir bloqueio indefinido após troca de abas.
+    // Observação: em alguns setups o typing do Supabase pode falhar em inferir tabelas
+    // (ex.: tipos gerados desatualizados). Fazemos um cast seguro para manter o runtime correto.
+    const { data, error } = (await withTimeout(
+      supabase.from(PROFILES_TABLE).select("*").eq("id", userId).single(),
+      10000
+    )) as unknown as {
+      data: Profile | null;
+      error: { message?: string; code?: string } | null;
+    };
 
-    if (!session?.access_token) {
-      console.error("Usuário não autenticado");
+    if (error) {
+      console.error("Erro ao buscar profile via Supabase:", error);
       return null;
     }
 
-    // Fazer a requisição com autenticação JWT
-    const res = await api.get(`/api/profile/${userId}`, {
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-        "Content-Type": "application/json",
-      },
-    });
-
-    return res.data.profile ?? null;
+    return data ?? null;
   } catch (err) {
-    console.error("Erro ao buscar profile via API:", err);
+    console.error("Erro ao buscar profile:", err);
     return null;
   }
 }
@@ -59,11 +56,14 @@ export async function verifyAdmin(): Promise<boolean> {
 
     // Consultar diretamente no Supabase se o usuário é admin
     // Se RLS estiver configurado, usuários não-admin não conseguirão ver dados de outros usuários
-    const { data, error } = await supabase
-      .from("profiles")
+    const { data, error } = (await supabase
+      .from(PROFILES_TABLE)
       .select("role")
       .eq("id", user.id)
-      .single();
+      .single()) as unknown as {
+      data: { role: string | null } | null;
+      error: { message?: string; code?: string } | null;
+    };
 
     if (error) {
       // Se der erro de permissão (RLS bloqueou), definitivamente não é admin
