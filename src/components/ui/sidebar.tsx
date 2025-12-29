@@ -15,6 +15,8 @@ interface Links {
     href: string;
     icon?: React.JSX.Element | React.ReactNode;
   }[];
+  disabled?: boolean;
+  highlighted?: boolean;
 }
 
 interface SidebarContextProps {
@@ -210,7 +212,14 @@ export const SidebarLink = ({
     borderLeft: isActive ? '4px solid var(--accent)' : '4px solid transparent',
     fontWeight: isActive ? 700 : 500,
     background: isActive ? 'rgba(34, 211, 238, 0.1)' : 'transparent',
-    borderRadius: isActive ? '0 8px 8px 0' : '0'
+    borderRadius: isActive ? '0 8px 8px 0' : '0',
+    ...(link.highlighted ? {
+      background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.1), rgba(251, 191, 36, 0.1))',
+      borderLeft: '4px solid #fbbf24',
+      fontWeight: 700,
+      color: '#fbbf24',
+      boxShadow: '0 2px 8px rgba(234, 179, 8, 0.2)'
+    } : {})
   };
 
   return (
@@ -229,16 +238,30 @@ export const SidebarLink = ({
         style={linkStyle}
         onMouseEnter={(e) => {
           if (!isActive) {
-            e.currentTarget.style.background = 'var(--bg-card-hover)';
-            e.currentTarget.style.color = 'var(--accent)';
-            e.currentTarget.style.borderLeftColor = 'var(--accent)';
+            if (link.highlighted) {
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(234, 179, 8, 0.2), rgba(251, 191, 36, 0.2))';
+              e.currentTarget.style.color = '#fbbf24';
+              e.currentTarget.style.borderLeftColor = '#fbbf24';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(234, 179, 8, 0.3)';
+            } else {
+              e.currentTarget.style.background = 'var(--bg-card-hover)';
+              e.currentTarget.style.color = 'var(--accent)';
+              e.currentTarget.style.borderLeftColor = 'var(--accent)';
+            }
           }
         }}
         onMouseLeave={(e) => {
           if (!isActive) {
-            e.currentTarget.style.background = 'transparent';
-            e.currentTarget.style.color = 'var(--text-secondary)';
-            e.currentTarget.style.borderLeftColor = 'transparent';
+            if (link.highlighted) {
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(234, 179, 8, 0.1), rgba(251, 191, 36, 0.1))';
+              e.currentTarget.style.color = '#fbbf24';
+              e.currentTarget.style.borderLeftColor = '#fbbf24';
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(234, 179, 8, 0.2)';
+            } else {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = 'var(--text-secondary)';
+              e.currentTarget.style.borderLeftColor = 'transparent';
+            }
           }
         }}
         {...props}
@@ -260,7 +283,17 @@ export const SidebarLink = ({
             opacity: animate ? (open ? 1 : 0) : 1,
           }}
           className="group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0"
-          style={{ fontSize: '0.85rem' }}
+          style={{ 
+            fontSize: '0.85rem',
+            ...(link.highlighted ? {
+              animation: 'pulse 2s ease-in-out infinite',
+              display: 'inline-block',
+              color: '#fbbf24',
+              fontWeight: 800,
+              textShadow: '0 0 10px rgba(251, 191, 36, 0.8), 0 0 20px rgba(251, 191, 36, 0.5), 0 0 30px rgba(251, 191, 36, 0.3)',
+              position: 'relative',
+            } : {})
+          }}
         >
           {link.label}
         </motion.span>

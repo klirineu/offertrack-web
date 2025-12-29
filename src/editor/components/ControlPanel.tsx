@@ -778,11 +778,11 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
         setDomainConfig((prev) => {
           const next = {
             domain,
-            verified: true,
+              verified: true,
             ownershipVerified: response.data.ownershipVerified,
             configured: response.data.configured,
             dnsInstructions: null,
-            message: response.data.message || 'Domínio verificado e configurado corretamente',
+              message: response.data.message || 'Domínio verificado e configurado corretamente',
           };
           return prev ? { ...prev, ...next } : next;
         });
@@ -798,22 +798,22 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
             dnsInstructions: response.data.dnsInstructions,
             message: response.data.message || 'Domínio ainda não está verificado. Configure o DNS conforme instruções abaixo.',
           });
-        } else {
-          const instructionsResponse = await api.get(`/api/sites/${subdomain}/dns-instructions`, {
+      } else {
+        const instructionsResponse = await api.get(`/api/sites/${subdomain}/dns-instructions`, {
             params: { domain },
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-            },
-          });
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
 
-          setDomainConfig({
+        setDomainConfig({
             domain,
-            verified: false,
+          verified: false,
             ownershipVerified: instructionsResponse.data.ownershipVerified,
             configured: instructionsResponse.data.configured,
-            dnsInstructions: instructionsResponse.data.dnsInstructions,
+          dnsInstructions: instructionsResponse.data.dnsInstructions,
             message: instructionsResponse.data.message || response.data.message || 'Domínio ainda não está verificado',
-          });
+        });
         }
       }
     } catch (error) {
@@ -859,7 +859,7 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
             // Importante: o backend agora exige ?domain=... em /dns-instructions.
             // Então, não buscamos instruções até o usuário informar um domínio e clicar em "Adicionar Domínio"
             // ou "Verificar Agora".
-            setDomainConfig(null);
+                setDomainConfig(null);
           }}
         >
           <Settings className="w-4 h-4" />
@@ -894,7 +894,7 @@ const ControlPanel = ({ onAfterSave }: ControlPanelProps) => {
           // Importante: o backend agora exige ?domain=... em /dns-instructions.
           // Então, não buscamos instruções até o usuário informar um domínio e clicar em "Adicionar Domínio"
           // ou "Verificar Agora".
-          setDomainConfig(null);
+              setDomainConfig(null);
         }}
       >
         <Settings className="w-4 h-4" />

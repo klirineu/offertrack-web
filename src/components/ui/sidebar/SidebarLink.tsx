@@ -16,6 +16,7 @@ interface SidebarLinkProps {
     icon?: React.ReactNode;
     subLinks?: SubLink[];
     disabled?: boolean;
+    highlighted?: boolean;
   };
 }
 
@@ -58,14 +59,27 @@ export function SidebarLink({ link }: SidebarLinkProps) {
     transition: 'all 0.3s ease',
     borderLeft: '3px solid transparent',
     fontWeight: 500,
-    fontSize: '0.95rem'
+    fontSize: '0.95rem',
+    ...(link.highlighted ? {
+      background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.1), rgba(251, 191, 36, 0.1))',
+      borderLeft: '3px solid #fbbf24',
+      fontWeight: 700,
+      color: '#fbbf24',
+      boxShadow: '0 2px 8px rgba(234, 179, 8, 0.2)'
+    } : {})
   };
 
   const activeLinkStyle: React.CSSProperties = {
     ...linkStyle,
-    background: 'var(--bg-card-hover)',
-    color: 'var(--accent)',
-    borderLeftColor: 'var(--accent)'
+    background: link.highlighted 
+      ? 'linear-gradient(135deg, rgba(234, 179, 8, 0.25), rgba(251, 191, 36, 0.25))'
+      : 'var(--bg-card-hover)',
+    color: link.highlighted ? '#fbbf24' : 'var(--accent)',
+    borderLeftColor: link.highlighted ? '#fbbf24' : 'var(--accent)',
+    fontWeight: 700,
+    ...(link.highlighted ? {
+      boxShadow: '0 4px 12px rgba(234, 179, 8, 0.4)'
+    } : {})
   };
 
   return (
@@ -104,14 +118,26 @@ export function SidebarLink({ link }: SidebarLinkProps) {
           }}
           onMouseEnter={(e) => {
             if (!isActive && !link.disabled) {
-              e.currentTarget.style.background = 'var(--bg-card-hover)';
-              e.currentTarget.style.color = 'var(--accent)';
+              if (link.highlighted) {
+                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(234, 179, 8, 0.2), rgba(251, 191, 36, 0.2))';
+                e.currentTarget.style.color = '#fbbf24';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(234, 179, 8, 0.3)';
+              } else {
+                e.currentTarget.style.background = 'var(--bg-card-hover)';
+                e.currentTarget.style.color = 'var(--accent)';
+              }
             }
           }}
           onMouseLeave={(e) => {
             if (!isActive && !link.disabled) {
-              e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.color = 'var(--text-secondary)';
+              if (link.highlighted) {
+                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(234, 179, 8, 0.1), rgba(251, 191, 36, 0.1))';
+                e.currentTarget.style.color = '#fbbf24';
+                e.currentTarget.style.boxShadow = '0 2px 8px rgba(234, 179, 8, 0.2)';
+              } else {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = 'var(--text-secondary)';
+              }
             }
           }}
         >
@@ -119,7 +145,16 @@ export function SidebarLink({ link }: SidebarLinkProps) {
             <span style={{ fontSize: '1.25rem', width: '24px', textAlign: 'center' }}>
               {link.icon}
             </span>
-            <span>{link.label}</span>
+            <span style={link.highlighted ? {
+              animation: 'pulse 2s ease-in-out infinite',
+              display: 'inline-block',
+              color: '#fbbf24',
+              fontWeight: 800,
+              textShadow: '0 0 10px rgba(251, 191, 36, 0.8), 0 0 20px rgba(251, 191, 36, 0.5), 0 0 30px rgba(251, 191, 36, 0.3)',
+              position: 'relative',
+            } : {}}>
+              {link.label}
+            </span>
           </div>
           {link.subLinks && (
             <ChevronDown

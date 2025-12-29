@@ -28,6 +28,7 @@ import { Admin } from './pages/Admin';
 import { Tracking } from './pages/tools/Tracking';
 import SiteBuilder from './pages/tools/SiteBuilder';
 import EscalatedOffers from './pages/EscalatedOffers';
+import { Afiliados } from './pages/Afiliados';
 import { verifyAdmin } from './services/profileService';
 
 // Componente para proteger rotas de admin com verificação no backend
@@ -173,6 +174,7 @@ function App() {
         <Route path="/tools/site-builder" element={<ProtectedRoute><SiteBuilder /></ProtectedRoute>} />
         <Route path="/offers/:offerId/metrics" element={<ProtectedRoute><OfferMetrics /></ProtectedRoute>} />
         <Route path="/escalated-offers" element={<ProtectedRoute><EscalatedOffers /></ProtectedRoute>} />
+        <Route path="/afiliados" element={<ProtectedRoute><Afiliados /></ProtectedRoute>} />
         {/* Admin Routes */}
         <Route path="/admin" element={<ProtectedRoute><AdminRoute><Admin /></AdminRoute></ProtectedRoute>} />
         {/* Static Pages */}

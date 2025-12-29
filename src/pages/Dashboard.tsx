@@ -5,7 +5,7 @@ import { EditOfferDialog } from '../components/EditOfferDialog';
 import { useThemeStore } from '../store/themeStore';
 import { useModalStore } from '../store/modalStore';
 import { Link } from 'react-router-dom';
-import { Layout, UserCog, Settings as SettingsIcon, Circle, Wrench, Users, Clock, Star, LogOut } from 'lucide-react';
+import { Layout, UserCog, Settings as SettingsIcon, Circle, Wrench, Users, Clock, Star, LogOut, TrendingUp } from 'lucide-react';
 import { SidebarBody, SidebarLink, Sidebar } from '../components/ui/sidebar';
 import { useAuth } from '../context/AuthContext';
 import { checkTrialStatus } from '../utils/trialUtils';
@@ -86,6 +86,15 @@ export function Dashboard() {
       icon: (
         <Layout className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
       ),
+    },
+    // Link de Afiliados com destaque
+    {
+      label: "Seja Afiliado",
+      href: "/afiliados",
+      icon: (
+        <TrendingUp className="text-yellow-500 dark:text-yellow-400 h-5 w-5 flex-shrink-0" />
+      ),
+      highlighted: true,
     },
     // Adicionar link de Ofertas Escaladas - desabilitado se não tiver assinatura ativa
     {

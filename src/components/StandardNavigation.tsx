@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Wrench, Star } from 'lucide-react';
+import { Layout, UserCog, Settings as SettingsIcon, LogOut, Circle, Wrench, Star, TrendingUp } from 'lucide-react';
 import { SidebarBody, SidebarLink, Sidebar } from './ui/sidebar';
 import { useAuth } from '../context/AuthContext';
 import { verifyAdmin } from '../services/profileService';
@@ -74,6 +74,15 @@ export function StandardNavigation({ children }: StandardNavigationProps) {
       icon: (
         <Layout className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
       ),
+    },
+    // Link de Afiliados com destaque
+    {
+      label: "Seja Afiliado",
+      href: "/afiliados",
+      icon: (
+        <TrendingUp className="text-yellow-500 dark:text-yellow-400 h-5 w-5 flex-shrink-0" />
+      ),
+      highlighted: true,
     },
     // Adicionar link de Ofertas Escaladas - desabilitado se não tiver assinatura ativa
     {
